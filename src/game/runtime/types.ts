@@ -1,4 +1,5 @@
 import type { QueueDirection } from "@/src/game/core";
+import type { QueueFlowState } from "./queueInsight";
 
 export type QualityMode = "standard" | "lower-end";
 export type GameSpeed = 0 | 1 | 2 | 4;
@@ -29,6 +30,8 @@ export interface RuntimeSnapshot {
   servedCustomers: number;
   averageSatisfaction: number;
   queuePressure: number;
+  queueFlowState: QueueFlowState;
+  queueFlowMessage: string;
   freeSeats: number;
   totalSeats: number;
   cleanliness: number;

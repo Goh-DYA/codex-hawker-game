@@ -8,14 +8,14 @@ Release verdict: **NO-GO pending exact-production browser/offline QA and require
 
 The queue, expansion, graphics, food, animation, and utility changes are integrated. The final current-source release gate passes. A targeted development-browser pass captured the starter layout, live service, queue routing/editing, and expanded layouts. The replacement production artifact was built and served locally with HTTP 200 responses for the game shell, manifest, and versioned service worker.
 
-Current-source automated evidence: final `npm run test:release` passed typecheck, lint, 10 Vitest files / 57 tests, production build, and 2 rendered-output/offline-shell tests. Both `npm audit --omit=dev --audit-level=high` and `npm audit --audit-level=high` reported 0 vulnerabilities.
+Current-source automated evidence: final release checks passed typecheck, lint, 11 Vitest files / 61 tests, production build, and 2 rendered-output/offline-shell tests. Both `npm audit --omit=dev --audit-level=high` and `npm audit --audit-level=high` reported 0 vulnerabilities.
 
 ## Gate record
 
 | Gate | Current result | Evidence / required update |
 |---|---|---|
 | Typecheck | **Pass** | `npm run typecheck`, exit 0 after the latest source changes |
-| Vitest unit/integration/content/performance | **Pass** | 10 files / 57 tests passed after the latest source changes |
+| Vitest unit/integration/content/performance | **Pass** | 11 files / 61 tests passed after the latest source changes |
 | Content validator | **Pass** | Exact 8 stalls / 30 dishes / 80 placeables / 8 archetypes / 252 localization entries plus references, unlock graph, categories, and copy checks |
 | Visual-recipe validator | **Pass** | All 80 placeables have distinct visual contracts/motifs; all 30 dishes consume food/vessel metadata; all 8 archetypes and all 11 lifecycle states are covered, including moving and reduced-motion signatures |
 | Queue selection/routing/expansion | **Pass** | Balanced selection, furniture avoidance, globally unique cells/anchors, custom-route conflicts, closed stalls, live-order preservation, geometry/undo reflow, persistence, admitted-customer walkability, perimeter migration, and old-exit continuity are covered |
@@ -47,6 +47,7 @@ Current-source automated evidence: final `npm run test:release` passed typecheck
 - `tests/utility-effects.test.ts`: meaningful signage/facility mappings and bounded spatial/global effects.
 - `tests/visual-recipes.test.ts`: exhaustive placeable, stall/dish metadata, archetype, animation-state, tick, and reduced-motion visual contracts.
 - `tests/performance.test.ts`: repeatable 80-agent Node simulation budget with queue reservations active.
+- `tests/queue-insight.test.ts`: geometry-aware queue-flow messaging, route-capacity warnings, demand imbalance, and calm-state recovery.
 
 ## Current execution record
 
@@ -58,7 +59,7 @@ npm audit --omit=dev --audit-level=high
 npm audit --audit-level=high
 ```
 
-All commands exited 0. Vitest reported 10 files / 57 tests passing, the production build completed, both rendered-output tests passed, and both audits reported 0 vulnerabilities. The benchmark and artifact metrics are recorded in `PERFORMANCE_REPORT.md`.
+All commands exited 0. Vitest reported 11 files / 61 tests passing, the production build completed, both rendered-output tests passed, and both audits reported 0 vulnerabilities. The benchmark and artifact metrics are recorded in `PERFORMANCE_REPORT.md`.
 
 For the exact-production browser tests, record browser/OS version, viewport, DPR/zoom, production URL, scenario results, screenshots, console/network findings, save/reload, and offline/update steps.
 

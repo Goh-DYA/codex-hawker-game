@@ -6,11 +6,11 @@ Status: **Current-source release gate and automated graphics coverage passed; ta
 
 ## Evidence boundary
 
-- Final `npm run test:release` passes on the current source: typecheck, lint, 10 Vitest files / 57 tests, production build, and two rendered-output/offline-shell tests.
-- The 57 tests include exhaustive visual-recipe, utility, queue-selection/routing, cross-stall queue-layout, expansion, active-order preservation, and 80-agent benchmark coverage.
+- Final release checks pass on the current source: typecheck, lint, 11 Vitest files / 61 tests, production build, and two rendered-output/offline-shell tests.
+- The 61 tests include exhaustive visual-recipe, utility, queue-selection/routing, cross-stall queue-layout, queue-flow diagnostics, expansion, active-order preservation, and 80-agent benchmark coverage.
 - Eight browser screenshots were captured from the development build and are indexed below.
 - The screenshots predate the final audit fixes for globally unique queue anchors, live-order-preserving reroutes, utility-adjusted meal depletion, and the restored route overlay; those fixes have final-source automated/static coverage but still require a fresh exact-production visual pass. The screenshots are targeted evidence, not a performance, accessibility, or cultural approval.
-- Replacement artifact: `dist/`, 35 files / 13,765,754 bytes, service-worker build `710894d70709`, deterministic file-manifest SHA-256 `4a04f444d58b840385f2c6a85517d2a93faeddc8a0438645915302d75e856806`.
+- Replacement artifact: `dist/`, 35 files / 13,772,093 bytes, service-worker build `3e25823ed59c`, deterministic file-manifest SHA-256 `3fbd941195ed69d51198940b64ce8007aa5d8133d8f9777fa4174c24d067d2db`.
 
 ## Verification matrix
 

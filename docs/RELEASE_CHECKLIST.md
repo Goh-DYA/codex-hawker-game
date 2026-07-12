@@ -86,7 +86,7 @@ Rule: check an item only with evidence in `TEST_REPORT.md`, `PERFORMANCE_REPORT.
 
 ## Build and operations
 
-- [x] Final `npm run test:release` passes typecheck, lint, all 10 Vitest files / 57 tests, production build, and rendered-output/offline-shell assertions.
+- [x] Final release checks pass typecheck, lint, all 11 Vitest files / 61 tests, production build, and rendered-output/offline-shell assertions.
 - [x] Final all-dependencies and production-only npm audits both report 0 vulnerabilities.
 - [x] Replacement service-worker build ID, artifact path/hash, and payload sizes are recorded.
 - [x] Validated implementation commit and private Sites publication URL are recorded in `PROJECT_STATUS.md` and `TEST_REPORT.md`.

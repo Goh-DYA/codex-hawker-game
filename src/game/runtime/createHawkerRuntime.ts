@@ -49,6 +49,7 @@ import type {
   RuntimeSnapshot,
 } from "./types";
 import { utilityEffectsForPlaceable } from "./contentUtility";
+import { deriveQueueFlowInsight } from "./queueInsight";
 import {
   animationPoseForCustomer,
   stableVisualHash,
@@ -573,6 +574,27 @@ export async function createHawkerRuntime(
       catalog,
       [snapshot.entrance, snapshot.exit],
     );
+    const mainGuestRoute =
+      findPath(snapshot.map, snapshot.entrance, snapshot.exit, {
+        blocked: getBlockedTileKeys(state.objects, catalog),
+      }).path ?? [];
+    const queueFlow = deriveQueueFlowInsight(
+      snapshot.objects
+        .filter((object) => catalog.placeables[object.definitionId]?.kind === "stall")
+        .map((object) => {
+          const definition = catalog.placeables[object.definitionId];
+          const cells = queueLayouts[object.id] ?? [];
+          const count = snapshot.queues[object.id]?.length ?? 0;
+          return {
+            open: object.open,
+            queueCount: count,
+            routeCapacity: cells.length,
+            designedCapacity: definition?.stall?.queueCapacity ?? cells.length,
+            occupiedCells: cells.slice(0, count),
+          };
+        }),
+      mainGuestRoute,
+    );
     const placedStalls = snapshot.objects
       .filter((object) => catalog.placeables[object.definitionId]?.kind === "stall")
       .map((object) => {
@@ -614,7 +636,9 @@ export async function createHawkerRuntime(
       activeCustomers: snapshot.customers.length,
       servedCustomers: snapshot.economy.completedVisits,
       averageSatisfaction: Math.max(0, Math.min(100, averageSatisfaction)),
-      queuePressure: Math.min(100, queueCount * 13),
+      queuePressure: queueFlow.pressure,
+      queueFlowState: queueFlow.state,
+      queueFlowMessage: queueFlow.message,
       freeSeats: Math.max(0, seats.length - Object.keys(snapshot.seatReservations).length),
       totalSeats: seats.length,
       cleanliness: Math.max(

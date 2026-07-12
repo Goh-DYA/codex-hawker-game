@@ -56,6 +56,8 @@ const INITIAL_SNAPSHOT: RuntimeSnapshot = {
   servedCustomers: 0,
   averageSatisfaction: 100,
   queuePressure: 0,
+  queueFlowState: "good",
+  queueFlowMessage: "No queues are forming and every stall approach is clear.",
   freeSeats: 8,
   totalSeats: 8,
   cleanliness: 100,
@@ -1214,17 +1216,15 @@ export function HawkerSimulator() {
 
           {panel === "insights" ? (
             <div className="insights-list">
-              <article data-state={snapshot.queuePressure > 70 ? "warning" : "good"}>
+              <article data-state={snapshot.queueFlowState}>
                 <span aria-hidden="true">↝</span>
                 <div>
                   <strong>Queue flow</strong>
                   <p>
-                    {snapshot.queuePressure > 70
-                      ? "Queues are crowding the main aisle. Move popular stalls apart or leave more approach tiles."
-                      : "Approach paths are clear and queue pressure is comfortable."}
+                    {snapshot.queueFlowMessage}
                   </p>
                 </div>
-                <em>{Math.round(snapshot.queuePressure)}%</em>
+                <em>{Math.round(snapshot.queuePressure)}% used</em>
               </article>
               <article data-state={snapshot.freeSeats < 2 ? "warning" : "good"}>
                 <span aria-hidden="true">◒</span>

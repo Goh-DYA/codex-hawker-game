@@ -8,18 +8,18 @@ Verdict: **Current-source Node simulation budget and replacement bundle evidence
 
 The Vitest benchmark starts 80 active customers and advances 1,200 deterministic fixed steps with periodic invariant checks. The current run includes the new queue-reservation and obstacle-safe route behavior. It is useful for regression detection in the pure simulation core; it does not include Phaser rendering, browser scheduling, audio, IndexedDB, service workers, or DOM work.
 
-Latest current-source result from the passing 48-test Vitest run:
+Latest current-source result from the passing 61-test Vitest run:
 
 | Metric | Recorded value |
 |---|---:|
 | Seed | `benchmark-80-agents` |
 | Fixed steps | 1,200 |
 | Peak active customers | 80 |
-| Mean simulation step | 0.01762 ms |
-| p95 simulation step | 0.01960 ms |
-| Maximum simulation step | 4.2145 ms |
-| Total measured duration | 21.9802 ms |
-| Heap delta during sample | 1,793,648 bytes |
+| Mean simulation step | 0.01720 ms |
+| p95 simulation step | 0.01970 ms |
+| Maximum simulation step | 3.8660 ms |
+| Total measured duration | 21.4711 ms |
+| Heap delta during sample | 2,459,472 bytes |
 | Final active customers | 0 |
 | Completed visits | 5 |
 | Test budget | mean < 4 ms; p95 < 10 ms |
@@ -37,7 +37,7 @@ The final current-source `npm run test:release` build produced this payload snap
 | Deferred Phaser/runtime/visual recipes | 1,627,126 B | 425,765 B |
 | Total client JS/CSS | 1,985,428 B | 533,679 B |
 
-Replacement `dist/`: 13,765,754 bytes across 35 files, including the 2,897,161-byte social-share PNG. Service-worker build ID: `710894d70709`. Deterministic SHA-256 of the sorted `relative-path<TAB>file-sha256` manifest: `4a04f444d58b840385f2c6a85517d2a93faeddc8a0438645915302d75e856806`. The largest client asset is Phaser at 1,375,732 raw / 354,671 gzip bytes; the build retains a non-fatal >500 kB chunk advisory. These are artifact/transport measurements only; time to interactive was not measured.
+Replacement `dist/`: 13,772,093 bytes across 35 files, including the 2,897,161-byte social-share PNG. Service-worker build ID: `3e25823ed59c`. Deterministic SHA-256 of the sorted `relative-path<TAB>file-sha256` manifest: `3fbd941195ed69d51198940b64ce8007aa5d8133d8f9777fa4174c24d067d2db`. The largest client asset remains Phaser; the build retains a non-fatal >500 kB chunk advisory. These are artifact/transport measurements only; time to interactive was not measured.
 
 ## Browser metrics still required
 
