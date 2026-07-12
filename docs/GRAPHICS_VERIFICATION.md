@@ -10,7 +10,7 @@ Status: **Current-source release gate and automated graphics coverage passed; ta
 - The 57 tests include exhaustive visual-recipe, utility, queue-selection/routing, cross-stall queue-layout, expansion, active-order preservation, and 80-agent benchmark coverage.
 - Eight browser screenshots were captured from the development build and are indexed below.
 - The screenshots predate the final audit fixes for globally unique queue anchors, live-order-preserving reroutes, utility-adjusted meal depletion, and the restored route overlay; those fixes have final-source automated/static coverage but still require a fresh exact-production visual pass. The screenshots are targeted evidence, not a performance, accessibility, or cultural approval.
-- Replacement artifact: `dist/`, 35 files / 13,765,754 bytes, service-worker build `710894d70709`, deterministic file-manifest SHA-256 `02f6ce7359f27327dbcc4e19cfe2c7af9ef7f389727028458713f855049301d3`.
+- Replacement artifact: `dist/`, 35 files / 13,765,754 bytes, service-worker build `710894d70709`, deterministic file-manifest SHA-256 `4a04f444d58b840385f2c6a85517d2a93faeddc8a0438645915302d75e856806`.
 
 ## Verification matrix
 

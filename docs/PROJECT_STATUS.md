@@ -30,7 +30,7 @@ Package version `1.0.0` remains an internal artifact identifier until the exact-
 | Accessibility | Engineering support implemented; human audit pending | Semantic DOM controls, keyboard actions, focus-managed dialogs, text scaling, high contrast, reduced motion, visual audio equivalents, and degradation messages are present; assistive-technology and human review remain open |
 | Cultural review | Research-informed internal review only | Fictional names/marks and original presentation are used; Singapore-informed human review remains a release blocker |
 | Security/privacy/legal | Engineering controls implemented; independent reviews pending | Local-only data posture, bounded save import, no analytics/accounts/payments, CSP/security headers, and notices are present; both final npm audits report 0 vulnerabilities, while independent reviews remain open |
-| Deployment | Replacement artifact built and smoked locally | Artifact inventory/hash and HTTP 200 production smoke are recorded; Git commit and Sites publication evidence are pending |
+| Deployment | Replacement artifact committed and privately published | Validated implementation commit `648efa1ad44c4ad078d6e626a63e3a3c30e5d2ac`; private Sites URL `https://hawker-simulator-neighbourhood.gohdya.chatgpt.site`; public production approval remains blocked by the gates below |
 
 ## Implemented launch scope
 

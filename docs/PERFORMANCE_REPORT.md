@@ -1,7 +1,7 @@
 # Performance Report
 
 Report date: 2026-07-12
-Build/commit: Current working source; replacement Git/Sites commit pending
+Build/commit: Validated implementation commit `648efa1ad44c4ad078d6e626a63e3a3c30e5d2ac`; privately published through Sites
 Verdict: **Current-source Node simulation budget and replacement bundle evidence passed; browser performance and supported customer caps are not established**
 
 ## Automated simulation evidence
@@ -37,7 +37,7 @@ The final current-source `npm run test:release` build produced this payload snap
 | Deferred Phaser/runtime/visual recipes | 1,627,126 B | 425,765 B |
 | Total client JS/CSS | 1,985,428 B | 533,679 B |
 
-Replacement `dist/`: 13,765,754 bytes across 35 files, including the 2,897,161-byte social-share PNG. Service-worker build ID: `710894d70709`. Deterministic SHA-256 of the sorted `relative-path<TAB>file-sha256` manifest: `02f6ce7359f27327dbcc4e19cfe2c7af9ef7f389727028458713f855049301d3`. The largest client asset is Phaser at 1,375,732 raw / 354,671 gzip bytes; the build retains a non-fatal >500 kB chunk advisory. These are artifact/transport measurements only; time to interactive was not measured.
+Replacement `dist/`: 13,765,754 bytes across 35 files, including the 2,897,161-byte social-share PNG. Service-worker build ID: `710894d70709`. Deterministic SHA-256 of the sorted `relative-path<TAB>file-sha256` manifest: `4a04f444d58b840385f2c6a85517d2a93faeddc8a0438645915302d75e856806`. The largest client asset is Phaser at 1,375,732 raw / 354,671 gzip bytes; the build retains a non-fatal >500 kB chunk advisory. These are artifact/transport measurements only; time to interactive was not measured.
 
 ## Browser metrics still required
 
