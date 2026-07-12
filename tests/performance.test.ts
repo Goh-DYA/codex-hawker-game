@@ -50,6 +50,7 @@ describe("repeatable 80-agent simulation benchmark", () => {
     state = {
       ...state,
       customers,
+      queues: Object.fromEntries(Object.keys(state.queues).map((stallId) => [stallId, []])),
       spawnCountdownMs: 100_000,
       nextCustomerSequence: 81,
       metrics: { ...state.metrics, spawnedCustomers: 80, despawnedCustomers: 0 },

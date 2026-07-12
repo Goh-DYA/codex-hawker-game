@@ -184,6 +184,9 @@ function validateCatalogInternal(catalog: SimulationCatalog): readonly Validatio
     for (const field of ["priceSensitivity", "qualitySensitivity", "queueSensitivity", "distanceSensitivity"] as const) {
       positiveNumber(archetype[field], `${path}.${field}`, issues, true);
     }
+    if (archetype.noveltyPreference !== undefined) {
+      positiveNumber(archetype.noveltyPreference, `${path}.noveltyPreference`, issues, true);
+    }
   }
   if (Object.keys(catalog.archetypes ?? {}).length === 0) {
     issues.push({ path: "archetypes", message: "must contain at least one archetype" });

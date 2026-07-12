@@ -1,6 +1,6 @@
 # Asset Provenance Register
 
-Status: Working register; final audit pending
+Status: Automated provenance/dependency audit current; human visual, cultural, and legal review pending
 
 ## Policy
 
@@ -8,16 +8,20 @@ All shipped art and audio must be original and reproducible from repository sour
 
 | Asset class | Intended source | Runtime form | License / rights | State |
 |---|---|---|---|---|
-| World, stalls, furniture | Original TypeScript/Phaser procedural geometry following ART_BIBLE.md | Canvas-generated shapes | Project-original | Implemented; visual/cultural review pending |
-| Characters and reactions | Original modular procedural shape recipes | Canvas geometry | Project-original | Implemented; visual review pending |
-| Food and vessels | Original simplified shape recipes; factual reference only | Canvas geometry | Project-original | Implemented; cultural review pending |
+| World and expansion boundaries | Original TypeScript/Phaser procedural geometry following ART_BIBLE.md | Canvas-generated floors, walls, entrance, and exit | Project-original | Implemented; repeated-expansion development-browser evidence captured; exact-production review pending |
+| Stalls and placeables | Original semantic recipes in `src/game/runtime/visualRecipes.ts` and procedural renderers | Canvas geometry plus CSS catalogue previews | Project-original | Exactly 8 stall identities and 80 distinct placeable visual contracts/motifs covered by automated tests; human visual/cultural review pending |
+| Characters and reactions | Original modular procedural recipes with archetype and lifecycle-state variants | Canvas geometry | Project-original | Exactly 8 archetype appearances and 11 state poses covered by automated tests; moving/reduced-motion signatures present; human visual review pending |
+| Food and vessels | Original dish recipes derived from authored food sprite, container, portion-colour, and steam metadata; factual reference only | Canvas geometry | Project-original | All 30 dish metadata contracts covered; carried and table/eating states implemented; cultural review pending |
+| Queue overlays and editor | Original runtime geometry and DOM controls | Canvas lines/cells/badges plus HTML controls | Project-original | Counts, automatic routes, cardinal directions, bends, and saved custom paths implemented; development-browser screenshots captured |
 | UI icons | Original geometric SVG/CSS | SVG/CSS | Project-original | Implemented |
 | App icon | Repository-authored SVG | public/icons/icon.svg | Project-original; final visual review pending | Present |
 | Social share card | OpenAI ImageGen, one generation on 2026-07-12; top-down fictional hawker-centre prompt specifying the project palette, diverse diners, communal tables, tray return, exact project title/tagline, and no brands, logos, landmark imitation, flags, or watermarks | public/og.png | Project-original generated asset subject to applicable OpenAI service terms | Present; human similarity/brand/cultural review pending |
 | Environment/background | Original Community Courtyard kit | Canvas geometry | Project-original | Implemented; visual review pending |
 | Audio cues/ambience | Repository-authored Web Audio synthesis | Web Audio nodes | Project-original | Implemented; browser/audio review pending |
 | Fonts | System font stack | No bundled font | Platform-provided | Implemented |
-| Dependencies | npm lockfile packages | Bundled code | See THIRD_PARTY_NOTICES.md and package license files | Locked; automated audit passed; legal review pending |
+| Dependencies | npm lockfile packages | Bundled code | See THIRD_PARTY_NOTICES.md and package license files | Locked; final production-only and all-dependencies npm audits report 0 vulnerabilities; legal review pending |
+
+Development-browser screenshots are verification artifacts rather than shipped art. They are retained under `C:/Users/Adison/.codex/visualizations/2026/07/12/019f543a-9ffd-7473-bb6e-226bbeb5d355/` and indexed in `GRAPHICS_VERIFICATION.md`.
 
 ## Per-asset required fields
 
@@ -36,6 +40,8 @@ AI-generated imagery needs the model/tool, prompt, output date, edits, similarit
 
 ## Release audit
 
+- [x] Automated recipe inventories cover every authored placeable, stall, dish, archetype, and lifecycle state expected by the current catalogue.
+- [x] Development-browser captures exercise the starter scene, live service/food, queue overlays/editor, and repeated expansion geometry.
 - [ ] Every runtime visual/audio path has a register row or is generated from registered code.
 - [ ] No orphaned, test, debug, or starter asset ships.
 - [ ] No real logo, certification mark, recognizable stall trade dress, or copied menu.

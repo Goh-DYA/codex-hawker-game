@@ -1,43 +1,43 @@
 # Performance Report
 
 Report date: 2026-07-12
-Build/commit: Final verified source tree; Git/Sites commit is recorded by the release handoff
-Verdict: **Node simulation budget passed in the final run; browser performance and supported customer caps are not established**
+Build/commit: Current working source; replacement Git/Sites commit pending
+Verdict: **Current-source Node simulation budget and replacement bundle evidence passed; browser performance and supported customer caps are not established**
 
 ## Automated simulation evidence
 
-The Vitest benchmark starts 80 active customers and advances 1,200 deterministic fixed steps with periodic invariant checks. It is useful for regression detection in the pure simulation core; it does not include Phaser rendering, browser scheduling, audio, IndexedDB, service workers, or DOM work.
+The Vitest benchmark starts 80 active customers and advances 1,200 deterministic fixed steps with periodic invariant checks. The current run includes the new queue-reservation and obstacle-safe route behavior. It is useful for regression detection in the pure simulation core; it does not include Phaser rendering, browser scheduling, audio, IndexedDB, service workers, or DOM work.
 
-Final recorded result from `npm run test:release` at 2026-07-12 12:47 SGT:
+Latest current-source result from the passing 48-test Vitest run:
 
 | Metric | Recorded value |
 |---|---:|
 | Seed | `benchmark-80-agents` |
 | Fixed steps | 1,200 |
 | Peak active customers | 80 |
-| Mean simulation step | 0.00999 ms |
-| p95 simulation step | 0.00870 ms |
-| Maximum simulation step | 1.7451 ms |
-| Total measured duration | 12.5149 ms |
-| Heap delta during sample | 1,214,952 bytes |
+| Mean simulation step | 0.01762 ms |
+| p95 simulation step | 0.01960 ms |
+| Maximum simulation step | 4.2145 ms |
+| Total measured duration | 21.9802 ms |
+| Heap delta during sample | 1,793,648 bytes |
 | Final active customers | 0 |
 | Completed visits | 5 |
 | Test budget | mean < 4 ms; p95 < 10 ms |
-| Result | Pass in final automated run |
+| Result | Pass in latest current-source automated run |
 
 Sub-millisecond timing is noisy and machine-dependent; do not compare a single Node run to a browser frame budget.
 
-## Final bundle evidence
+## Replacement production bundle evidence
 
-The final successful build produced the following client payload snapshot:
+The final current-source `npm run test:release` build produced this payload snapshot. Gzip values are per-file gzip sums for transport comparison, not browser TTI evidence:
 
 | Payload group | Raw | Gzip |
 |---|---:|---:|
-| Initial client JS/CSS, excluding dynamically loaded Phaser/runtime | 500,935 B | 146,633 B |
-| Deferred Phaser/runtime | 1,442,431 B | 376,555 B |
-| Total client JS/CSS | 1,943,366 B | 523,188 B |
+| Initial client JS/CSS, excluding dynamically loaded Phaser/runtime/visual recipes | 358,302 B | 107,914 B |
+| Deferred Phaser/runtime/visual recipes | 1,627,126 B | 425,765 B |
+| Total client JS/CSS | 1,985,428 B | 533,679 B |
 
-Final `dist/`: 13,637,680 bytes across 35 files, including the 2,897,161-byte social-share PNG. The content SHA-256 is `5d03915e18c96548430d44e3a0c7c4e9e6c0bc71601ec960841fe63e9c65ba93`. These byte counts are transport evidence only; time to interactive was not measured.
+Replacement `dist/`: 13,765,754 bytes across 35 files, including the 2,897,161-byte social-share PNG. Service-worker build ID: `710894d70709`. Deterministic SHA-256 of the sorted `relative-path<TAB>file-sha256` manifest: `02f6ce7359f27327dbcc4e19cfe2c7af9ef7f389727028458713f855049301d3`. The largest client asset is Phaser at 1,375,732 raw / 354,671 gzip bytes; the build retains a non-fatal >500 kB chunk advisory. These are artifact/transport measurements only; time to interactive was not measured.
 
 ## Browser metrics still required
 

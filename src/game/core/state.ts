@@ -1,6 +1,7 @@
 import { getUnlockedDefinitionIds } from "./economy";
 import { getTile, pointKey, validatePlacement } from "./grid";
 import { isReachable, validateWorldNavigation } from "./pathfinding";
+import { validateConfiguredQueuePath } from "./queueing";
 import { hashSeed } from "./rng";
 import { compareIds } from "./ordering";
 import type {
@@ -102,6 +103,20 @@ export function createNewGame(options: NewGameOptions): GameState {
     if (!validation.valid) throw new RangeError(`Invalid initial object ${object.id}: ${validation.reasons.join("; ")}`);
     objects[object.id] = object;
   }
+  for (const object of Object.values(objects)) {
+    if (object.queuePath === undefined) continue;
+    const queueValidation = validateConfiguredQueuePath(
+      options.map,
+      objects,
+      options.catalog,
+      object,
+      object.queuePath,
+      [options.entrance, options.exit],
+    );
+    if (!queueValidation.valid) {
+      throw new RangeError(`Invalid initial queue for ${object.id}: ${queueValidation.reasons.join("; ")}`);
+    }
+  }
   const navigationError = validateWorldNavigation(
     options.map,
     options.entrance,
@@ -163,7 +178,11 @@ export function cloneMap(map: GridMap): GridMap {
 }
 
 export function clonePlacedObject(object: PlacedObject): PlacedObject {
-  return { ...object, origin: { ...object.origin } };
+  return {
+    ...object,
+    origin: { ...object.origin },
+    queuePath: object.queuePath?.map((point) => ({ ...point })),
+  };
 }
 
 export function cloneCustomer(customer: Customer): Customer {
@@ -177,6 +196,8 @@ export function cloneCustomer(customer: Customer): Customer {
 export function captureUndoSnapshot(state: GameState): UndoSnapshot {
   return {
     map: cloneMap(state.map),
+    entrance: { ...state.entrance },
+    exit: { ...state.exit },
     objects: Object.fromEntries(Object.entries(state.objects).map(([id, object]) => [id, clonePlacedObject(object)])),
     economy: { ...state.economy },
     expansionCount: state.progression.expansionCount,

@@ -3,9 +3,15 @@ import {
   expandGridMap,
   getSeatLocations,
   normalizeRotation,
+  projectExpandedBoundaryPoint,
   validatePlacement,
 } from "./grid";
 import { validateWorldNavigation } from "./pathfinding";
+import {
+  getStallQueueCells,
+  planStallQueueLayouts,
+  validateConfiguredQueuePath,
+} from "./queueing";
 import { captureUndoSnapshot, cloneCustomer, clonePlacedObject } from "./state";
 import { isValidSimulationId } from "./validation";
 import type {
@@ -45,7 +51,9 @@ function isBuildCommand(command: GameCommand): command is BuildCommand {
     command.type === "move-object" ||
     command.type === "rotate-object" ||
     command.type === "remove-object" ||
-    command.type === "expand-map"
+    command.type === "expand-map" ||
+    command.type === "configure-queue" ||
+    command.type === "set-stall-queue-direction"
   );
 }
 
@@ -179,12 +187,78 @@ export function reconcileWorldTargets(
   };
 }
 
+/**
+ * Replans navigation after a stall's queue geometry changes without treating
+ * the still-operational stall as a removed target. Customers that still fit
+ * retain their queue order/status, and meals already being prepared remain
+ * attached to the stall. If a player deliberately shortens a live custom
+ * route, only the overflow guests are released to choose again.
+ */
+function reconcileWorldGeometryChange(
+  state: GameState,
+  objects: Readonly<Record<string, PlacedObject>>,
+  invalidatedObjectId?: string,
+): Pick<GameState, "customers" | "queues" | "seatReservations" | "metrics"> {
+  const reconciled = reconcileWorldTargets(state, objects, invalidatedObjectId);
+  const queueLayouts = planStallQueueLayouts(
+    state.map,
+    objects,
+    state.catalog,
+    [state.entrance, state.exit],
+  );
+  const queues = { ...reconciled.queues };
+  const customers = { ...reconciled.customers };
+  let released = 0;
+
+  for (const [stallId, queue] of Object.entries(queues)) {
+    const capacity = queueLayouts[stallId]?.length ?? 0;
+    if (queue.length <= capacity) continue;
+    queues[stallId] = queue.slice(0, capacity);
+    for (const customerId of queue.slice(capacity)) {
+      const customer = customers[customerId];
+      if (!customer) continue;
+      customers[customerId] = {
+        ...clearNavigation(customer),
+        status: "choosing-stall",
+        stateElapsedMs: 0,
+        targetStallId: undefined,
+        orderedDishId: undefined,
+      };
+      released += 1;
+    }
+  }
+
+  if (released === 0) return reconciled;
+
+  return {
+    ...reconciled,
+    customers,
+    queues,
+    metrics: {
+      ...reconciled.metrics,
+      recoveredTargets: reconciled.metrics.recoveredTargets + released,
+    },
+  };
+}
+
 function restoreUndoSnapshot(state: GameState, entry: GameState["undoStack"][number]): GameState {
   const snapshot = entry.snapshot;
   const objectIds = new Set([...Object.keys(state.objects), ...Object.keys(snapshot.objects)]);
   const changedObjectId = [...objectIds].find((id) => JSON.stringify(state.objects[id]) !== JSON.stringify(snapshot.objects[id]));
-  const world = { ...state, map: snapshot.map, objects: snapshot.objects };
-  const reconciled = reconcileWorldTargets(world, snapshot.objects, changedObjectId);
+  const world = {
+    ...state,
+    map: snapshot.map,
+    entrance: snapshot.entrance,
+    exit: snapshot.exit,
+    objects: snapshot.objects,
+  };
+  const preservesStallTarget =
+    entry.commandType === "configure-queue" || entry.commandType === "set-stall-queue-direction";
+  const reconciled = reconcileWorldGeometryChange(
+    world,
+    snapshot.objects,
+    preservesStallTarget ? undefined : changedObjectId,
+  );
   const placedObject = entry.commandType === "place-object" && changedObjectId
     ? state.objects[changedObjectId]
     : undefined;
@@ -203,6 +277,8 @@ function restoreUndoSnapshot(state: GameState, entry: GameState["undoStack"][num
   return {
     ...state,
     map: snapshot.map,
+    entrance: snapshot.entrance,
+    exit: snapshot.exit,
     objects: snapshot.objects,
     ...reconciled,
     economy: {
@@ -253,9 +329,11 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     const objects = { ...state.objects, [object.id]: { ...object, open: command.open } };
     const routeError = command.open ? navigationError(state, objects) : undefined;
     if (routeError) return reject(state, routeError);
-    const reconciled = command.open
-      ? reconcileWorldTargets(state, objects)
-      : reconcileWorldTargets(state, objects, object.id);
+    const reconciled = reconcileWorldGeometryChange(
+      state,
+      objects,
+      command.open ? undefined : object.id,
+    );
     return accept({ ...state, objects, ...reconciled, undoStack: [] }, [commandEvent(state, true)]);
   }
 
@@ -290,8 +368,14 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     const routeError = navigationError(state, objects);
     if (routeError) return reject(state, routeError);
     const queues = definition.kind === "stall" ? { ...state.queues, [object.id]: [] } : state.queues;
+    const reconciled = reconcileWorldGeometryChange({ ...state, queues }, objects);
     const next = withUndo(
-      { ...state, objects, queues, economy: applyPurchase(state.economy, definition.price) },
+      {
+        ...state,
+        objects,
+        ...reconciled,
+        economy: applyPurchase(state.economy, definition.price),
+      },
       command,
       before,
     );
@@ -308,15 +392,23 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     } catch (error) {
       return reject(state, error instanceof Error ? error.message : "Invalid expansion");
     }
+    const entrance = projectExpandedBoundaryPoint(state.entrance, state.map, command.addColumns, command.addRows);
+    const exit = projectExpandedBoundaryPoint(state.exit, state.map, command.addColumns, command.addRows);
+    const routeError = validateWorldNavigation(map, entrance, exit, state.objects, state.catalog);
+    if (routeError) return reject(state, routeError);
     const cost = calculateExpansionCost(state.map, state.progression, state.config, command.addColumns, command.addRows);
     if (!canAfford(state.economy, cost)) return reject(state, "Insufficient currency");
+    const expandedState: GameState = {
+      ...state,
+      map,
+      entrance,
+      exit,
+      economy: applyPurchase(state.economy, cost),
+      progression: { ...state.progression, expansionCount: state.progression.expansionCount + 1 },
+    };
+    const reconciled = reconcileWorldGeometryChange(expandedState, state.objects);
     const next = withUndo(
-      {
-        ...state,
-        map,
-        economy: applyPurchase(state.economy, cost),
-        progression: { ...state.progression, expansionCount: state.progression.expansionCount + 1 },
-      },
+      { ...expandedState, ...reconciled },
       command,
       before,
     );
@@ -328,10 +420,61 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
   const definition = state.catalog.placeables[existing.definitionId];
   if (!definition) return reject(state, `Definition no longer exists: ${existing.definitionId}`);
 
+  if (command.type === "configure-queue") {
+    if (definition.kind !== "stall" || !definition.stall) return reject(state, "Only stalls can have queue paths");
+    const updated: PlacedObject = {
+      ...clonePlacedObject(existing),
+      queuePath: command.points.map((point) => ({ ...point })),
+    };
+    const validation = validateConfiguredQueuePath(
+      state.map,
+      state.objects,
+      state.catalog,
+      updated,
+      updated.queuePath,
+      [state.entrance, state.exit],
+    );
+    if (!validation.valid) return reject(state, validation.reasons.join("; "));
+    const objects = { ...state.objects, [existing.id]: updated };
+    const queueCells = getStallQueueCells(
+      state.map,
+      objects,
+      state.catalog,
+      updated,
+      [state.entrance, state.exit],
+    );
+    if (queueCells.length === 0) return reject(state, "The configured queue conflicts with another stall or portal");
+    const reconciled = reconcileWorldGeometryChange(state, objects);
+    const next = withUndo({ ...state, objects, ...reconciled }, command, before);
+    return accept(next, [commandEvent(state, true, `Configured ${updated.queuePath?.length ?? 0} queue cells`)]);
+  }
+
+  if (command.type === "set-stall-queue-direction") {
+    if (definition.kind !== "stall" || !definition.stall) return reject(state, "Only stalls can have queue directions");
+    if (!["north", "east", "south", "west"].includes(command.direction)) return reject(state, "Unknown queue direction");
+    const updated: PlacedObject = {
+      ...clonePlacedObject(existing),
+      queueDirection: command.direction,
+      queuePath: undefined,
+    };
+    const objects = { ...state.objects, [existing.id]: updated };
+    const queueCells = getStallQueueCells(
+      state.map,
+      objects,
+      state.catalog,
+      updated,
+      [state.entrance, state.exit],
+    );
+    if (queueCells.length === 0) return reject(state, "The queue anchor is not traversable in that layout");
+    const reconciled = reconcileWorldGeometryChange(state, objects);
+    const next = withUndo({ ...state, objects, ...reconciled }, command, before);
+    return accept(next, [commandEvent(state, true, `Queue now starts ${command.direction}`)]);
+  }
+
   if (command.type === "remove-object") {
     const objects = { ...state.objects };
     delete objects[existing.id];
-    const reconciled = reconcileWorldTargets(state, objects, existing.id);
+    const reconciled = reconcileWorldGeometryChange(state, objects, existing.id);
     const refund = calculateRefund(definition.price, definition.refundRate ?? 0.5);
     const next = withUndo(
       { ...state, objects, ...reconciled, economy: applyRefund(state.economy, refund) },
@@ -346,6 +489,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
 
   let rotation = existing.rotation;
   let origin = existing.origin;
+  let queuePath = existing.queuePath;
   if (command.type === "move-object") {
     origin = { ...command.origin };
     if (command.rotation !== undefined) {
@@ -355,10 +499,17 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
         return reject(state, error instanceof Error ? error.message : "Invalid rotation");
       }
     }
+    if (queuePath && rotation === existing.rotation) {
+      const offset = { x: origin.x - existing.origin.x, y: origin.y - existing.origin.y };
+      queuePath = queuePath.map((point) => ({ x: point.x + offset.x, y: point.y + offset.y }));
+    } else if (rotation !== existing.rotation) {
+      queuePath = undefined;
+    }
   } else {
     rotation = nextAllowedRotation(existing.rotation, definition.allowedRotations, command.clockwise ?? true);
+    queuePath = undefined;
   }
-  const updated: PlacedObject = { ...clonePlacedObject(existing), origin, rotation };
+  const updated: PlacedObject = { ...clonePlacedObject(existing), origin, rotation, queuePath };
   if (
     updated.origin.x === existing.origin.x &&
     updated.origin.y === existing.origin.y &&
@@ -371,10 +522,21 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     reservedPoints: [state.entrance, state.exit],
   });
   if (!validation.valid) return reject(state, validation.reasons.join("; "));
+  if (updated.queuePath) {
+    const queueValidation = validateConfiguredQueuePath(
+      state.map,
+      { ...state.objects, [existing.id]: updated },
+      state.catalog,
+      updated,
+      updated.queuePath,
+      [state.entrance, state.exit],
+    );
+    if (!queueValidation.valid) return reject(state, queueValidation.reasons.join("; "));
+  }
   const objects = { ...state.objects, [existing.id]: updated };
   const routeError = navigationError(state, objects);
   if (routeError) return reject(state, routeError);
-  const reconciled = reconcileWorldTargets(state, objects, existing.id);
+  const reconciled = reconcileWorldGeometryChange(state, objects, existing.id);
   const next = withUndo({ ...state, objects, ...reconciled }, command, before);
   return accept(next, [
     commandEvent(state, true),

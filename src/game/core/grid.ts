@@ -294,5 +294,71 @@ export function expandGridMap(map: GridMap, addColumns: number, addRows: number)
       tiles[y * width + x] = map.tiles[y * map.width + x] as TileKind;
     }
   }
+
+  const boundaryProfile = (points: readonly GridPoint[]): { readonly present: boolean; readonly kind: TileKind } => {
+    const counts = new Map<TileKind, number>();
+    for (const point of points) {
+      const tile = getTile(map, point) as TileKind;
+      if (tile !== "floor") counts.set(tile, (counts.get(tile) ?? 0) + 1);
+    }
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const [kind, count] = ranked[0] ?? ["wall" as TileKind, 0];
+    return { present: count >= Math.max(1, Math.ceil(points.length / 2)), kind };
+  };
+  const topPoints = Array.from({ length: map.width }, (_, x) => ({ x, y: 0 }));
+  const bottomPoints = Array.from({ length: map.width }, (_, x) => ({ x, y: map.height - 1 }));
+  const leftPoints = Array.from({ length: map.height }, (_, y) => ({ x: 0, y }));
+  const rightPoints = Array.from({ length: map.height }, (_, y) => ({ x: map.width - 1, y }));
+  const top = boundaryProfile(topPoints);
+  const bottom = boundaryProfile(bottomPoints);
+  const left = boundaryProfile(leftPoints);
+  const right = boundaryProfile(rightPoints);
+  const setExpandedTile = (point: GridPoint, tile: TileKind): void => {
+    tiles[point.y * width + point.x] = tile;
+  };
+
+  // A perimeter wall is a property of the map boundary, not of the old plot.
+  // Move right/bottom perimeters outward and clear the former seam so newly
+  // purchased floor space is visually and navigationally continuous.
+  if (addColumns > 0 && right.present) {
+    for (let y = 0; y < map.height; y += 1) {
+      setExpandedTile({ x: map.width - 1, y }, "floor");
+      setExpandedTile({ x: width - 1, y }, getTile(map, { x: map.width - 1, y }) as TileKind);
+    }
+  }
+  if (addRows > 0 && bottom.present) {
+    for (let x = 0; x < map.width; x += 1) {
+      setExpandedTile({ x, y: map.height - 1 }, "floor");
+      setExpandedTile({ x, y: height - 1 }, getTile(map, { x, y: map.height - 1 }) as TileKind);
+    }
+  }
+
+  if (addColumns > 0 && top.present) {
+    for (let x = map.width; x < width; x += 1) setExpandedTile({ x, y: 0 }, top.kind);
+  }
+  if (addColumns > 0 && bottom.present) {
+    const y = addRows > 0 ? height - 1 : map.height - 1;
+    for (let x = map.width; x < width; x += 1) setExpandedTile({ x, y }, bottom.kind);
+  }
+  if (addRows > 0 && left.present) {
+    for (let y = map.height; y < height; y += 1) setExpandedTile({ x: 0, y }, left.kind);
+  }
+  if (addRows > 0 && right.present) {
+    const x = addColumns > 0 ? width - 1 : map.width - 1;
+    for (let y = map.height; y < height; y += 1) setExpandedTile({ x, y }, right.kind);
+  }
   return { ...map, width, height, tiles };
+}
+
+/** Moves a portal on a purchased right/bottom boundary to the new perimeter. */
+export function projectExpandedBoundaryPoint(
+  point: GridPoint,
+  previousMap: GridMap,
+  addColumns: number,
+  addRows: number,
+): GridPoint {
+  return {
+    x: point.x === previousMap.width - 1 ? point.x + addColumns : point.x,
+    y: point.y === previousMap.height - 1 ? point.y + addRows : point.y,
+  };
 }

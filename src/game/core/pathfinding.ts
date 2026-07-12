@@ -12,6 +12,7 @@ import {
 } from "./grid";
 import type { GridMap, GridPoint, PlacedObject, SimulationCatalog } from "./types";
 import { compareIds } from "./ordering";
+import { validateConfiguredQueuePath } from "./queueing";
 
 export interface PathfindingOptions {
   readonly blocked?: ReadonlySet<string>;
@@ -174,6 +175,17 @@ export function validateWorldNavigation(
   for (const object of Object.values(objects).sort((a, b) => compareIds(a.id, b.id))) {
     const definition = catalog.placeables[object.definitionId];
     if (!definition) continue;
+    if (definition.kind === "stall" && object.queuePath !== undefined) {
+      const queueValidation = validateConfiguredQueuePath(
+        map,
+        objects,
+        catalog,
+        object,
+        object.queuePath,
+        [entrance, exit],
+      );
+      if (!queueValidation.valid) return `Queue path for ${object.id} is invalid: ${queueValidation.reasons.join("; ")}`;
+    }
     const destinations: GridPoint[] = [];
     const queueAnchor = getObjectQueueAnchor(object, catalog);
     if (definition.kind === "stall" && queueAnchor) destinations.push(queueAnchor);

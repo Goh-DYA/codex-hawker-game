@@ -10,9 +10,16 @@ import {
   type SeatLocation,
 } from "./grid";
 import { findPath } from "./pathfinding";
+import { getCustomerQueueCell, planStallQueueLayouts } from "./queueing";
 import { choose, nextFloat } from "./rng";
 import { compareIds } from "./ordering";
 import { cloneCustomer } from "./state";
+import {
+  adjustedEatingDurationMs,
+  getGlobalWayfinding,
+  getUtilityInfluence,
+  utilitySatisfactionBonus,
+} from "./utility";
 import type {
   AdvanceResult,
   Customer,
@@ -32,6 +39,7 @@ interface Draft {
   objects: Readonly<Record<string, PlacedObject>>;
   customers: Record<string, Customer>;
   queues: Record<string, readonly string[]>;
+  readonly queueCellsByStall: Readonly<Record<string, readonly GridPoint[]>>;
   seatReservations: Record<string, string>;
   economy: GameState["economy"];
   progression: GameState["progression"];
@@ -47,6 +55,7 @@ interface StallRuntime {
   readonly object: PlacedObject;
   readonly definition: PlaceableDefinition;
   readonly queueAnchor: GridPoint;
+  readonly queueCells: readonly GridPoint[];
 }
 
 interface MoveResult {
@@ -63,6 +72,12 @@ function createDraft(state: GameState, tick: number): Draft {
       Object.entries(state.customers).map(([id, customer]) => [id, cloneCustomer(customer)]),
     ),
     queues: Object.fromEntries(Object.entries(state.queues).map(([id, queue]) => [id, [...queue]])),
+    queueCellsByStall: planStallQueueLayouts(
+      state.map,
+      state.objects,
+      state.catalog,
+      [state.entrance, state.exit],
+    ),
     seatReservations: { ...state.seatReservations },
     economy: { ...state.economy },
     progression: { ...state.progression, unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds] },
@@ -105,8 +120,11 @@ function getStall(draft: Draft, stallId: string | undefined): StallRuntime | und
   const object = draft.objects[stallId];
   const definition = object ? draft.source.catalog.placeables[object.definitionId] : undefined;
   const queueAnchor = object ? getObjectQueueAnchor(object, draft.source.catalog) : undefined;
-  if (!object || !object.open || definition?.kind !== "stall" || !definition.stall || !queueAnchor) return undefined;
-  return { object, definition, queueAnchor };
+  const queueCells = stallId ? draft.queueCellsByStall[stallId] ?? [] : [];
+  if (!object || !object.open || definition?.kind !== "stall" || !definition.stall || !queueAnchor || queueCells.length === 0) {
+    return undefined;
+  }
+  return { object, definition, queueAnchor, queueCells };
 }
 
 function blockedTiles(draft: Draft): ReadonlySet<string> {
@@ -164,7 +182,10 @@ function moveToward(draft: Draft, customer: Customer, destination: GridPoint, de
   }
 
   const archetype = getArchetype(draft, next);
-  let progress = next.movementProgress + archetype.walkingSpeed * (deltaMs / 1_000);
+  const utility = getUtilityInfluence(draft.objects, draft.source.catalog, next.position);
+  let progress =
+    next.movementProgress +
+    archetype.walkingSpeed * (1 + utility.movementSpeed) * (deltaMs / 1_000);
   let position = next.position;
   let pathIndex = next.pathIndex;
   while (progress >= 1 && pathIndex < next.path.length) {
@@ -277,28 +298,47 @@ function affordableDishes(draft: Draft, stall: StallRuntime, customer: Customer)
 
 function chooseStall(draft: Draft, source: Customer): Customer {
   const archetype = getArchetype(draft, source);
+  const wayfinding = getGlobalWayfinding(draft.objects, draft.source.catalog);
   let best: { stall: StallRuntime; path: readonly GridPoint[]; score: number } | undefined;
   for (const stall of openStalls(draft)) {
     const config = stall.definition.stall as NonNullable<PlaceableDefinition["stall"]>;
     const queue = draft.queues[stall.object.id] ?? [];
-    if (queue.length >= config.queueCapacity || affordableDishes(draft, stall, source).length === 0) continue;
-    const path = requestPath(draft, source.position, stall.queueAnchor);
+    const dishes = affordableDishes(draft, stall, source);
+    const effectiveCapacity = Math.min(config.queueCapacity, stall.queueCells.length);
+    const targetQueueCell = stall.queueCells[queue.length];
+    if (queue.length >= effectiveCapacity || !targetQueueCell || dishes.length === 0) continue;
+    const path = requestPath(draft, source.position, targetQueueCell);
     if (!path) continue;
-    const cheapest = Math.min(...affordableDishes(draft, stall, source).map((dish) => dish.price));
+    const preferredTags = new Set(archetype.preferenceTags ?? []);
+    const menuAppeal = Math.max(
+      ...dishes.map((dish) => {
+        const preferenceMatches = (dish.preferenceTags ?? []).filter((tag) => preferredTags.has(tag)).length;
+        return (
+          dish.quality * archetype.qualitySensitivity +
+          preferenceMatches * 2.25 -
+          dish.price * archetype.priceSensitivity
+        );
+      }),
+    );
     const random = nextFloat(draft.rngState);
     draft.rngState = random.state;
+    const novelty = random.value * (archetype.noveltyPreference ?? 0.35) * 2.5;
+    const queueLoad = queue.length / Math.max(1, effectiveCapacity);
+    const committedWait = queue.length + activePreparationCount(draft, stall.object.id) * 0.5;
     const score =
-      config.popularity * 2 +
-      config.quality * archetype.qualitySensitivity -
-      queue.length * archetype.queueSensitivity -
-      (path.length - 1) * archetype.distanceSensitivity -
-      cheapest * archetype.priceSensitivity +
-      random.value * 0.001;
+      menuAppeal +
+      config.popularity * 1.25 +
+      config.quality * archetype.qualitySensitivity +
+      novelty -
+      committedWait * archetype.queueSensitivity * 1.5 -
+      queueLoad * 2.25 -
+      (path.length - 1) * archetype.distanceSensitivity * 0.18 * (1 - wayfinding);
     if (!best || score > best.score || (score === best.score && stall.object.id < best.stall.object.id)) {
       best = { stall, path, score };
     }
   }
   if (!best) return beginExit(draft, source, true);
+  draft.queues[best.stall.object.id] = [...(draft.queues[best.stall.object.id] ?? []), source.id];
   const customer = preparePath(transition(draft, source, "walking-to-queue"), best.path);
   return { ...customer, targetStallId: best.stall.object.id };
 }
@@ -419,18 +459,21 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         markRecovery(draft, customer, "Stall unavailable while walking to queue");
         return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined, orderedDishId: undefined };
       }
-      const movement = moveToward(draft, customer, stall.queueAnchor, deltaMs);
+      const queue = draft.queues[stall.object.id] ?? [];
+      const queueCell = getCustomerQueueCell(queue, customer.id, stall.queueCells);
+      if (!queueCell) {
+        removeFromAllQueues(draft, customer.id);
+        markRecovery(draft, customer, "Queue assignment disappeared");
+        return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined };
+      }
+      const movement = moveToward(draft, customer, queueCell, deltaMs);
       customer = movement.customer;
       if (movement.failed) {
+        removeFromAllQueues(draft, customer.id);
         markRecovery(draft, customer, "Queue path became unreachable");
         return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined };
       }
       if (!movement.arrived) return customer;
-      const queue = draft.queues[stall.object.id] ?? [];
-      if (queue.length >= (stall.definition.stall?.queueCapacity ?? 0)) {
-        return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined };
-      }
-      draft.queues[stall.object.id] = [...queue, customer.id];
       return transition(draft, customer, "queued");
     }
 
@@ -442,7 +485,23 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         markRecovery(draft, customer, "Queue target was removed");
         return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined };
       }
-      customer = { ...customer, patienceRemainingMs: customer.patienceRemainingMs - deltaMs };
+      const queueCell = getCustomerQueueCell(queue, customer.id, stall.queueCells);
+      if (!queueCell) {
+        removeFromAllQueues(draft, customer.id);
+        markRecovery(draft, customer, "Queue cell became unavailable");
+        return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined };
+      }
+      if (!samePoint(customer.position, queueCell)) return transition(draft, customer, "walking-to-queue");
+      const queueUtility = getUtilityInfluence(
+        draft.objects,
+        draft.source.catalog,
+        customer.position,
+      );
+      customer = {
+        ...customer,
+        patienceRemainingMs:
+          customer.patienceRemainingMs - deltaMs * (1 - queueUtility.queuePatience),
+      };
       if (customer.patienceRemainingMs <= 0) return beginExit(draft, customer, true);
       if (
         queue[0] === customer.id &&
@@ -519,9 +578,26 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         markRecovery(draft, customer, "Seat was removed while eating");
         return transition(draft, customer, "seeking-seat");
       }
-      if (!dish || customer.stateElapsedMs < dish.eatingMs) return customer;
+      const diningUtility = getUtilityInfluence(
+        draft.objects,
+        draft.source.catalog,
+        seat.point,
+      );
+      const adjustedEatingMs = dish
+        ? adjustedEatingDurationMs(dish.eatingMs, diningUtility.eatingSpeed)
+        : Number.POSITIVE_INFINITY;
+      if (!dish || customer.stateElapsedMs < adjustedEatingMs) return customer;
       customer = releaseSeat(draft, customer);
-      return { ...transition(draft, customer, "seeking-tray-return"), satisfaction: Math.min(5, customer.satisfaction + 0.25) };
+      return {
+        ...transition(draft, customer, "seeking-tray-return"),
+        satisfaction: Math.max(
+          0,
+          Math.min(
+            5,
+            customer.satisfaction + 0.25 + utilitySatisfactionBonus(diningUtility),
+          ),
+        ),
+      };
     }
 
     case "seeking-tray-return": {
@@ -545,7 +621,25 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         return beginExit(draft, movement.customer, false);
       }
       if (!movement.arrived) return movement.customer;
-      return beginExit(draft, { ...movement.customer, hasTray: false, satisfaction: Math.min(5, movement.customer.satisfaction + 0.1) }, false);
+      const returnUtility = getUtilityInfluence(
+        draft.objects,
+        draft.source.catalog,
+        point,
+      );
+      return beginExit(
+        draft,
+        {
+          ...movement.customer,
+          hasTray: false,
+          satisfaction: Math.min(
+            5,
+            movement.customer.satisfaction +
+              0.1 +
+              returnUtility.cleaningEfficiency * 0.25,
+          ),
+        },
+        false,
+      );
     }
 
     case "walking-to-exit": {
@@ -637,6 +731,12 @@ export function advanceSimulation(state: GameState, realDeltaMs: number): Advanc
 export function assertSimulationInvariants(state: GameState): void {
   const customerIds = new Set(Object.keys(state.customers));
   const queued = new Set<string>();
+  const queueCellsByStall = planStallQueueLayouts(
+    state.map,
+    state.objects,
+    state.catalog,
+    [state.entrance, state.exit],
+  );
   for (const [stallId, queue] of Object.entries(state.queues)) {
     const stall = state.objects[stallId];
     const definition = stall ? state.catalog.placeables[stall.definitionId] : undefined;
@@ -644,12 +744,14 @@ export function assertSimulationInvariants(state: GameState): void {
       throw new Error(`Queue exists for missing or invalid stall ${stallId}`);
     }
     if (queue.length > definition.stall.queueCapacity) throw new Error(`Queue ${stallId} exceeds capacity`);
+    const queueCells = queueCellsByStall[stallId] ?? [];
+    if (queue.length > queueCells.length) throw new Error(`Queue ${stallId} exceeds its traversable queue route`);
     for (const customerId of queue) {
       const customer = state.customers[customerId];
       if (!customerIds.has(customerId) || !customer) throw new Error(`Queue ${stallId} references missing customer ${customerId}`);
       if (queued.has(customerId)) throw new Error(`Customer ${customerId} is in more than one queue`);
       if (customer.targetStallId !== stallId) throw new Error(`Queued customer ${customerId} targets another stall`);
-      if (customer.status !== "queued" && customer.status !== "ordering") {
+      if (customer.status !== "walking-to-queue" && customer.status !== "queued" && customer.status !== "ordering") {
         throw new Error(`Customer ${customerId} has invalid queued status ${customer.status}`);
       }
       queued.add(customerId);

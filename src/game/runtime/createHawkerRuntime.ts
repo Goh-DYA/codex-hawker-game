@@ -16,9 +16,14 @@ import {
   createSnapshot,
   deserializeGameState,
   dispatchCommand,
+  findPath,
+  getBlockedTileKeys,
   getObjectOccupiedTiles,
   getObjectQueueAnchor,
   getSeatLocations,
+  getUtilityInfluence,
+  mealConsumptionFraction,
+  planStallQueueLayouts,
   persistentStateFromGame,
   tileToWorld,
   validatePlacement,
@@ -31,6 +36,7 @@ import {
   type GridPoint,
   type PlaceableDefinition as CorePlaceableDefinition,
   type PlacedObject,
+  type QueueDirection,
   type Rotation,
   type SimulationCatalog,
   type SimulationEvent,
@@ -42,23 +48,27 @@ import type {
   RuntimeOptions,
   RuntimeSnapshot,
 } from "./types";
+import { utilityEffectsForPlaceable } from "./contentUtility";
+import {
+  animationPoseForCustomer,
+  stableVisualHash,
+  visualRecipeForCustomer,
+  visualRecipeForDish,
+  visualRecipeForPlaceable,
+  type PlaceableVisualRecipe,
+} from "./visualRecipes";
 
 const TILE_SIZE = 48;
 const MAP_WIDTH = 24;
 const MAP_HEIGHT = 16;
-const CUSTOMER_PALETTES = [
-  [0xd57d63, 0x355e78],
-  [0x8d654f, 0xd6a64f],
-  [0x6d493a, 0x6d8e5d],
-  [0xc9946e, 0x9a5e77],
-  [0xe1ae82, 0x3d7d74],
-  [0x744a39, 0xc8624c],
-  [0xb87958, 0x71669c],
-  [0xe0b18f, 0x4d7390],
-] as const;
-
 const BUILDABLE_CONTENT = [...PLACEABLES, ...STALLS] as const;
 const CONTENT_PLACEABLE_BY_ID = new Map(PLACEABLES.map((item) => [item.id, item]));
+const DISH_BY_ID = new Map(DISHES.map((dish) => [dish.id, dish]));
+const CUSTOMER_BY_ID = new Map(CUSTOMER_ARCHETYPES.map((archetype) => [archetype.id, archetype]));
+const DISH_VISUAL_BY_ID = new Map(DISHES.map((dish) => [dish.id, visualRecipeForDish(dish)]));
+const CUSTOMER_VISUAL_BY_ID = new Map(
+  CUSTOMER_ARCHETYPES.map((archetype) => [archetype.id, visualRecipeForCustomer(archetype)]),
+);
 const BUILDABLE_REQUIREMENTS = new Map(
   BUILDABLE_CONTENT.map((definition) => [definition.id, definition.unlockRequirement]),
 );
@@ -162,6 +172,7 @@ function buildCatalog(): {
         : item.unlockRequirement.level,
       seatPoints: item.seatPoints.map((point) => ({ x: point.x, y: point.y })),
       trayReturnPoint: returnPoint ? { x: returnPoint.x, y: returnPoint.y } : undefined,
+      utility: utilityEffectsForPlaceable(item),
     };
     visuals[item.id] = {
       category: item.category,
@@ -217,6 +228,7 @@ function buildCatalog(): {
         qualitySensitivity: archetype.qualitySensitivity,
         queueSensitivity: archetype.queueSensitivity,
         distanceSensitivity: archetype.distanceSensitivity,
+        noveltyPreference: archetype.noveltyPreference,
         preferenceTags: archetype.dishPreferenceTags,
       },
     ]),
@@ -466,6 +478,24 @@ export async function createHawkerRuntime(
     state = freshState(catalog);
   }
 
+  if (
+    process.env.NODE_ENV !== "production" &&
+    typeof location !== "undefined" &&
+    new URLSearchParams(location.search).has("visualQa")
+  ) {
+    state = {
+      ...state,
+      economy: { ...state.economy, currency: 100_000 },
+      progression: {
+        ...state.progression,
+        xp: xpRequiredForLevel(12),
+        level: 12,
+        reputation: 5,
+        unlockedDefinitionIds: Object.keys(catalog.placeables).sort(),
+      },
+    };
+  }
+
   const persistentPayload = (): RuntimePersistentState => ({
     runtimeSchemaVersion: 1,
     core: persistentStateFromGame(state),
@@ -477,6 +507,8 @@ export async function createHawkerRuntime(
   let selectedBuildId: string | undefined;
   let selectedObjectId: string | undefined;
   let pendingMoveId: string | undefined;
+  let queueEditingStallId: string | undefined;
+  let queueDraft: readonly GridPoint[] = [];
   let buildTool: BuildTool = "select";
   let selectedRotation: Rotation = 0;
   let speed: GameSpeed = 1;
@@ -535,6 +567,39 @@ export async function createHawkerRuntime(
         Math.min(8, ambience * 0.25)
       : 100;
     const nextLevelExperience = xpRequiredForLevel(snapshot.progression.level + 1);
+    const queueLayouts = planStallQueueLayouts(
+      snapshot.map,
+      state.objects,
+      catalog,
+      [snapshot.entrance, snapshot.exit],
+    );
+    const placedStalls = snapshot.objects
+      .filter((object) => catalog.placeables[object.definitionId]?.kind === "stall")
+      .map((object) => {
+        const cells = queueLayouts[object.id] ?? [];
+        const first = cells[0];
+        const second = cells[1];
+        const inferredDirection: QueueDirection =
+          object.queueDirection ??
+          (first && second
+            ? second.x > first.x
+              ? "east"
+              : second.x < first.x
+                ? "west"
+                : second.y < first.y
+                  ? "north"
+                  : "south"
+            : "south");
+        return {
+          objectId: object.id,
+          definitionId: object.definitionId,
+          name: visuals[object.definitionId]?.name ?? object.definitionId,
+          queueCount: snapshot.queues[object.id]?.length ?? 0,
+          queueDirection: inferredDirection,
+          customQueue: Boolean(object.queuePath?.length),
+          open: object.open,
+        };
+      });
     return {
       cash: snapshot.economy.currency,
       reputation: snapshot.progression.reputation * 20,
@@ -568,8 +633,12 @@ export async function createHawkerRuntime(
       buildTool,
       selectedBuildId,
       selectedObjectId,
+      selectedObjectDefinitionId: selectedObjectId
+        ? state.objects[selectedObjectId]?.definitionId
+        : undefined,
       unlockedContentIds: snapshot.progression.unlockedDefinitionIds,
       stallMenus,
+      placedStalls,
       canUndo: snapshot.canUndo,
       objectiveProgress: Math.min(5, snapshot.economy.completedVisits),
       objectiveTarget: 5,
@@ -634,6 +703,41 @@ export async function createHawkerRuntime(
 
   function handleTile(point: GridPoint) {
     hoverTile = point;
+    if (buildTool === "queue") {
+      const stall = queueEditingStallId ? state.objects[queueEditingStallId] : undefined;
+      const definition = stall ? catalog.placeables[stall.definitionId] : undefined;
+      if (!stall || definition?.kind !== "stall" || !definition.stall) return;
+      const anchor = getObjectQueueAnchor(stall, catalog);
+      if (!anchor) return;
+      const draft = queueDraft.length > 0 ? queueDraft : [anchor];
+      const existingIndex = draft.findIndex(
+        (candidate) => candidate.x === point.x && candidate.y === point.y,
+      );
+      if (existingIndex >= 0) {
+        const trimmed = draft.slice(0, existingIndex + 1);
+        if (trimmed.length === draft.length) return;
+        if (runCommand({ type: "configure-queue", objectId: stall.id, points: trimmed })) {
+          queueDraft = trimmed;
+          options.onEvent({ kind: "info", message: `Queue shortened to ${trimmed.length} spaces.` });
+        }
+        return;
+      }
+      const tail = draft.at(-1) as GridPoint;
+      if (Math.abs(tail.x - point.x) + Math.abs(tail.y - point.y) !== 1) {
+        options.onEvent({ kind: "warning", message: "Add queue spaces one adjacent tile at a time." });
+        return;
+      }
+      if (draft.length >= definition.stall.queueCapacity) {
+        options.onEvent({ kind: "warning", message: `This stall supports ${definition.stall.queueCapacity} queue spaces.` });
+        return;
+      }
+      const extended = [...draft, point];
+      if (runCommand({ type: "configure-queue", objectId: stall.id, points: extended })) {
+        queueDraft = extended;
+        options.onEvent({ kind: "info", message: `Queue now bends through ${extended.length} spaces.` });
+      }
+      return;
+    }
     if (buildTool === "place") {
       if (!selectedBuildId) return;
       const accepted = runCommand({
@@ -832,10 +936,10 @@ export async function createHawkerRuntime(
       this.worldGraphics?.clear();
       this.overlayGraphics?.clear();
       if (!this.worldGraphics || !this.overlayGraphics) return;
-      drawMap(this.worldGraphics, snapshot);
+      drawMap(this, this.worldGraphics, snapshot);
       drawObjects(this, this.worldGraphics, snapshot);
       drawCustomers(this.worldGraphics, snapshot);
-      drawOverlay(this.overlayGraphics, snapshot);
+      drawOverlay(this, this.overlayGraphics, snapshot);
     }
 
     addLabel(x: number, y: number, text: string, colourValue = "#17352e") {
@@ -855,34 +959,727 @@ export async function createHawkerRuntime(
     }
   }
 
-  function drawMap(graphics: Phaser.GameObjects.Graphics, snapshot: GameSnapshot) {
+  function drawMap(
+    scene: HawkerScene,
+    graphics: Phaser.GameObjects.Graphics,
+    snapshot: GameSnapshot,
+  ) {
     const width = snapshot.map.width * TILE_SIZE;
     const height = snapshot.map.height * TILE_SIZE;
-    graphics.fillStyle(0x6f8a71, 1);
-    graphics.fillRect(-80, -80, width + 160, height + 160);
-    graphics.fillStyle(0xead9b9, 1);
+    graphics.fillStyle(0x365f53, 1);
+    graphics.fillRect(-96, -96, width + 192, height + 192);
+    graphics.fillStyle(0x477567, 1);
+    graphics.fillRoundedRect(-56, -56, width + 112, height + 112, 24);
+    graphics.fillStyle(0xe9d7b5, 1);
     graphics.fillRect(0, 0, width, height);
     for (let y = 0; y < snapshot.map.height; y += 1) {
       for (let x = 0; x < snapshot.map.width; x += 1) {
         const tile = snapshot.map.tiles[y * snapshot.map.width + x];
+        const isEntrance = x === snapshot.entrance.x && y === snapshot.entrance.y;
+        const isExit = x === snapshot.exit.x && y === snapshot.exit.y;
         const alternate = (x + y) % 2 === 0;
+        const isExpansion = x >= MAP_WIDTH || y >= MAP_HEIGHT;
         graphics.fillStyle(
-          tile === "wall" ? 0x466c5d : alternate ? 0xeedfc2 : 0xe8d5b4,
+          tile === "wall" && !isEntrance && !isExit
+            ? 0x3f695a
+            : isExpansion
+              ? alternate
+                ? 0xf0dfbd
+                : 0xe9d4af
+              : alternate
+                ? 0xecdcbc
+                : 0xe5d1ad,
           1,
         );
         graphics.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        graphics.lineStyle(1, tile === "wall" ? 0x355648 : 0xd3be9b, 0.52);
+        graphics.lineStyle(
+          1,
+          tile === "wall" && !isEntrance && !isExit ? 0x274c40 : 0xcfb88f,
+          0.46,
+        );
         graphics.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        if (tile === "wall" && !isEntrance && !isExit) {
+          graphics.fillStyle(0x729584, 0.5);
+          graphics.fillRect(x * TILE_SIZE + 3, y * TILE_SIZE + 3, TILE_SIZE - 6, 6);
+        } else if (isExpansion && (x + y) % 4 === 0) {
+          graphics.fillStyle(0xd6bc8f, 0.34);
+          graphics.fillCircle(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 2);
+        }
       }
     }
 
-    graphics.fillStyle(0xf7c85e, 1);
-    graphics.fillRect(0, 7 * TILE_SIZE + 8, 16, TILE_SIZE - 16);
-    graphics.fillRect(width - 16, 7 * TILE_SIZE + 8, 16, TILE_SIZE - 16);
-    graphics.lineStyle(3, 0xffffff, 0.7);
-    for (let x = 26; x < width - 26; x += 22) {
-      graphics.lineBetween(x, 7 * TILE_SIZE + TILE_SIZE / 2, x + 10, 7 * TILE_SIZE + TILE_SIZE / 2);
+    // Keep the route legend truthful by drawing the current walkable path.
+    // Because this is derived from the live map and furniture blockers, it
+    // follows turns and reaches the migrated exit after every expansion.
+    const guestRoute = findPath(snapshot.map, snapshot.entrance, snapshot.exit, {
+      blocked: getBlockedTileKeys(state.objects, catalog),
+    }).path ?? [];
+    graphics.lineStyle(3, 0xfff7e5, 0.82);
+    for (let index = 1; index < guestRoute.length; index += 1) {
+      const previous = guestRoute[index - 1] as GridPoint;
+      const current = guestRoute[index] as GridPoint;
+      const startX = (previous.x + 0.5) * TILE_SIZE;
+      const startY = (previous.y + 0.5) * TILE_SIZE;
+      const deltaX = (current.x - previous.x) * TILE_SIZE;
+      const deltaY = (current.y - previous.y) * TILE_SIZE;
+      graphics.lineBetween(
+        startX + deltaX * 0.12,
+        startY + deltaY * 0.12,
+        startX + deltaX * 0.68,
+        startY + deltaY * 0.68,
+      );
     }
+
+    const drawPortal = (point: GridPoint, label: string, pointsInward: boolean) => {
+      const x = point.x * TILE_SIZE;
+      const y = point.y * TILE_SIZE;
+      graphics.fillStyle(0xf4c65a, 1);
+      graphics.fillRoundedRect(x + 3, y + 6, TILE_SIZE - 6, TILE_SIZE - 12, 5);
+      graphics.fillStyle(0xfff3c9, 1);
+      graphics.fillRoundedRect(x + 8, y + 11, TILE_SIZE - 16, TILE_SIZE - 22, 3);
+      graphics.lineStyle(3, 0x8b5b27, 0.8);
+      graphics.strokeRoundedRect(x + 3, y + 6, TILE_SIZE - 6, TILE_SIZE - 12, 5);
+      const direction = point.x === 0 ? 1 : point.x === snapshot.map.width - 1 ? -1 : pointsInward ? 1 : -1;
+      const centreX = x + TILE_SIZE / 2;
+      const centreY = y + TILE_SIZE / 2;
+      graphics.fillStyle(0x355e52, 1);
+      graphics.fillTriangle(
+        centreX + direction * 9,
+        centreY,
+        centreX - direction * 4,
+        centreY - 8,
+        centreX - direction * 4,
+        centreY + 8,
+      );
+      const labelX = centreX + (point.x === 0 ? 34 : point.x === snapshot.map.width - 1 ? -34 : 0);
+      scene.addLabel(labelX, centreY - 21, label);
+    };
+
+    drawPortal(snapshot.entrance, "ENTRY", true);
+    drawPortal(snapshot.exit, "EXIT", false);
+  }
+
+  interface ObjectVisualBounds {
+    readonly minX: number;
+    readonly minY: number;
+    readonly maxX: number;
+    readonly maxY: number;
+    readonly width: number;
+    readonly height: number;
+    readonly centreX: number;
+    readonly centreY: number;
+  }
+
+  function boundsForObject(object: PlacedObject): ObjectVisualBounds | undefined {
+    const cells = getObjectOccupiedTiles(object, catalog);
+    if (cells.length === 0) return undefined;
+    const minX = Math.min(...cells.map((cell) => cell.x)) * TILE_SIZE;
+    const minY = Math.min(...cells.map((cell) => cell.y)) * TILE_SIZE;
+    const maxX = (Math.max(...cells.map((cell) => cell.x)) + 1) * TILE_SIZE;
+    const maxY = (Math.max(...cells.map((cell) => cell.y)) + 1) * TILE_SIZE;
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+      centreX: (minX + maxX) / 2,
+      centreY: (minY + maxY) / 2,
+    };
+  }
+
+  function drawMakerMark(
+    graphics: Phaser.GameObjects.Graphics,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    const markWidth = Math.min(30, Math.max(18, bounds.width - 18));
+    const startX = bounds.centreX - markWidth / 2;
+    const y = bounds.maxY - 9;
+    graphics.fillStyle(0xfff4d8, 0.88);
+    graphics.fillRoundedRect(startX - 3, y - 4, markWidth + 6, 8, 3);
+    graphics.fillStyle(recipe.accent, 1);
+    for (let bit = 0; bit < 7; bit += 1) {
+      const bitX = startX + (bit / 6) * markWidth;
+      if ((recipe.makerMark & (1 << bit)) !== 0) {
+        graphics.fillCircle(bitX, y, 2.2);
+      } else {
+        graphics.fillRect(bitX - 1, y - 1, 2, 2);
+      }
+    }
+  }
+
+  function drawObjectShadow(
+    graphics: Phaser.GameObjects.Graphics,
+    bounds: ObjectVisualBounds,
+    round = false,
+  ) {
+    graphics.fillStyle(0x17352e, 0.16);
+    if (round) {
+      graphics.fillEllipse(bounds.centreX + 3, bounds.centreY + 7, bounds.width - 9, bounds.height - 12);
+    } else {
+      graphics.fillRoundedRect(bounds.minX + 7, bounds.minY + 10, bounds.width - 8, bounds.height - 5, 7);
+    }
+  }
+
+  function drawStallGraphic(
+    scene: HawkerScene,
+    graphics: Phaser.GameObjects.Graphics,
+    object: PlacedObject,
+    bounds: ObjectVisualBounds,
+    visual: VisualDefinition,
+  ) {
+    const primary = colour(visual.palette[0] ?? "#6b877c", 0x6b877c);
+    const secondary = colour(visual.palette[1] ?? "#f3e0b4", 0xf3e0b4);
+    const accent = colour(visual.palette[2] ?? "#d56d50", 0xd56d50);
+    const stallVariant = Math.max(0, STALLS.findIndex((stall) => stall.id === object.definitionId));
+    drawObjectShadow(graphics, bounds);
+    graphics.fillStyle(primary, 1);
+    graphics.fillRoundedRect(bounds.minX + 3, bounds.minY + 3, bounds.width - 6, bounds.height - 6, 9);
+    graphics.fillStyle(secondary, 1);
+    graphics.fillRoundedRect(bounds.minX + 10, bounds.minY + 17, bounds.width - 20, bounds.height - 29, 5);
+    const panelWidth = Math.max(12, (bounds.width - 12) / (5 + (stallVariant % 3)));
+    for (let stripeX = bounds.minX + 6, index = 0; stripeX < bounds.maxX - 6; stripeX += panelWidth, index += 1) {
+      graphics.fillStyle(index % 2 === 0 ? accent : secondary, 1);
+      if (stallVariant % 3 === 0) {
+        graphics.fillRect(stripeX, bounds.minY + 4, Math.min(panelWidth, bounds.maxX - 6 - stripeX), 13);
+      } else if (stallVariant % 3 === 1) {
+        graphics.fillTriangle(stripeX, bounds.minY + 4, stripeX + panelWidth, bounds.minY + 4, stripeX + panelWidth / 2, bounds.minY + 18);
+      } else {
+        graphics.fillCircle(stripeX + panelWidth / 2, bounds.minY + 9, Math.min(7, panelWidth * 0.42));
+      }
+    }
+    graphics.fillStyle(0x2f4d42, 1);
+    graphics.fillRect(bounds.minX + 14, bounds.maxY - 20, bounds.width - 28, 9);
+    graphics.fillStyle(accent, 1);
+    const motifX = bounds.centreX;
+    const motifY = bounds.minY + bounds.height * 0.66;
+    if (stallVariant === 2) {
+      graphics.fillRoundedRect(motifX - 7, motifY - 7, 11, 14, 3);
+      graphics.lineStyle(2, accent, 1);
+      graphics.strokeCircle(motifX + 7, motifY - 2, 5);
+    } else if (stallVariant === 3 || stallVariant === 7) {
+      graphics.fillTriangle(motifX - 8, motifY + 6, motifX, motifY - 8, motifX + 8, motifY + 6);
+    } else if (stallVariant === 5) {
+      graphics.fillEllipse(motifX, motifY, 18, 9);
+      graphics.fillStyle(0x4d8753, 1);
+      graphics.fillEllipse(motifX + 6, motifY - 6, 8, 13);
+    } else {
+      graphics.fillEllipse(motifX, motifY, 20, 10);
+      graphics.lineStyle(2, accent, 1);
+      graphics.strokeRoundedRect(motifX - 10, motifY - 7, 20, 10, 5);
+    }
+    graphics.lineStyle(3, 0x17352e, 0.82);
+    graphics.strokeRoundedRect(bounds.minX + 3, bounds.minY + 3, bounds.width - 6, bounds.height - 6, 9);
+    scene.addLabel(bounds.centreX, bounds.centreY - 3, visual.name);
+    if (!object.open) {
+      graphics.fillStyle(0x17352e, 0.48);
+      graphics.fillRect(bounds.minX + 10, bounds.minY + 20, bounds.width - 20, bounds.height - 30);
+      scene.addLabel(bounds.centreX, bounds.centreY + 21, "CLOSED", "#9a3e31");
+    }
+  }
+
+  function drawTableGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    const round = id.includes("round") || id.includes("terrazzo");
+    drawObjectShadow(graphics, bounds, round);
+    graphics.fillStyle(0x7e5738, 0.9);
+    graphics.fillCircle(bounds.minX + 13, bounds.maxY - 12, 4);
+    graphics.fillCircle(bounds.maxX - 13, bounds.maxY - 12, 4);
+    graphics.fillStyle(recipe.accent, 1);
+    if (round) {
+      graphics.fillEllipse(bounds.centreX, bounds.centreY - 2, bounds.width - 10, bounds.height - 15);
+      graphics.lineStyle(4, 0x6b4c32, 0.82);
+      graphics.strokeEllipse(bounds.centreX, bounds.centreY - 2, bounds.width - 10, bounds.height - 15);
+    } else if (id.includes("snack-ledge")) {
+      graphics.fillRoundedRect(bounds.minX + 5, bounds.centreY - 8, bounds.width - 10, 16, 5);
+      graphics.lineStyle(4, 0x6b4c32, 0.85);
+      graphics.lineBetween(bounds.minX + 12, bounds.centreY + 8, bounds.minX + 12, bounds.maxY - 7);
+      graphics.lineBetween(bounds.maxX - 12, bounds.centreY + 8, bounds.maxX - 12, bounds.maxY - 7);
+    } else {
+      const inset = id.includes("communal") || id.includes("family") ? 5 : 8;
+      graphics.fillRoundedRect(bounds.minX + inset, bounds.minY + 7, bounds.width - inset * 2, bounds.height - 17, id.includes("folding") ? 2 : 7);
+      graphics.lineStyle(4, 0x6b4c32, 0.82);
+      graphics.strokeRoundedRect(bounds.minX + inset, bounds.minY + 7, bounds.width - inset * 2, bounds.height - 17, id.includes("folding") ? 2 : 7);
+    }
+    if (id.includes("trestle") || id.includes("folding")) {
+      graphics.lineStyle(3, 0x6b4c32, 0.8);
+      graphics.lineBetween(bounds.minX + 12, bounds.minY + 14, bounds.maxX - 12, bounds.maxY - 13);
+      graphics.lineBetween(bounds.maxX - 12, bounds.minY + 14, bounds.minX + 12, bounds.maxY - 13);
+    }
+    if (id.includes("terrazzo")) {
+      const speckleColours = [0xf6cf68, 0xc8624c, 0x477c86, 0xfff4d8];
+      for (let index = 0; index < 9; index += 1) {
+        const angle = (index / 9) * Math.PI * 2;
+        graphics.fillStyle(speckleColours[index % speckleColours.length] as number, 0.95);
+        graphics.fillCircle(bounds.centreX + Math.cos(angle) * bounds.width * 0.25, bounds.centreY - 2 + Math.sin(angle) * bounds.height * 0.23, 2.5);
+      }
+    }
+    if (id.includes("accessible")) {
+      graphics.lineStyle(3, 0xe8f4ff, 1);
+      graphics.strokeCircle(bounds.centreX, bounds.centreY - 4, 8);
+      graphics.lineBetween(bounds.centreX, bounds.centreY + 4, bounds.centreX + 8, bounds.centreY + 11);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawSeatGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    const isStool = id.includes("stool") || id.includes("perch");
+    const isBench = id.includes("bench") || id.includes("booth");
+    drawObjectShadow(graphics, bounds, isStool);
+    graphics.fillStyle(recipe.accent, 1);
+    if (isStool) {
+      const radius = Math.min(bounds.width, bounds.height) * (id.includes("high-counter") ? 0.3 : 0.35);
+      graphics.fillCircle(bounds.centreX, bounds.centreY - 2, radius);
+      graphics.lineStyle(3, 0x294d42, 0.9);
+      graphics.strokeCircle(bounds.centreX, bounds.centreY - 2, radius);
+      graphics.lineBetween(bounds.centreX, bounds.centreY + radius - 2, bounds.centreX, bounds.maxY - 7);
+      if (id.includes("swivel")) {
+        graphics.lineBetween(bounds.centreX - 10, bounds.maxY - 8, bounds.centreX + 10, bounds.maxY - 8);
+      }
+    } else if (isBench) {
+      graphics.fillRoundedRect(bounds.minX + 7, bounds.minY + 12, bounds.width - 14, bounds.height - 21, id.includes("acoustic") ? 10 : 5);
+      graphics.fillStyle(0x294d42, 0.8);
+      graphics.fillRoundedRect(bounds.minX + 8, bounds.minY + 7, bounds.width - 16, 8, 3);
+      if (id.includes("acoustic")) {
+        graphics.fillRect(bounds.minX + 7, bounds.minY + 7, 6, bounds.height - 16);
+        graphics.fillRect(bounds.maxX - 13, bounds.minY + 7, 6, bounds.height - 16);
+      }
+      const places = id.includes("three-person") ? 3 : 2;
+      for (let index = 1; index < places; index += 1) {
+        const x = bounds.minX + (bounds.width * index) / places;
+        graphics.lineStyle(2, 0xfff4d8, 0.55);
+        graphics.lineBetween(x, bounds.minY + 16, x, bounds.maxY - 11);
+      }
+    } else {
+      const inset = id.includes("easy-rise") ? 7 : 10;
+      graphics.fillRoundedRect(bounds.minX + inset, bounds.minY + 15, bounds.width - inset * 2, bounds.height - 24, 7);
+      graphics.fillStyle(0x294d42, 0.88);
+      graphics.fillRoundedRect(bounds.minX + inset, bounds.minY + 7, bounds.width - inset * 2, 10, 4);
+      if (id.includes("arm-chair")) {
+        graphics.fillRect(bounds.minX + 5, bounds.minY + 16, 7, bounds.height - 22);
+        graphics.fillRect(bounds.maxX - 12, bounds.minY + 16, 7, bounds.height - 22);
+      }
+      if (id.includes("booster")) {
+        graphics.fillStyle(0xf6cf68, 1);
+        graphics.fillRoundedRect(bounds.centreX - 7, bounds.centreY - 4, 14, 11, 4);
+      }
+      if (id.includes("cushioned")) {
+        graphics.fillStyle(0xffe8cf, 0.9);
+        graphics.fillCircle(bounds.centreX, bounds.centreY, 3);
+      }
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawFixtureGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds);
+    const x = bounds.minX + 7;
+    const y = bounds.minY + 7;
+    const width = bounds.width - 14;
+    const height = bounds.height - 17;
+    graphics.fillStyle(0x57776e, 1);
+    graphics.fillRoundedRect(x, y, width, height, 6);
+    graphics.lineStyle(3, 0x294d42, 0.82);
+    graphics.strokeRoundedRect(x, y, width, height, 6);
+    if (id.includes("ticket")) {
+      graphics.fillStyle(0xfff4d8, 1);
+      graphics.fillRoundedRect(bounds.centreX - 10, y + 5, 20, 15, 3);
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillRect(bounds.centreX - 5, y + 11, 10, 3);
+      graphics.fillRect(bounds.centreX - 8, y + 25, 16, 5);
+    } else if (id.includes("condiment")) {
+      const bottleColours = [0xc8624c, 0xd69a35, 0x4d8753];
+      for (let index = 0; index < 3; index += 1) {
+        graphics.fillStyle(bottleColours[index] as number, 1);
+        graphics.fillRoundedRect(bounds.centreX - 14 + index * 11, bounds.centreY - 10, 8, 20, 3);
+      }
+    } else if (id.includes("cutlery")) {
+      graphics.lineStyle(3, 0xdce8e4, 1);
+      for (let index = -1; index <= 1; index += 1) {
+        graphics.lineBetween(bounds.centreX + index * 8, bounds.centreY - 12, bounds.centreX + index * 8, bounds.centreY + 12);
+      }
+    } else if (id.includes("water")) {
+      graphics.fillStyle(0x70bfd0, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY - 5, 11);
+      graphics.fillTriangle(bounds.centreX - 7, bounds.centreY, bounds.centreX + 7, bounds.centreY, bounds.centreX, bounds.centreY + 15);
+    } else if (id.includes("pickup")) {
+      graphics.fillStyle(0xfff4d8, 1);
+      for (let row = 0; row < 3; row += 1) graphics.fillRect(x + 6, y + 7 + row * 11, width - 12, 4);
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillCircle(bounds.centreX, y + 8, 4);
+    } else if (id.includes("display-case")) {
+      graphics.fillStyle(id.includes("chilled") ? 0xa9d9e2 : 0xf4b567, 0.9);
+      graphics.fillRoundedRect(x + 4, y + 4, width - 8, height - 12, 4);
+      graphics.lineStyle(2, 0xffffff, 0.8);
+      graphics.lineBetween(bounds.centreX, y + 5, bounds.centreX, y + height - 9);
+      for (let row = 0; row < 2; row += 1) {
+        graphics.fillStyle(0xd27b4c, 1);
+        graphics.fillEllipse(bounds.centreX - 8 + row * 16, bounds.centreY + 4, 12, 7);
+      }
+    } else {
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillRect(x + 5, y + 6, width - 10, height - 16);
+      graphics.fillStyle(0x294d42, 1);
+      graphics.fillCircle(x + 7, y + height, 5);
+      graphics.fillCircle(x + width - 7, y + height, 5);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawTrayWasteGraphic(
+    scene: HawkerScene,
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds);
+    graphics.fillStyle(0x598078, 1);
+    graphics.fillRoundedRect(bounds.minX + 6, bounds.minY + 5, bounds.width - 12, bounds.height - 10, 5);
+    graphics.lineStyle(3, 0x294d42, 0.8);
+    graphics.strokeRoundedRect(bounds.minX + 6, bounds.minY + 5, bounds.width - 12, bounds.height - 10, 5);
+    if (id.includes("tray-return") || id.includes("dish-drop") || id.includes("tray-stack")) {
+      const bays = id.includes("dual") ? 2 : 1;
+      for (let bay = 0; bay < bays; bay += 1) {
+        const bayX = bounds.minX + 11 + (bay * (bounds.width - 22)) / bays;
+        const bayWidth = (bounds.width - 27) / bays;
+        graphics.fillStyle(0xc8d7d2, 1);
+        for (let row = 0; row < 3; row += 1) graphics.fillRect(bayX, bounds.minY + 15 + row * 10, bayWidth, 5);
+      }
+      scene.addLabel(bounds.centreX, bounds.minY - 3, id.includes("tray-stack") ? "CLEAN TRAYS" : "RETURN");
+    } else if (id.includes("recycling")) {
+      const colours = [0x4d8753, 0xf2c14e, 0x4d7390];
+      for (let index = 0; index < 3; index += 1) {
+        graphics.fillStyle(colours[index] as number, 1);
+        graphics.fillCircle(bounds.minX + 15 + index * ((bounds.width - 30) / 2), bounds.centreY, 7);
+      }
+    } else if (id.includes("food-waste")) {
+      graphics.fillStyle(0x8b5b27, 1);
+      graphics.fillEllipse(bounds.centreX, bounds.minY + 15, bounds.width - 22, 12);
+      graphics.fillStyle(0x4d8753, 1);
+      graphics.fillEllipse(bounds.centreX + 4, bounds.centreY, 13, 8);
+    } else if (id.includes("trolley")) {
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillRect(bounds.minX + 12, bounds.minY + 12, bounds.width - 24, bounds.height - 25);
+      graphics.fillStyle(0x294d42, 1);
+      graphics.fillCircle(bounds.minX + 15, bounds.maxY - 9, 5);
+      graphics.fillCircle(bounds.maxX - 15, bounds.maxY - 9, 5);
+    } else {
+      graphics.fillStyle(0x263d38, 1);
+      graphics.fillEllipse(bounds.centreX, bounds.minY + 14, bounds.width - 20, 11);
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillRect(bounds.centreX - 3, bounds.minY + 20, 6, 15);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawLightingGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    const pulse = reducedMotion ? 0.16 : 0.12 + Math.sin(state.tick * 0.09 + recipe.seed) * 0.04;
+    graphics.fillStyle(0xffd86b, pulse);
+    graphics.fillCircle(bounds.centreX, bounds.centreY, Math.min(bounds.width, bounds.height) * 0.48);
+    graphics.fillStyle(0xffefb0, 1);
+    if (id.includes("tube")) {
+      graphics.fillRoundedRect(bounds.minX + 5, bounds.centreY - 5, bounds.width - 10, 10, 5);
+    } else if (id.includes("pendant")) {
+      graphics.lineStyle(3, 0x294d42, 1);
+      graphics.lineBetween(bounds.centreX, bounds.minY + 4, bounds.centreX, bounds.centreY - 9);
+      graphics.fillTriangle(bounds.centreX - 13, bounds.centreY + 5, bounds.centreX + 13, bounds.centreY + 5, bounds.centreX, bounds.centreY - 12);
+    } else if (id.includes("lantern-cluster")) {
+      for (let index = 0; index < 3; index += 1) {
+        graphics.fillStyle(index === 1 ? recipe.accent : 0xffd86b, 1);
+        graphics.fillCircle(bounds.centreX - 12 + index * 12, bounds.centreY - 4 + Math.abs(index - 1) * 8, 8);
+      }
+    } else if (id.includes("path-light")) {
+      graphics.fillRoundedRect(bounds.centreX - 6, bounds.centreY - 12, 12, 24, 4);
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillRect(bounds.centreX - 6, bounds.centreY + 3, 12, 5);
+    } else if (id.includes("skylight")) {
+      graphics.fillStyle(0xb9e2e8, 1);
+      graphics.fillRoundedRect(bounds.minX + 6, bounds.minY + 6, bounds.width - 12, bounds.height - 12, 5);
+      graphics.lineStyle(2, 0xffffff, 0.9);
+      graphics.lineBetween(bounds.minX + 9, bounds.minY + 9, bounds.maxX - 9, bounds.maxY - 9);
+    } else if (id.includes("string")) {
+      graphics.lineStyle(2, 0x6b4c32, 1);
+      graphics.lineBetween(bounds.minX + 5, bounds.centreY, bounds.maxX - 5, bounds.centreY);
+      for (let index = 0; index < 5; index += 1) {
+        graphics.fillStyle(index % 2 === 0 ? 0xf4c65a : recipe.accent, 1);
+        graphics.fillCircle(bounds.minX + 8 + index * ((bounds.width - 16) / 4), bounds.centreY + (index % 2) * 5, 4);
+      }
+    } else {
+      graphics.fillCircle(bounds.centreX, bounds.centreY, 12);
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillRect(bounds.centreX - 10, bounds.centreY + 8, 20, 5);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawFanGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds, true);
+    const radius = Math.min(bounds.width, bounds.height) * (id.includes("high-volume") ? 0.42 : 0.35);
+    if (id.includes("column")) {
+      graphics.fillStyle(0xc9d9d5, 1);
+      graphics.fillRoundedRect(bounds.centreX - 8, bounds.minY + 7, 16, bounds.height - 18, 8);
+      graphics.fillStyle(recipe.accent, 1);
+      for (let row = 0; row < 4; row += 1) graphics.fillRect(bounds.centreX - 5, bounds.minY + 13 + row * 7, 10, 3);
+    } else if (id.includes("exhaust")) {
+      graphics.fillStyle(0x57776e, 1);
+      graphics.fillRoundedRect(bounds.minX + 6, bounds.minY + 6, bounds.width - 12, bounds.height - 12, 4);
+      graphics.fillStyle(0x263d38, 1);
+      for (let row = 0; row < 4; row += 1) graphics.fillRect(bounds.minX + 12, bounds.minY + 12 + row * 7, bounds.width - 24, 3);
+    } else {
+      graphics.fillStyle(id.includes("quiet") ? 0xe4ece8 : 0xc9d9d5, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY - 2, radius + 5);
+      graphics.lineStyle(2, 0x476f68, 0.75);
+      graphics.strokeCircle(bounds.centreX, bounds.centreY - 2, radius + 5);
+      const bladeCount = id.includes("high-volume") ? 5 : id.includes("ceiling") ? 4 : 3;
+      for (let blade = 0; blade < bladeCount; blade += 1) {
+        const radians = PhaserRuntime.Math.DegToRad(
+          (blade * 360) / bladeCount + state.tick * (reducedMotion ? 0 : id.includes("quiet") ? 1.4 : 3.2),
+        );
+        const bladeX = bounds.centreX + Math.cos(radians) * radius * 0.54;
+        const bladeY = bounds.centreY - 2 + Math.sin(radians) * radius * 0.54;
+        graphics.fillStyle(recipe.accent, 0.95);
+        graphics.fillEllipse(bladeX, bladeY, radius * 0.9, radius * 0.34);
+      }
+      graphics.fillStyle(0x294d42, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY - 2, 5);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawPlantGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds, id.includes("pot") || id.includes("table-herb"));
+    if (id.includes("trellis")) {
+      graphics.lineStyle(3, 0x8b5b4c, 1);
+      for (let column = 0; column < 3; column += 1) {
+        const x = bounds.minX + 10 + column * ((bounds.width - 20) / 2);
+        graphics.lineBetween(x, bounds.minY + 7, x, bounds.maxY - 8);
+      }
+      graphics.lineBetween(bounds.minX + 8, bounds.centreY, bounds.maxX - 8, bounds.centreY);
+    }
+    graphics.fillStyle(id.includes("rain-garden") ? 0x477c86 : 0x9a6844, 1);
+    const potHeight = id.includes("border-bed") || id.includes("trough") ? 13 : 17;
+    graphics.fillRoundedRect(bounds.minX + bounds.width * 0.22, bounds.maxY - potHeight - 5, bounds.width * 0.56, potHeight, 5);
+    const leafCount = id.includes("areca") || id.includes("banana") ? 7 : id.includes("pandan") ? 9 : 5;
+    for (let leaf = 0; leaf < leafCount; leaf += 1) {
+      const angle = -Math.PI * 0.85 + (leaf / Math.max(1, leafCount - 1)) * Math.PI * 0.7;
+      const length = (id.includes("areca") || id.includes("banana") ? 25 : 17) + (leaf % 3) * 3;
+      const baseX = bounds.centreX + (id.includes("trough") || id.includes("pandan") ? (leaf - leafCount / 2) * 5 : 0);
+      const baseY = bounds.maxY - potHeight - 4;
+      const tipX = baseX + Math.cos(angle) * length;
+      const tipY = baseY + Math.sin(angle) * length;
+      graphics.lineStyle(id.includes("banana") ? 8 : 5, leaf % 2 === 0 ? 0x4d8753 : recipe.accent, 1);
+      graphics.lineBetween(baseX, baseY, tipX, tipY);
+    }
+    if (id.includes("hanging")) {
+      graphics.lineStyle(2, 0x6b4c32, 1);
+      graphics.lineBetween(bounds.centreX - 9, bounds.minY + 3, bounds.centreX - 5, bounds.centreY);
+      graphics.lineBetween(bounds.centreX + 9, bounds.minY + 3, bounds.centreX + 5, bounds.centreY);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawSignageGraphic(
+    scene: HawkerScene,
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds);
+    graphics.fillStyle(0x6b4c32, 1);
+    graphics.fillRect(bounds.centreX - 3, bounds.centreY, 6, bounds.height * 0.35);
+    graphics.fillStyle(recipe.accent, 1);
+    const isBoard = id.includes("directory") || id.includes("menu-preview") || id.includes("identity");
+    if (isBoard) {
+      graphics.fillRoundedRect(bounds.minX + 5, bounds.minY + 5, bounds.width - 10, bounds.height * 0.58, 5);
+      graphics.fillStyle(0xfff4d8, 1);
+      for (let row = 0; row < 3; row += 1) graphics.fillRect(bounds.minX + 12, bounds.minY + 13 + row * 8, bounds.width - 24, 3);
+    } else {
+      graphics.fillRoundedRect(bounds.minX + 7, bounds.minY + 8, bounds.width - 14, bounds.height * 0.45, 5);
+      graphics.fillStyle(0xfff4d8, 1);
+      if (id.includes("arrow")) {
+        graphics.fillTriangle(bounds.maxX - 13, bounds.minY + 18, bounds.maxX - 24, bounds.minY + 10, bounds.maxX - 24, bounds.minY + 26);
+        graphics.fillRect(bounds.minX + 13, bounds.minY + 15, bounds.width - 34, 6);
+      } else if (id.includes("accessible")) {
+        graphics.strokeCircle(bounds.centreX, bounds.minY + 18, 7);
+        graphics.lineBetween(bounds.centreX, bounds.minY + 25, bounds.centreX + 8, bounds.minY + 30);
+      } else if (id.includes("queue")) {
+        for (let dot = 0; dot < 3; dot += 1) graphics.fillCircle(bounds.centreX - 10 + dot * 10, bounds.minY + 19, 3);
+      } else {
+        graphics.fillRect(bounds.centreX - 12, bounds.minY + 14, 24, 7);
+      }
+    }
+    const shortLabel = id.includes("directory")
+      ? "DIRECTORY"
+      : id.includes("menu")
+        ? "MENU"
+        : id.includes("return")
+          ? "RETURN →"
+          : id.includes("accessible")
+            ? "ACCESS"
+            : id.includes("queue")
+              ? "QUEUE"
+              : id.includes("row")
+                ? "ROW"
+                : "WELCOME";
+    scene.addLabel(bounds.centreX, bounds.minY + 5, shortLabel);
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawDividerGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds);
+    if (id.includes("queue-rail")) {
+      graphics.fillStyle(0x294d42, 1);
+      graphics.fillCircle(bounds.minX + 9, bounds.centreY, 6);
+      graphics.fillCircle(bounds.maxX - 9, bounds.centreY, 6);
+      graphics.lineStyle(5, recipe.accent, 1);
+      graphics.lineBetween(bounds.minX + 10, bounds.centreY - 3, bounds.maxX - 10, bounds.centreY - 3);
+    } else if (id.includes("clear-wind")) {
+      graphics.fillStyle(0xb9e2e8, 0.48);
+      graphics.fillRoundedRect(bounds.minX + 5, bounds.minY + 7, bounds.width - 10, bounds.height - 14, 3);
+      graphics.lineStyle(3, 0x477c86, 0.9);
+      graphics.strokeRoundedRect(bounds.minX + 5, bounds.minY + 7, bounds.width - 10, bounds.height - 14, 3);
+    } else if (id.includes("planter")) {
+      graphics.fillStyle(0x8b5b4c, 1);
+      graphics.fillRoundedRect(bounds.minX + 5, bounds.centreY, bounds.width - 10, bounds.height * 0.35, 4);
+      for (let leaf = 0; leaf < 6; leaf += 1) {
+        graphics.lineStyle(5, leaf % 2 ? 0x4d8753 : recipe.accent, 1);
+        const x = bounds.minX + 9 + leaf * ((bounds.width - 18) / 5);
+        graphics.lineBetween(x, bounds.centreY, x + (leaf % 2 ? 6 : -6), bounds.minY + 8);
+      }
+    } else {
+      graphics.fillStyle(id.includes("tiled") ? 0x6fa5a6 : id.includes("acoustic") ? 0x7b669b : recipe.accent, 1);
+      graphics.fillRoundedRect(bounds.minX + 4, bounds.minY + (id.includes("half-wall") ? bounds.height * 0.35 : 7), bounds.width - 8, id.includes("half-wall") ? bounds.height * 0.5 : bounds.height - 14, 4);
+      graphics.lineStyle(2, 0xfff4d8, 0.55);
+      const divisions = 2 + recipe.detailVariant % 4;
+      for (let index = 1; index < divisions; index += 1) {
+        const x = bounds.minX + (bounds.width * index) / divisions;
+        graphics.lineBetween(x, bounds.minY + 10, x, bounds.maxY - 10);
+      }
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawFacilityGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    drawObjectShadow(graphics, bounds);
+    graphics.fillStyle(id.includes("first-aid") ? 0xf2f0e6 : 0x7ba39a, 1);
+    graphics.fillRoundedRect(bounds.minX + 6, bounds.minY + 6, bounds.width - 12, bounds.height - 14, 6);
+    graphics.lineStyle(3, 0x294d42, 0.82);
+    graphics.strokeRoundedRect(bounds.minX + 6, bounds.minY + 6, bounds.width - 12, bounds.height - 14, 6);
+    if (id.includes("sink") || id.includes("basin")) {
+      graphics.fillStyle(0xdce8e4, 1);
+      graphics.fillEllipse(bounds.centreX, bounds.centreY + 4, bounds.width - 22, bounds.height * 0.35);
+      graphics.lineStyle(4, recipe.accent, 1);
+      graphics.lineBetween(bounds.centreX, bounds.minY + 10, bounds.centreX, bounds.centreY - 4);
+      graphics.lineBetween(bounds.centreX, bounds.centreY - 4, bounds.centreX + 8, bounds.centreY - 4);
+    } else if (id.includes("fountain")) {
+      graphics.fillStyle(0x70bfd0, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY - 5, 11);
+      graphics.fillStyle(0xdce8e4, 1);
+      graphics.fillCircle(bounds.centreX + 6, bounds.centreY - 10, 3);
+    } else if (id.includes("first-aid")) {
+      graphics.fillStyle(0xc75542, 1);
+      graphics.fillRect(bounds.centreX - 4, bounds.centreY - 14, 8, 28);
+      graphics.fillRect(bounds.centreX - 14, bounds.centreY - 4, 28, 8);
+    } else if (id.includes("cupboard")) {
+      graphics.lineStyle(3, 0x294d42, 1);
+      graphics.lineBetween(bounds.centreX, bounds.minY + 8, bounds.centreX, bounds.maxY - 10);
+      graphics.fillStyle(0xf4c65a, 1);
+      graphics.fillCircle(bounds.centreX - 5, bounds.centreY, 2.5);
+      graphics.fillCircle(bounds.centreX + 5, bounds.centreY, 2.5);
+    } else {
+      graphics.fillStyle(recipe.accent, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY, 12);
+      graphics.fillStyle(0xfff4d8, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY, 5);
+    }
+    drawMakerMark(graphics, bounds, recipe);
+  }
+
+  function drawDecorGraphic(
+    graphics: Phaser.GameObjects.Graphics,
+    id: string,
+    bounds: ObjectVisualBounds,
+    recipe: PlaceableVisualRecipe,
+  ) {
+    if (id.includes("bunting")) {
+      graphics.lineStyle(2, 0x6b4c32, 1);
+      graphics.lineBetween(bounds.minX + 4, bounds.minY + 10, bounds.maxX - 4, bounds.minY + 10);
+      for (let index = 0; index < 5; index += 1) {
+        graphics.fillStyle(index % 2 ? recipe.accent : 0xf4c65a, 1);
+        const x = bounds.minX + 7 + index * ((bounds.width - 14) / 4);
+        graphics.fillTriangle(x - 5, bounds.minY + 10, x + 5, bounds.minY + 10, x, bounds.minY + 24);
+      }
+    } else if (id.includes("flower-vase")) {
+      graphics.fillStyle(0x477c86, 1);
+      graphics.fillRoundedRect(bounds.centreX - 6, bounds.centreY, 12, 17, 5);
+      for (let index = 0; index < 5; index += 1) {
+        const angle = (index / 5) * Math.PI * 2;
+        graphics.fillStyle(index % 2 ? 0xf4c65a : recipe.accent, 1);
+        graphics.fillCircle(bounds.centreX + Math.cos(angle) * 9, bounds.centreY - 5 + Math.sin(angle) * 7, 5);
+      }
+    } else if (id.includes("clock")) {
+      graphics.fillStyle(0xfff4d8, 1);
+      graphics.fillCircle(bounds.centreX, bounds.centreY, Math.min(bounds.width, bounds.height) * 0.32);
+      graphics.lineStyle(3, recipe.accent, 1);
+      graphics.strokeCircle(bounds.centreX, bounds.centreY, Math.min(bounds.width, bounds.height) * 0.32);
+      graphics.lineBetween(bounds.centreX, bounds.centreY, bounds.centreX, bounds.centreY - 10);
+      graphics.lineBetween(bounds.centreX, bounds.centreY, bounds.centreX + 8, bounds.centreY + 4);
+    } else {
+      drawObjectShadow(graphics, bounds);
+      graphics.fillStyle(id.includes("noticeboard") ? 0x8b5b4c : recipe.accent, 1);
+      graphics.fillRoundedRect(bounds.minX + 5, bounds.minY + 6, bounds.width - 10, bounds.height - 15, 5);
+      const patternCount = id.includes("mural") ? 8 : 4;
+      for (let index = 0; index < patternCount; index += 1) {
+        graphics.fillStyle(index % 2 ? 0xfff4d8 : 0xf4c65a, 0.85);
+        const x = bounds.minX + 11 + (index % 4) * ((bounds.width - 22) / 3);
+        const y = bounds.minY + 13 + Math.floor(index / 4) * 14;
+        graphics.fillRect(x - 3, y - 3, 6, 6);
+      }
+    }
+    drawMakerMark(graphics, bounds, recipe);
   }
 
   function drawObjects(
@@ -900,126 +1697,278 @@ export async function createHawkerRuntime(
         name: object.definitionId,
         palette: ["#7f958c"],
       };
-      const cells = getObjectOccupiedTiles(object, catalog);
-      if (!definition || cells.length === 0) continue;
-      const minX = Math.min(...cells.map((cell) => cell.x)) * TILE_SIZE;
-      const minY = Math.min(...cells.map((cell) => cell.y)) * TILE_SIZE;
-      const maxX = (Math.max(...cells.map((cell) => cell.x)) + 1) * TILE_SIZE;
-      const maxY = (Math.max(...cells.map((cell) => cell.y)) + 1) * TILE_SIZE;
-      const objectWidth = maxX - minX;
-      const objectHeight = maxY - minY;
-      const primary = colour(visual.palette[0] ?? "#6b877c", 0x6b877c);
-      const secondary = colour(visual.palette[1] ?? "#f3e0b4", 0xf3e0b4);
-      const accent = colour(visual.palette[2] ?? "#d56d50", 0xd56d50);
-
-      graphics.fillStyle(0x17352e, 0.18);
-      graphics.fillRoundedRect(minX + 7, minY + 10, objectWidth - 8, objectHeight - 5, 8);
+      const bounds = boundsForObject(object);
+      if (!definition || !bounds) continue;
 
       if (visual.category === "stall") {
-        graphics.fillStyle(primary, 1);
-        graphics.fillRoundedRect(minX + 3, minY + 3, objectWidth - 6, objectHeight - 6, 8);
-        graphics.fillStyle(secondary, 1);
-        graphics.fillRoundedRect(minX + 10, minY + 14, objectWidth - 20, objectHeight - 25, 5);
-        const stripeWidth = Math.max(16, Math.floor((objectWidth - 12) / 7));
-        for (let stripeX = minX + 6, index = 0; stripeX < maxX - 6; stripeX += stripeWidth, index += 1) {
-          graphics.fillStyle(index % 2 === 0 ? accent : secondary, 1);
-          graphics.fillRect(stripeX, minY + 4, Math.min(stripeWidth, maxX - 6 - stripeX), 13);
-        }
-        graphics.fillStyle(0x2f4d42, 1);
-        graphics.fillRect(minX + 14, maxY - 20, objectWidth - 28, 9);
-        graphics.lineStyle(3, 0x17352e, 0.8);
-        graphics.strokeRoundedRect(minX + 3, minY + 3, objectWidth - 6, objectHeight - 6, 8);
-        scene.addLabel(minX + objectWidth / 2, minY + objectHeight / 2, visual.name);
-        if (!object.open) {
-          graphics.fillStyle(0x17352e, 0.48);
-          graphics.fillRect(minX + 10, minY + 20, objectWidth - 20, objectHeight - 30);
-          scene.addLabel(minX + objectWidth / 2, minY + objectHeight / 2 + 20, "CLOSED", "#9a3e31");
-        }
-      } else if (visual.category === "table") {
-        graphics.fillStyle(primary, 1);
-        graphics.fillEllipse(minX + objectWidth / 2, minY + objectHeight / 2, objectWidth - 10, objectHeight - 14);
-        graphics.lineStyle(4, 0x6b4c32, 0.85);
-        graphics.strokeEllipse(minX + objectWidth / 2, minY + objectHeight / 2, objectWidth - 10, objectHeight - 14);
-      } else if (visual.category === "seat") {
-        graphics.fillStyle(primary, 1);
-        graphics.fillRoundedRect(minX + 9, minY + 10, objectWidth - 18, objectHeight - 18, 8);
-        graphics.lineStyle(4, 0x294d42, 0.8);
-        graphics.strokeRoundedRect(minX + 9, minY + 10, objectWidth - 18, objectHeight - 18, 8);
-      } else if (visual.category === "plant") {
-        graphics.fillStyle(0x9a6844, 1);
-        graphics.fillRoundedRect(minX + objectWidth * 0.3, minY + objectHeight * 0.52, objectWidth * 0.4, objectHeight * 0.36, 5);
-        graphics.fillStyle(0x4d8753, 1);
-        graphics.fillCircle(minX + objectWidth * 0.36, minY + objectHeight * 0.42, objectWidth * 0.2);
-        graphics.fillCircle(minX + objectWidth * 0.62, minY + objectHeight * 0.34, objectWidth * 0.22);
-        graphics.fillCircle(minX + objectWidth * 0.52, minY + objectHeight * 0.18, objectWidth * 0.2);
-      } else if (visual.category === "fan") {
-        graphics.fillStyle(0xc9d9d5, 1);
-        graphics.fillCircle(minX + objectWidth / 2, minY + objectHeight / 2, Math.min(objectWidth, objectHeight) * 0.38);
-        graphics.fillStyle(0x476f68, 1);
-        for (let angle = 0; angle < 360; angle += 90) {
-          const radians = PhaserRuntime.Math.DegToRad(angle + state.tick * (reducedMotion ? 0 : 3));
-          graphics.fillCircle(
-            minX + objectWidth / 2 + Math.cos(radians) * objectWidth * 0.22,
-            minY + objectHeight / 2 + Math.sin(radians) * objectHeight * 0.22,
-            Math.min(objectWidth, objectHeight) * 0.1,
-          );
-        }
-      } else if (visual.category === "tray-waste") {
-        graphics.fillStyle(primary, 1);
-        graphics.fillRoundedRect(minX + 6, minY + 5, objectWidth - 12, objectHeight - 10, 5);
-        graphics.fillStyle(secondary, 1);
-        for (let row = 0; row < 3; row += 1) {
-          graphics.fillRect(minX + 13, minY + 12 + row * 10, objectWidth - 26, 5);
-        }
-        scene.addLabel(minX + objectWidth / 2, minY - 3, "RETURN");
+        drawStallGraphic(scene, graphics, object, bounds, visual);
       } else {
-        graphics.fillStyle(primary, 1);
-        graphics.fillRoundedRect(minX + 6, minY + 6, objectWidth - 12, objectHeight - 12, 7);
-        graphics.lineStyle(3, secondary, 0.9);
-        graphics.strokeRoundedRect(minX + 6, minY + 6, objectWidth - 12, objectHeight - 12, 7);
+        const recipe = visualRecipeForPlaceable(object.definitionId, visual.category);
+        if (visual.category === "table") drawTableGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "seat") drawSeatGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "stall-fixture") drawFixtureGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "tray-waste") drawTrayWasteGraphic(scene, graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "lighting") drawLightingGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "fan") drawFanGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "plant") drawPlantGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "signage") drawSignageGraphic(scene, graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "divider") drawDividerGraphic(graphics, recipe.motif, bounds, recipe);
+        else if (visual.category === "facility") drawFacilityGraphic(graphics, recipe.motif, bounds, recipe);
+        else drawDecorGraphic(graphics, recipe.motif, bounds, recipe);
       }
 
       if (selectedObjectId === object.id) {
         graphics.lineStyle(4, 0x287ec0, 1);
-        graphics.strokeRoundedRect(minX + 1, minY + 1, objectWidth - 2, objectHeight - 2, 6);
+        graphics.strokeRoundedRect(bounds.minX + 1, bounds.minY + 1, bounds.width - 2, bounds.height - 2, 6);
         graphics.fillStyle(0xffffff, 1);
-        graphics.fillCircle(maxX - 4, minY + 4, 7);
+        graphics.fillCircle(bounds.maxX - 4, bounds.minY + 4, 7);
         graphics.lineStyle(2, 0x287ec0, 1);
-        graphics.strokeCircle(maxX - 4, minY + 4, 7);
+        graphics.strokeCircle(bounds.maxX - 4, bounds.minY + 4, 7);
       }
+    }
+  }
+
+  function drawDishServing(
+    graphics: Phaser.GameObjects.Graphics,
+    dishId: string | undefined,
+    x: number,
+    y: number,
+    scale: number,
+    eatenFraction = 0,
+  ) {
+    const dish = dishId ? DISH_BY_ID.get(dishId) : undefined;
+    if (!dish) return;
+    const recipe = DISH_VISUAL_BY_ID.get(dish.id) ?? visualRecipeForDish(dish);
+    const remaining = Math.max(0.22, 1 - eatenFraction);
+    graphics.fillStyle(0x17352e, 0.16);
+    graphics.fillEllipse(x + 1, y + 3 * scale, 25 * scale, 10 * scale);
+    if (recipe.vessel === "cup") {
+      graphics.fillStyle(0xf5efe1, 1);
+      graphics.fillRoundedRect(x - 7 * scale, y - 7 * scale, 13 * scale, 16 * scale, 3 * scale);
+      graphics.lineStyle(2 * scale, 0x7a6650, 1);
+      graphics.strokeCircle(x + 7 * scale, y, 5 * scale);
+      graphics.fillStyle(recipe.portionColour, 1);
+      graphics.fillEllipse(x - 0.5 * scale, y - 5 * scale, 10 * scale * remaining, 4 * scale);
+    } else if (recipe.vessel === "bowl") {
+      graphics.fillStyle(0xf5efe1, 1);
+      graphics.fillEllipse(x, y, 24 * scale, 17 * scale);
+      graphics.lineStyle(2 * scale, 0x7a6650, 0.9);
+      graphics.strokeEllipse(x, y, 24 * scale, 17 * scale);
+      graphics.fillStyle(recipe.portionColour, 1);
+      graphics.fillEllipse(x, y - 1 * scale, 18 * scale * remaining, 10 * scale * remaining);
+    } else {
+      graphics.fillStyle(recipe.vessel === "tray" ? 0xd7b46d : 0xf5efe1, 1);
+      if (recipe.vessel === "tray") {
+        graphics.fillRoundedRect(x - 13 * scale, y - 8 * scale, 26 * scale, 16 * scale, 3 * scale);
+      } else {
+        graphics.fillCircle(x, y, 12 * scale);
+        graphics.lineStyle(2 * scale, 0x7a6650, 0.75);
+        graphics.strokeCircle(x, y, 12 * scale);
+      }
+      graphics.fillStyle(recipe.portionColour, 1);
+      if (recipe.foodForm === "bread" || recipe.foodForm === "seafood") {
+        graphics.fillEllipse(x, y, 18 * scale * remaining, 8 * scale * remaining);
+      } else {
+        graphics.fillCircle(x, y, 8 * scale * remaining);
+      }
+    }
+    graphics.fillStyle(recipe.garnishColour, 1);
+    for (let index = 0; index < recipe.garnishCount; index += 1) {
+      const angle = (index / recipe.garnishCount) * Math.PI * 2 + recipe.garnishCount;
+      graphics.fillCircle(
+        x + Math.cos(angle) * 5 * scale * remaining,
+        y + Math.sin(angle) * 4 * scale * remaining,
+        1.7 * scale,
+      );
+    }
+    if (recipe.steam !== "none" && !reducedMotion && eatenFraction < 0.82) {
+      const wisps = recipe.steam === "full" ? 3 : 1;
+      graphics.lineStyle(1.5 * scale, 0xffffff, 0.62);
+      for (let index = 0; index < wisps; index += 1) {
+        const phase = Math.sin(state.tick * 0.14 + index) * 2 * scale;
+        const steamX = x + (index - (wisps - 1) / 2) * 5 * scale;
+        graphics.lineBetween(steamX, y - 8 * scale, steamX + phase, y - 15 * scale);
+      }
+    }
+  }
+
+  function nearestTableMealAnchor(
+    snapshot: GameSnapshot,
+    customerX: number,
+    customerY: number,
+  ) {
+    let best: { x: number; y: number; distance: number } | undefined;
+    for (const object of snapshot.objects) {
+      if (visuals[object.definitionId]?.category !== "table") continue;
+      const bounds = boundsForObject(object);
+      if (!bounds) continue;
+      const distance = Math.hypot(bounds.centreX - customerX, bounds.centreY - customerY);
+      if (distance > TILE_SIZE * 2.2 || (best && distance >= best.distance)) continue;
+      best = { x: bounds.centreX, y: bounds.centreY, distance };
+    }
+    if (!best || best.distance < 1) return { x: customerX, y: customerY - 17 };
+    const reach = Math.min(20, best.distance * 0.48);
+    return {
+      x: customerX + ((best.x - customerX) / best.distance) * reach,
+      y: customerY + ((best.y - customerY) / best.distance) * reach,
+    };
+  }
+
+  function drawCustomerIndicator(
+    graphics: Phaser.GameObjects.Graphics,
+    indicator: ReturnType<typeof animationPoseForCustomer>["indicator"],
+    x: number,
+    y: number,
+    accent: number,
+  ) {
+    graphics.fillStyle(0xfff8e8, 0.96);
+    graphics.fillCircle(x, y, 8);
+    graphics.lineStyle(2, accent, 1);
+    if (indicator === "question") {
+      graphics.strokeCircle(x, y - 2, 3.5);
+      graphics.fillStyle(accent, 1);
+      graphics.fillCircle(x, y + 5, 1.5);
+    } else if (indicator === "footsteps") {
+      graphics.fillStyle(accent, 1);
+      graphics.fillEllipse(x - 3, y + 2, 3, 6);
+      graphics.fillEllipse(x + 3, y - 2, 3, 6);
+    } else if (indicator === "queue") {
+      graphics.fillStyle(accent, 1);
+      for (let index = -1; index <= 1; index += 1) graphics.fillCircle(x + index * 4, y, 1.6);
+    } else if (indicator === "order") {
+      graphics.strokeRoundedRect(x - 5, y - 4, 10, 7, 2);
+      graphics.lineBetween(x - 2, y + 3, x - 4, y + 6);
+    } else if (indicator === "clock") {
+      graphics.strokeCircle(x, y, 5);
+      graphics.lineBetween(x, y, x, y - 3);
+      graphics.lineBetween(x, y, x + 3, y + 2);
+    } else if (indicator === "seat") {
+      graphics.lineBetween(x - 4, y - 4, x - 4, y + 4);
+      graphics.lineBetween(x - 4, y + 1, x + 4, y + 1);
+      graphics.lineBetween(x + 4, y + 1, x + 4, y + 5);
+    } else if (indicator === "meal") {
+      graphics.strokeCircle(x, y, 5);
+      graphics.lineBetween(x - 6, y - 5, x - 6, y + 5);
+    } else if (indicator === "return") {
+      graphics.lineBetween(x - 5, y, x + 4, y);
+      graphics.lineBetween(x - 5, y, x - 1, y - 4);
+      graphics.lineBetween(x - 5, y, x - 1, y + 4);
+    } else {
+      graphics.lineBetween(x - 4, y, x + 5, y);
+      graphics.lineBetween(x + 5, y, x + 1, y - 4);
+      graphics.lineBetween(x + 5, y, x + 1, y + 4);
+    }
+  }
+
+  function drawCustomerAccessory(
+    graphics: Phaser.GameObjects.Graphics,
+    accessory: ReturnType<typeof visualRecipeForCustomer>["accessory"],
+    x: number,
+    y: number,
+    accent: number,
+  ) {
+    graphics.fillStyle(accent, 1);
+    if (accessory === "tote") {
+      graphics.fillRoundedRect(x + 8, y - 1, 8, 11, 2);
+      graphics.lineStyle(1.5, accent, 1);
+      graphics.strokeCircle(x + 12, y - 2, 4);
+    } else if (accessory === "briefcase") {
+      graphics.fillRoundedRect(x + 8, y + 1, 11, 8, 2);
+      graphics.lineStyle(1.5, accent, 1);
+      graphics.strokeRoundedRect(x + 11, y - 2, 5, 4, 1);
+    } else if (accessory === "backpack") {
+      graphics.fillRoundedRect(x - 14, y - 6, 8, 15, 3);
+    } else if (accessory === "walking-aid") {
+      graphics.lineStyle(2.5, accent, 1);
+      graphics.lineBetween(x + 10, y - 2, x + 13, y + 13);
+      graphics.lineBetween(x + 13, y + 13, x + 17, y + 13);
     }
   }
 
   function drawCustomers(graphics: Phaser.GameObjects.Graphics, snapshot: GameSnapshot) {
     for (const customer of snapshot.customers) {
-      const index = Number.parseInt(customer.id.replace(/\D/g, ""), 10) || 0;
-      const palette = CUSTOMER_PALETTES[index % CUSTOMER_PALETTES.length] as readonly [number, number];
+      const archetype = CUSTOMER_BY_ID.get(customer.archetypeId) ?? CUSTOMER_ARCHETYPES[0];
+      if (!archetype) continue;
+      const visual = CUSTOMER_VISUAL_BY_ID.get(archetype.id) ?? visualRecipeForCustomer(archetype);
+      const customerSeed = stableVisualHash(customer.id);
+      const pose = animationPoseForCustomer(customer.status, snapshot.tick, customerSeed, reducedMotion);
       const position = interpolatedCustomerPosition(customer);
+      const next = customer.path[customer.pathIndex];
+      const directionX = next ? Math.sign(next.x - customer.position.x) : 0;
+      const directionY = next ? Math.sign(next.y - customer.position.y) : 1;
       const x = (position.x + 0.5) * TILE_SIZE;
-      const y = (position.y + 0.5) * TILE_SIZE;
+      const y = (position.y + 0.5) * TILE_SIZE + pose.bob;
+      const bodyWidth = 18 + (visual.bodyVariant % 3) * 2;
+      const bodyHeight = pose.pose === "eat" ? 18 : 21;
+
       graphics.fillStyle(0x17352e, 0.16);
-      graphics.fillEllipse(x, y + 10, 25, 10);
-      graphics.fillStyle(palette[1], 1);
-      graphics.fillCircle(x, y + 2, 11);
-      graphics.fillStyle(palette[0], 1);
-      graphics.fillCircle(x, y - 10, 7);
-      graphics.lineStyle(2, 0x17352e, 0.74);
-      graphics.strokeCircle(x, y - 10, 7);
-      if (customer.hasTray) {
-        graphics.fillStyle(0xf5d277, 1);
-        graphics.fillRoundedRect(x - 12, y + 7, 24, 7, 2);
+      graphics.fillEllipse(x, y + 13, bodyWidth + 9, 9);
+      if (pose.stride !== 0) {
+        graphics.lineStyle(4, visual.clothing, 1);
+        graphics.lineBetween(x - 4, y + 7, x - 5 + pose.stride, y + 14);
+        graphics.lineBetween(x + 4, y + 7, x + 5 - pose.stride, y + 14);
       }
+      graphics.fillStyle(visual.clothing, 1);
+      graphics.fillRoundedRect(x - bodyWidth / 2, y - 5, bodyWidth, bodyHeight, 8);
+      graphics.fillStyle(visual.accent, 1);
+      graphics.fillRect(x - bodyWidth / 2, y + 4, bodyWidth, 4);
+      graphics.fillStyle(visual.skin, 1);
+      graphics.fillCircle(x + directionX * 2, y - 10 + directionY * 0.5, 7.5);
+      graphics.lineStyle(2, 0x17352e, 0.7);
+      graphics.strokeCircle(x + directionX * 2, y - 10 + directionY * 0.5, 7.5);
+      graphics.lineStyle(3.5, visual.skin, 1);
+      graphics.lineBetween(x - bodyWidth / 2 + 2, y, x - bodyWidth / 2 - 3 + pose.armSwing, y + 8);
+      graphics.lineBetween(x + bodyWidth / 2 - 2, y, x + bodyWidth / 2 + 3 - pose.armSwing, y + 8);
+
+      if (((customerSeed >>> 7) % 1_000) / 1_000 < visual.accessoryChance) {
+        drawCustomerAccessory(graphics, visual.accessory, x, y, visual.accent);
+      }
+
+      if (pose.carriesFood || (customer.hasTray && customer.status !== "eating")) {
+        graphics.fillStyle(0xd7b46d, 1);
+        graphics.fillRoundedRect(x - 13, y + 8, 26, 8, 2);
+        graphics.lineStyle(1.5, 0x7a5a35, 0.9);
+        graphics.strokeRoundedRect(x - 13, y + 8, 26, 8, 2);
+        if (pose.carriesFood) drawDishServing(graphics, customer.orderedDishId, x, y + 7, 0.55);
+      }
+
+      if (pose.showsMeal) {
+        const anchor = nearestTableMealAnchor(snapshot, x, y);
+        const dish = customer.orderedDishId ? catalog.dishes[customer.orderedDishId] : undefined;
+        const diningUtility = getUtilityInfluence(state.objects, catalog, customer.position);
+        const eatenFraction = dish
+          ? mealConsumptionFraction(
+              customer.stateElapsedMs,
+              dish.eatingMs,
+              diningUtility.eatingSpeed,
+            )
+          : 0;
+        graphics.fillStyle(0xd7b46d, 1);
+        graphics.fillRoundedRect(anchor.x - 15, anchor.y - 10, 30, 20, 3);
+        drawDishServing(graphics, customer.orderedDishId, anchor.x, anchor.y, 0.72, eatenFraction);
+        graphics.lineStyle(2.5, visual.skin, 1);
+        graphics.lineBetween(x + 5, y + 2, anchor.x + pose.armSwing * 0.35, anchor.y - 2);
+        graphics.lineStyle(1.5, 0x5f5142, 1);
+        graphics.lineBetween(anchor.x + 9, anchor.y - 7, anchor.x + 13, anchor.y + 7);
+      }
+
+      drawCustomerIndicator(graphics, pose.indicator, x + 15, y - 19, visual.accent);
+
       if (customer.status === "queued" || customer.status === "waiting-for-food") {
-        graphics.lineStyle(2, 0xe8b94f, 1);
-        graphics.strokeCircle(x, y + 1, 16);
+        const patience = catalog.archetypes[customer.archetypeId]?.patienceMs ?? 1;
+        const fraction = Math.max(0, Math.min(1, customer.patienceRemainingMs / patience));
+        graphics.lineStyle(2.5, fraction > 0.35 ? 0xe8b94f : 0xc75542, 1);
+        graphics.beginPath();
+        graphics.arc(x, y + 2, 17, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * fraction);
+        graphics.strokePath();
       }
       if (debugOverlay) {
         graphics.lineStyle(2, 0x287ec0, 0.55);
         let previous = { x, y };
         for (const step of customer.path.slice(customer.pathIndex)) {
-          const next = tileToWorld(snapshot.map, step);
-          graphics.lineBetween(previous.x, previous.y, next.x, next.y);
-          previous = next;
+          const pathPoint = tileToWorld(snapshot.map, step);
+          graphics.lineBetween(previous.x, previous.y, pathPoint.x, pathPoint.y);
+          previous = pathPoint;
         }
       }
     }
@@ -1035,19 +1984,52 @@ export async function createHawkerRuntime(
     };
   }
 
-  function drawOverlay(graphics: Phaser.GameObjects.Graphics, snapshot: GameSnapshot) {
-    for (const [stallId, queue] of Object.entries(snapshot.queues)) {
-      const stall = snapshot.objects.find((object) => object.id === stallId);
-      if (!stall || queue.length === 0) continue;
-      const anchor = getObjectQueueAnchor(stall, catalog);
-      if (!anchor) continue;
-      for (let index = 0; index < queue.length; index += 1) {
-        const x = (anchor.x + 0.5) * TILE_SIZE;
-        const y = (anchor.y + index + 0.5) * TILE_SIZE;
-        graphics.lineStyle(2, 0xe8b94f, 0.9);
-        graphics.strokeCircle(x, y, 14);
-        graphics.fillStyle(0x17352e, 0.8);
-        graphics.fillCircle(x + 11, y - 11, 7);
+  function drawOverlay(
+    scene: HawkerScene,
+    graphics: Phaser.GameObjects.Graphics,
+    snapshot: GameSnapshot,
+  ) {
+    const queueLayouts = planStallQueueLayouts(
+      snapshot.map,
+      state.objects,
+      catalog,
+      [snapshot.entrance, snapshot.exit],
+    );
+    for (const stall of snapshot.objects) {
+      const definition = catalog.placeables[stall.definitionId];
+      if (definition?.kind !== "stall") continue;
+      const queue = snapshot.queues[stall.id] ?? [];
+      const queueCells = queueLayouts[stall.id] ?? [];
+      const bounds = boundsForObject(stall);
+      if (bounds) {
+        scene.addLabel(
+          bounds.maxX - 25,
+          bounds.minY + 25,
+          `${queue.length} ${queue.length === 1 ? "guest" : "guests"}`,
+          queue.length >= (definition.stall?.queueCapacity ?? 7) ? "#9a3e31" : "#17352e",
+        );
+      }
+      if (queueCells.length === 0) continue;
+      graphics.lineStyle(4, 0xe8b94f, 0.45);
+      for (let index = 1; index < queueCells.length; index += 1) {
+        const previous = tileToWorld(snapshot.map, queueCells[index - 1] as GridPoint);
+        const point = tileToWorld(snapshot.map, queueCells[index] as GridPoint);
+        graphics.lineBetween(previous.x, previous.y, point.x, point.y);
+      }
+      for (let index = 0; index < queueCells.length; index += 1) {
+        const point = tileToWorld(snapshot.map, queueCells[index] as GridPoint);
+        const occupied = index < queue.length;
+        graphics.fillStyle(occupied ? 0xe8b94f : 0xfff7e5, occupied ? 0.24 : 0.36);
+        graphics.fillCircle(point.x, point.y, occupied ? 17 : 12);
+        graphics.lineStyle(2.5, occupied ? 0xd69a35 : 0xb39769, occupied ? 1 : 0.72);
+        graphics.strokeCircle(point.x, point.y, occupied ? 17 : 12);
+        graphics.fillStyle(0x17352e, occupied ? 0.92 : 0.56);
+        graphics.fillCircle(point.x + 10, point.y - 10, 7);
+        graphics.fillStyle(0xfff7e5, 1);
+        const pipCount = Math.min(3, index + 1);
+        for (let pip = 0; pip < pipCount; pip += 1) {
+          graphics.fillCircle(point.x + 7 + pip * 3, point.y - 10, 1);
+        }
       }
     }
 
@@ -1098,7 +2080,11 @@ export async function createHawkerRuntime(
     buildTool = tool;
     if (tool !== "move") pendingMoveId = undefined;
     if (tool !== "place") selectedBuildId = undefined;
-    selectedObjectId = undefined;
+    if (tool !== "queue") {
+      queueEditingStallId = undefined;
+      queueDraft = [];
+    }
+    if (tool !== "queue") selectedObjectId = undefined;
     emitHud(true);
     activeScene?.render(true);
   }
@@ -1278,6 +2264,55 @@ export async function createHawkerRuntime(
         });
       }
       return accepted;
+    },
+    beginQueueEdit(objectId) {
+      const stall = state.objects[objectId];
+      const definition = stall ? catalog.placeables[stall.definitionId] : undefined;
+      const anchor = stall ? getObjectQueueAnchor(stall, catalog) : undefined;
+      if (!stall || definition?.kind !== "stall" || !definition.stall || !anchor) {
+        options.onEvent({ kind: "warning", message: "Select a placed stall to edit its queue." });
+        return false;
+      }
+      queueEditingStallId = objectId;
+      queueDraft = stall.queuePath?.length ? stall.queuePath.map((point) => ({ ...point })) : [anchor];
+      buildTool = "queue";
+      selectedObjectId = objectId;
+      selectedBuildId = undefined;
+      pendingMoveId = undefined;
+      options.onEvent({
+        kind: "info",
+        message: stall.queuePath?.length
+          ? "Choose an existing queue space to shorten it, or an adjacent tile to extend it."
+          : "Choose adjacent clear tiles to shape this stall's queue.",
+      });
+      emitHud(true);
+      activeScene?.render(true);
+      return true;
+    },
+    setQueueDirection(objectId, direction) {
+      const accepted = runCommand({
+        type: "set-stall-queue-direction",
+        objectId,
+        direction,
+      });
+      if (accepted) {
+        queueEditingStallId = undefined;
+        queueDraft = [];
+        buildTool = "select";
+        selectedObjectId = objectId;
+        options.onEvent({ kind: "info", message: `Automatic queue now starts ${direction}.` });
+        emitHud(true);
+      }
+      return accepted;
+    },
+    finishQueueEdit() {
+      if (buildTool !== "queue") return;
+      queueEditingStallId = undefined;
+      queueDraft = [];
+      buildTool = "select";
+      options.onEvent({ kind: "info", message: "Queue route saved." });
+      emitHud(true);
+      activeScene?.render(true);
     },
     setDishEnabled(stallId, dishId, enabled) {
       const definition = STALLS.find((stall) => stall.id === stallId);

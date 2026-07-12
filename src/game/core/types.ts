@@ -13,6 +13,7 @@ export interface WorldPoint {
 export type Rotation = 0 | 90 | 180 | 270;
 export type TileKind = "floor" | "wall" | "void";
 export type QualityMode = "standard" | "lower-end";
+export type QueueDirection = "north" | "east" | "south" | "west";
 
 export interface Footprint {
   readonly width: number;
@@ -48,6 +49,18 @@ export interface StallDefinition {
   readonly quality: number;
 }
 
+export interface UtilityEffects {
+  readonly radius: number;
+  readonly ambience: number;
+  readonly cleanliness: number;
+  readonly queuePatience: number;
+  readonly eatingSpeed: number;
+  readonly cleaningEfficiency: number;
+  readonly movementSpeed: number;
+  /** Directories, route signs, and menu previews reduce entrance-distance bias. */
+  readonly wayfinding: number;
+}
+
 export type PlaceableKind =
   | "stall"
   | "seat"
@@ -71,6 +84,8 @@ export interface PlaceableDefinition {
   readonly seatPoints?: readonly GridPoint[];
   readonly trayReturnPoint?: GridPoint;
   readonly stall?: StallDefinition;
+  /** Spatial gameplay effects supplied by signs, facilities, comfort, and decor. */
+  readonly utility?: UtilityEffects;
 }
 
 export interface CustomerArchetype {
@@ -83,6 +98,8 @@ export interface CustomerArchetype {
   readonly qualitySensitivity: number;
   readonly queueSensitivity: number;
   readonly distanceSensitivity: number;
+  /** How willing this archetype is to explore a less-obvious stall. Zero disables exploration. */
+  readonly noveltyPreference?: number;
   readonly preferenceTags?: readonly string[];
 }
 
@@ -98,6 +115,14 @@ export interface PlacedObject {
   readonly origin: GridPoint;
   readonly rotation: Rotation;
   readonly open: boolean;
+  /** Preferred world-space direction for an automatically planned queue. */
+  readonly queueDirection?: QueueDirection;
+  /**
+   * Optional player-authored queue cells in head-to-tail order, expressed in
+   * absolute map coordinates. When absent, the simulation plans a deterministic
+   * obstacle-aware route from the stall's queue anchor.
+   */
+  readonly queuePath?: readonly GridPoint[];
 }
 
 export type CustomerStatus =
@@ -205,6 +230,8 @@ export interface SimulationEvent {
 
 export interface UndoSnapshot {
   readonly map: GridMap;
+  readonly entrance: GridPoint;
+  readonly exit: GridPoint;
   readonly objects: Readonly<Record<string, PlacedObject>>;
   readonly economy: EconomyState;
   readonly expansionCount: number;
@@ -291,12 +318,27 @@ export interface ExpandMapCommand {
   readonly addRows: number;
 }
 
+export interface ConfigureQueueCommand {
+  readonly type: "configure-queue";
+  readonly objectId: string;
+  /** Absolute queue cells in head-to-tail order. */
+  readonly points: readonly GridPoint[];
+}
+
+export interface SetStallQueueDirectionCommand {
+  readonly type: "set-stall-queue-direction";
+  readonly objectId: string;
+  readonly direction: QueueDirection;
+}
+
 export type BuildCommand =
   | PlaceObjectCommand
   | MoveObjectCommand
   | RotateObjectCommand
   | RemoveObjectCommand
-  | ExpandMapCommand;
+  | ExpandMapCommand
+  | ConfigureQueueCommand
+  | SetStallQueueDirectionCommand;
 
 export type GameCommand =
   | BuildCommand

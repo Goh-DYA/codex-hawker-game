@@ -110,12 +110,29 @@ function parseObject(value: unknown, index: number): PlacedObject {
     throw new PersistenceError(`${path}.rotation is invalid`);
   }
   if (typeof value.open !== "boolean") throw new PersistenceError(`${path}.open must be boolean`);
+  const queueDirection = value.queueDirection;
+  if (
+    queueDirection !== undefined &&
+    queueDirection !== "north" &&
+    queueDirection !== "east" &&
+    queueDirection !== "south" &&
+    queueDirection !== "west"
+  ) {
+    throw new PersistenceError(`${path}.queueDirection is invalid`);
+  }
+  let queuePath: readonly { x: number; y: number }[] | undefined;
+  if (value.queuePath !== undefined) {
+    if (!Array.isArray(value.queuePath)) throw new PersistenceError(`${path}.queuePath must be an array`);
+    queuePath = value.queuePath.map((point, pointIndex) => parsePoint(point, `${path}.queuePath[${pointIndex}]`));
+  }
   return {
     id: stringValue(value.id, `${path}.id`),
     definitionId: stringValue(value.definitionId, `${path}.definitionId`),
     origin: parsePoint(value.origin, `${path}.origin`),
     rotation,
     open: value.open,
+    queueDirection,
+    queuePath,
   };
 }
 
@@ -229,7 +246,11 @@ export function persistentStateFromGame(state: GameState): PersistentGameStateV2
     qualityMode: state.qualityMode,
     objects: Object.values(state.objects)
       .sort((a, b) => compareIds(a.id, b.id))
-      .map((object) => ({ ...object, origin: { ...object.origin } })),
+      .map((object) => ({
+        ...object,
+        origin: { ...object.origin },
+        queuePath: object.queuePath?.map((point) => ({ ...point })),
+      })),
     economy: { ...state.economy },
     progression: { ...state.progression, unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds] },
     rngState: state.rngState,

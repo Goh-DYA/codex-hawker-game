@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
@@ -29,6 +30,8 @@ import {
   savePreference,
 } from "@/src/game/persistence/saveStore";
 import { registerPwa } from "@/src/game/pwa/registerPwa";
+import { utilityEffectsForPlaceable } from "@/src/game/runtime/contentUtility";
+import { visualRecipeForPlaceable } from "@/src/game/runtime/visualRecipes";
 import type {
   BuildTool,
   GameSpeed,
@@ -62,6 +65,7 @@ const INITIAL_SNAPSHOT: RuntimeSnapshot = {
   stallMenus: Object.fromEntries(
     STALLS.map((stall) => [stall.id, stall.dishIds.slice(0, stall.menuSlots)]),
   ),
+  placedStalls: [],
   canUndo: false,
   objectiveProgress: 0,
   objectiveTarget: 5,
@@ -150,6 +154,77 @@ function catalogueIcon(category: PlaceableDefinition["category"] | "stall") {
 
 function getContentPrice(item: PlaceableDefinition | StallDefinition) {
   return "purchaseCost" in item ? item.purchaseCost : item.price;
+}
+
+type PreviewStyle = CSSProperties & {
+  "--preview-accent": string;
+  "--preview-tilt": string;
+  "--preview-shift": string;
+};
+
+function placeablePreview(item: PlaceableDefinition): {
+  recipe: ReturnType<typeof visualRecipeForPlaceable>;
+  style: PreviewStyle;
+} {
+  const recipe = visualRecipeForPlaceable(item.id, item.category);
+  return {
+    recipe,
+    style: {
+      "--preview-accent": `#${recipe.accent.toString(16).padStart(6, "0")}`,
+      "--preview-tilt": `${recipe.detailVariant * 5 - 20}deg`,
+      "--preview-shift": `${recipe.makerMark % 9 - 4}px`,
+    },
+  };
+}
+
+function signedEffect(value: number, suffix = "") {
+  return `${value > 0 ? "+" : ""}${Math.round(value)}${suffix}`;
+}
+
+function utilityEffects(item: PlaceableDefinition): readonly string[] {
+  const effects: string[] = [];
+  const resolved = utilityEffectsForPlaceable(item);
+  if (resolved.ambience !== 0) effects.push(`Ambience ${signedEffect(resolved.ambience)}`);
+  if (resolved.cleanliness !== 0) {
+    effects.push(`Cleanliness ${signedEffect(resolved.cleanliness)}`);
+  }
+  if (resolved.queuePatience !== 0) {
+    effects.push(`Queue patience ${signedEffect(resolved.queuePatience * 100, "%")}`);
+  }
+  if (resolved.eatingSpeed !== 0) {
+    effects.push(`Eating speed ${signedEffect(resolved.eatingSpeed * 100, "%")}`);
+  }
+  if (resolved.cleaningEfficiency !== 0) {
+    effects.push(`Cleaning efficiency ${signedEffect(resolved.cleaningEfficiency * 100, "%")}`);
+  }
+  if (resolved.movementSpeed !== 0) {
+    effects.push(`Walking flow ${signedEffect(resolved.movementSpeed * 100, "%")}`);
+  }
+  if (resolved.wayfinding > 0) {
+    effects.push(`Wayfinding ${signedEffect(resolved.wayfinding * 100, "%")}`);
+  }
+  if (item.lightRadius > 0) effects.push(`Lights ${item.lightRadius}-tile radius`);
+  for (const role of new Set(item.interactionPoints.map((point) => point.role))) {
+    effects.push(
+      {
+        "return-tray": "Enables tray return",
+        "dispose-waste": "Supports cleaner waste handling",
+        "wash-hands": "Improves hygiene and dining comfort",
+        "collect-water": "Improves refreshment and dining comfort",
+        "inspect-menu": "Improves stall discovery",
+        queue: "Improves queue patience and flow",
+        sit: "Provides usable seating",
+        use: "Provides passive facility support",
+      }[role],
+    );
+  }
+  if (item.queuePoints.length > 0) effects.push(`${item.queuePoints.length} queue guide points`);
+  return [...new Set(effects)];
+}
+
+function primaryUtility(item: PlaceableDefinition) {
+  return utilityEffects(item)[0] ??
+    (item.walkability === "blocked" ? "Shapes guest routes" : "Walk-through decor");
 }
 
 const UNLOCKABLE_CONTENT = [...PLACEABLES, ...STALLS] as const;
@@ -792,11 +867,19 @@ export function HawkerSimulator() {
         <section className="world-column" aria-label="Hawker centre map">
           <div className="world-toolbar">
             <div className="mode-pill">
-              <span className={snapshot.buildTool === "place" ? "amber-dot" : "green-dot"} />
-              {snapshot.buildTool === "place" ? "Build mode" : snapshot.isOpen ? "Centre open" : "Planning mode"}
+              <span className={snapshot.buildTool === "place" || snapshot.buildTool === "queue" ? "amber-dot" : "green-dot"} />
+              {snapshot.buildTool === "place"
+                ? "Build mode"
+                : snapshot.buildTool === "queue"
+                  ? "Queue editor"
+                  : snapshot.isOpen
+                    ? "Centre open"
+                    : "Planning mode"}
             </div>
             <div className="world-message" aria-live="polite">
-              {selectedContent
+              {snapshot.buildTool === "queue"
+                ? "Queue editor: choose adjacent clear tiles to bend the line; Escape finishes"
+                : selectedContent
                 ? `${localize(selectedContent.nameKey)} selected — choose a clear tile`
                 : snapshot.isOpen
                   ? `${snapshot.activeCustomers} neighbours are visiting`
@@ -814,6 +897,19 @@ export function HawkerSimulator() {
                   {tool === "select" ? "Select" : tool === "move" ? "Move" : "Remove"}
                 </button>
               ))}
+              {snapshot.selectedObjectId && snapshot.selectedObjectDefinitionId?.startsWith("stall.") ? (
+                <button
+                  type="button"
+                  aria-pressed={snapshot.buildTool === "queue"}
+                  className={snapshot.buildTool === "queue" ? "is-active" : ""}
+                  onClick={() => {
+                    if (snapshot.buildTool === "queue") controllerRef.current?.finishQueueEdit();
+                    else controllerRef.current?.beginQueueEdit(snapshot.selectedObjectId as string);
+                  }}
+                >
+                  {snapshot.buildTool === "queue" ? "Finish queue" : "Edit queue"}
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -952,6 +1048,7 @@ export function HawkerSimulator() {
                 {visiblePlaceables.map((item) => {
                   const locked = !snapshot.unlockedContentIds.includes(item.id);
                   const selected = selectedId === item.id;
+                  const preview = placeablePreview(item);
                   return (
                     <button
                       type="button"
@@ -963,12 +1060,20 @@ export function HawkerSimulator() {
                     >
                       <span
                         className={`item-art item-${item.category}`}
+                        data-silhouette={preview.recipe.silhouetteVariant}
+                        data-detail={preview.recipe.detailVariant}
+                        data-mark={preview.recipe.makerMark.toString(16).padStart(2, "0")}
+                        style={preview.style}
                         aria-hidden="true"
                       >
-                        {catalogueIcon(item.category)}
+                        <span>{catalogueIcon(item.category)}</span>
                       </span>
                       <strong>{localize(item.nameKey)}</strong>
-                      <small>{locked ? unlockLabel(item, snapshot.level, snapshot.reputation, snapshot.unlockedContentIds) : money(item.price)}</small>
+                      <small>
+                        {locked
+                          ? unlockLabel(item, snapshot.level, snapshot.reputation, snapshot.unlockedContentIds)
+                          : `${money(item.price)} · ${primaryUtility(item)}`}
+                      </small>
                       {locked ? <i aria-hidden="true">●</i> : null}
                     </button>
                   );
@@ -979,6 +1084,43 @@ export function HawkerSimulator() {
 
           {panel === "stalls" ? (
             <div className="stall-list" data-testid="stall-catalogue">
+              {snapshot.placedStalls.length > 0 ? (
+                <section className="operating-stalls" aria-labelledby="operating-stalls-title">
+                  <h3 id="operating-stalls-title">Operating queue plans</h3>
+                  {snapshot.placedStalls.map((placed) => (
+                    <article key={placed.objectId} className="queue-manager-row">
+                      <div>
+                        <strong>{placed.name}</strong>
+                        <small>
+                          {placed.queueCount} queueing · {placed.customQueue ? "custom path" : `${placed.queueDirection} auto-line`}
+                        </small>
+                      </div>
+                      <div className="queue-direction-group" aria-label={`${placed.name} queue direction`}>
+                        {(["north", "east", "south", "west"] as const).map((direction) => (
+                          <button
+                            type="button"
+                            key={direction}
+                            className={!placed.customQueue && placed.queueDirection === direction ? "is-active" : ""}
+                            aria-pressed={!placed.customQueue && placed.queueDirection === direction}
+                            aria-label={`Route ${placed.name} queue ${direction}`}
+                            onClick={() => controllerRef.current?.setQueueDirection(placed.objectId, direction)}
+                          >
+                            {{ north: "↑", east: "→", south: "↓", west: "←" }[direction]}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className={placed.customQueue ? "is-active edit-queue-button" : "edit-queue-button"}
+                          onClick={() => controllerRef.current?.beginQueueEdit(placed.objectId)}
+                        >
+                          Bend line
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              ) : null}
+              <h3 className="catalogue-subheading">Add another stall</h3>
               {STALLS.map((stall) => {
                 const locked = !snapshot.unlockedContentIds.includes(stall.id);
                 return (
@@ -1154,6 +1296,23 @@ export function HawkerSimulator() {
                 <div><dt>Footprint</dt><dd>{selectedContent.footprint.width} × {selectedContent.footprint.height}</dd></div>
                 <div><dt>Price</dt><dd>{money(getContentPrice(selectedContent))}</dd></div>
               </dl>
+              {"category" in selectedContent ? (
+                <div className="utility-card">
+                  <strong>In-game utility</strong>
+                  <ul>
+                    {utilityEffects(selectedContent).map((effect) => (
+                      <li key={effect}>{effect}</li>
+                    ))}
+                    {utilityEffects(selectedContent).length === 0 ? (
+                      <li>
+                        {selectedContent.walkability === "blocked"
+                          ? "Shapes guest routes and collision-safe queue lines"
+                          : "Adds a walk-through visual landmark"}
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </aside>

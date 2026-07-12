@@ -3,6 +3,8 @@ export * from "./rng";
 export * from "./ordering";
 export * from "./grid";
 export * from "./pathfinding";
+export * from "./queueing";
+export * from "./utility";
 export * from "./economy";
 export * from "./validation";
 export * from "./state";
