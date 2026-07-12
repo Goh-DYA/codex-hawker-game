@@ -4,6 +4,26 @@ Hawker Simulator is a local-first desktop browser game about building and operat
 
 The current release candidate is fully free and contains no accounts, advertising, analytics, payments, loot boxes, energy systems, or server-dependent mechanics.
 
+## Key features
+
+### Build and manage the hall
+
+The main workspace combines a tile-based centre, live operational readouts, and a catalogue of visually distinct furniture and facilities.
+
+### Watch a live service
+
+Customers choose stalls, form separate queues, carry visible meals, find reserved seats, eat, return trays, and leave through the active exit.
+
+![Hawker Simulator planning view with the centre map, management dashboard, and furniture catalogue](docs/images/hawker-overview.png)
+
+
+### Manage each food stall
+
+Every operating stall displays its queue count. Players can select a cardinal automatic route or draw a custom obstacle-safe line with bends. Players can also curate the food menu from each store.
+
+![The stall management panel and an L-shaped custom queue route in the game world](docs/images/hawker-custom-queue.png)
+
+
 ## Launch content
 
 - 8 original operational stalls
