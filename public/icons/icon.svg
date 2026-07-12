@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Hawker Simulator bowl and awning mark">
+  <rect width="512" height="512" rx="112" fill="#17463a"/>
+  <path d="M100 154h312l-24 74H124z" fill="#f5c85b"/>
+  <path d="M124 228h264v42H124z" fill="#fff8e9"/>
+  <path d="M145 228v42m74-42v42m74-42v42m74-42v42" stroke="#d95d45" stroke-width="28"/>
+  <path d="M116 296h280c-8 87-64 136-140 136s-132-49-140-136z" fill="#fff8e9"/>
+  <path d="M134 322h244" stroke="#d95d45" stroke-width="20" stroke-linecap="round"/>
+  <path d="M202 119c-14-20 5-34 0-54m54 54c-14-20 5-34 0-54m54 54c-14-20 5-34 0-54" fill="none" stroke="#fff8e9" stroke-width="15" stroke-linecap="round"/>
+</svg>

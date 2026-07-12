@@ -1,0 +1,53 @@
+{
+  "name": "hawker-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "prebuild": "node tools/stamp-service-worker.mjs",
+    "build": "vinext build",
+    "start": "vinext start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:ssr": "node --test tests/rendered-html.test.mjs",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:release": "npm run typecheck && npm run lint && npm run test && npm run build && npm run test:ssr",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "validate:content": "vitest run --config vitest.config.ts tests/content.test.ts"
+  },
+  "dependencies": {
+    "idb": "8.0.3",
+    "next": "16.2.6",
+    "phaser": "4.2.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.44.0",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "react-server-dom-webpack": "19.2.6",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3",
+    "vinext": "0.0.50",
+    "vite": "8.1.4",
+    "vitest": "4.1.10",
+    "wrangler": "4.110.0"
+  },
+  "overrides": {
+    "@babel/core": "7.29.7",
+    "js-yaml": "4.3.0",
+    "postcss": "8.5.14"
+  },
+  "type": "module"
+}

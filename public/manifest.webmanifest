@@ -1,0 +1,21 @@
+{
+  "name": "Hawker Simulator",
+  "short_name": "Hawker Sim",
+  "description": "Build a welcoming Singapore-inspired hawker centre and watch it come alive.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6efe1",
+  "theme_color": "#17463a",
+  "orientation": "landscape-primary",
+  "lang": "en-SG",
+  "categories": ["games", "simulation"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
