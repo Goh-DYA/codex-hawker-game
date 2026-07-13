@@ -93,15 +93,16 @@ The repeatable 80-agent benchmark is part of `npm test` and prints a `BENCHMARK_
 ## Production
 
 ```powershell
-npm run build
-
 npm run dev          # development
 npm run test:release # full release gate
-npm run build        # production build
-npm run start        # production server
+npm run build        # Sites / Cloudflare Worker build
+npm run build:vercel # native Next.js build for Vercel
+npm run start        # serve the Sites production build
 ```
 
-The deployable output is written to `dist/`. The prebuild step stamps the service worker with a deterministic content hash so code, content, and cached assets move together. See [deployment and rollback](docs/DEPLOYMENT.md), [release checklist](docs/RELEASE_CHECKLIST.md), and [known issues](docs/KNOWN_ISSUES.md).
+GitHub Actions verifies both production targets, publishes pull-request previews to Vercel, stages `main` as an immutable Production deployment, and waits for a protected approval before promotion. The Sites output is written to `dist/`; Vercel packages the native Next.js build separately. Both paths stamp the service worker with a deterministic content hash so code, content, and cached assets move together.
+
+Before enabling deployments, follow every **User action** in the [deployment and rollback runbook](docs/DEPLOYMENT.md). Also review the [release checklist](docs/RELEASE_CHECKLIST.md) and [known issues](docs/KNOWN_ISSUES.md).
 
 ## Offline and saves
 

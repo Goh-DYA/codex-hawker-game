@@ -1,6 +1,7 @@
 /** Cloudflare Worker entry point for Hawker Simulator's Vinext build. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { SECURITY_HEADERS } from "../src/config/securityHeaders";
 
 interface Env {
   ASSETS: {
@@ -19,28 +20,6 @@ interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
 }
-
-const SECURITY_HEADERS = {
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self'",
-    "media-src 'self' blob:",
-    "worker-src 'self' blob:",
-    "manifest-src 'self'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "frame-ancestors 'none'",
-    "form-action 'self'",
-  ].join("; "),
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-} as const;
 
 function withSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);

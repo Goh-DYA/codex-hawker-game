@@ -1,0 +1,243 @@
+name: Verify and deploy to Vercel
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: >-
+    vercel-${{ github.event_name == 'pull_request' &&
+    format('preview-{0}', github.event.pull_request.number) || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22.15.0
+  VERCEL_CLI_VERSION: 55.0.0
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run the existing Sites release gate
+        run: npm run test:release
+
+      - name: Build the native Next.js Vercel target
+        run: npm run build:vercel
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+  preview:
+    name: Deploy Vercel preview
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Validate deployment credentials
+        shell: bash
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo "::error::Missing VERCEL_TOKEN"; exit 1; }
+          test -n "$VERCEL_ORG_ID" || { echo "::error::Missing VERCEL_ORG_ID"; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo "::error::Missing VERCEL_PROJECT_ID"; exit 1; }
+
+      - name: Install locked dependencies and Vercel CLI
+        run: |
+          npm ci
+          npm install --global vercel@${{ env.VERCEL_CLI_VERSION }}
+
+      - name: Pull Preview project settings
+        run: >-
+          vercel pull --yes --environment=preview
+          --git-branch="$GITHUB_HEAD_REF" --token="$VERCEL_TOKEN" --no-color
+
+      - name: Build the immutable Preview artifact
+        run: vercel build --token="$VERCEL_TOKEN" --no-color
+
+      - name: Deploy the Preview artifact
+        id: deploy
+        shell: bash
+        run: |
+          deployment_url="$(vercel deploy --prebuilt --token="$VERCEL_TOKEN" --no-color)"
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "### Vercel Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke-test the exact Preview deployment
+        run: npm run smoke:deployment -- "${{ steps.deploy.outputs.url }}"
+
+      - name: Publish the Preview URL on the pull request
+        uses: actions/github-script@v7
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            const marker = "<!-- hawker-vercel-preview -->";
+            const body = `${marker}\nVercel Preview: ${process.env.DEPLOYMENT_URL}\n\nThe automated build and deployment smoke checks passed.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find(
+              (comment) => comment.user?.type === "Bot" && comment.body?.includes(marker),
+            );
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+  stage-production:
+    name: Stage Vercel production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - name: Check out the production commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Validate deployment credentials
+        shell: bash
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo "::error::Missing VERCEL_TOKEN"; exit 1; }
+          test -n "$VERCEL_ORG_ID" || { echo "::error::Missing VERCEL_ORG_ID"; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo "::error::Missing VERCEL_PROJECT_ID"; exit 1; }
+
+      - name: Install locked dependencies and Vercel CLI
+        run: |
+          npm ci
+          npm install --global vercel@${{ env.VERCEL_CLI_VERSION }}
+
+      - name: Pull Production project settings
+        run: >-
+          vercel pull --yes --environment=production
+          --token="$VERCEL_TOKEN" --no-color
+
+      - name: Build the immutable Production artifact
+        run: vercel build --prod --token="$VERCEL_TOKEN" --no-color
+
+      - name: Create a staged Production deployment
+        id: deploy
+        shell: bash
+        run: |
+          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN" --no-color)"
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "### Staged Vercel Production" >> "$GITHUB_STEP_SUMMARY"
+          echo "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke-test the exact staged deployment
+        run: npm run smoke:deployment -- "${{ steps.deploy.outputs.url }}"
+
+  promote-production:
+    name: Approve and promote Vercel production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: stage-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ needs.stage-production.outputs.deployment_url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      STAGED_DEPLOYMENT_URL: ${{ needs.stage-production.outputs.deployment_url }}
+      PRODUCTION_URL: ${{ vars.VERCEL_PRODUCTION_URL }}
+    steps:
+      - name: Check out the promoted commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Validate promotion configuration
+        shell: bash
+        run: |
+          test -n "$VERCEL_TOKEN" || { echo "::error::Missing VERCEL_TOKEN"; exit 1; }
+          test -n "$VERCEL_ORG_ID" || { echo "::error::Missing VERCEL_ORG_ID"; exit 1; }
+          test -n "$VERCEL_PROJECT_ID" || { echo "::error::Missing VERCEL_PROJECT_ID"; exit 1; }
+          test -n "$PRODUCTION_URL" || { echo "::error::Missing VERCEL_PRODUCTION_URL repository variable"; exit 1; }
+
+      - name: Install the pinned Vercel CLI
+        run: npm install --global vercel@${{ env.VERCEL_CLI_VERSION }}
+
+      - name: Recheck the approved staged deployment
+        run: npm run smoke:deployment -- "$STAGED_DEPLOYMENT_URL"
+
+      - name: Promote without rebuilding
+        run: >-
+          vercel promote "$STAGED_DEPLOYMENT_URL" --yes
+          --token="$VERCEL_TOKEN" --no-color
+
+      - name: Verify the promoted production origin
+        run: npm run smoke:deployment -- "$PRODUCTION_URL"
+
+      - name: Record the promoted URL
+        shell: bash
+        run: |
+          echo "### Promoted Vercel Production" >> "$GITHUB_STEP_SUMMARY"
+          echo "$PRODUCTION_URL" >> "$GITHUB_STEP_SUMMARY"

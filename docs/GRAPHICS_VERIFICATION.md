@@ -6,8 +6,8 @@ Status: **Current-source release gate and automated graphics coverage passed; ta
 
 ## Evidence boundary
 
-- Final release checks pass on the current source: typecheck, lint, 11 Vitest files / 61 tests, production build, and two rendered-output/offline-shell tests.
-- The 61 tests include exhaustive visual-recipe, utility, queue-selection/routing, cross-stall queue-layout, queue-flow diagnostics, expansion, active-order preservation, and 80-agent benchmark coverage.
+- Final release checks pass on the current source: typecheck, lint, 12 Vitest files / 64 tests, Sites and Vercel production builds, and two rendered-output/offline-shell tests.
+- The 64 tests include exhaustive visual-recipe, utility, queue-selection/routing, cross-stall queue-layout, queue-flow diagnostics, expansion, active-order preservation, 80-agent benchmark coverage, and dual-target hosting configuration checks.
 - Eight browser screenshots were captured from the development build and are indexed below.
 - The screenshots predate the final audit fixes for globally unique queue anchors, live-order-preserving reroutes, utility-adjusted meal depletion, and the restored route overlay; those fixes have final-source automated/static coverage but still require a fresh exact-production visual pass. The screenshots are targeted evidence, not a performance, accessibility, or cultural approval.
 - Replacement artifact: `dist/`, 35 files / 13,772,093 bytes, service-worker build `3e25823ed59c`, deterministic file-manifest SHA-256 `3fbd941195ed69d51198940b64ce8007aa5d8133d8f9777fa4174c24d067d2db`.
