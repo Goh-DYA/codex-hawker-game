@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import nextConfig from "../next.config";
-import { SECURITY_HEADERS } from "../src/config/securityHeaders";
+import {
+  createNextSecurityHeaders,
+  SECURITY_HEADERS,
+} from "../src/config/securityHeaders";
 
 const root = new URL("../", import.meta.url);
 
@@ -36,6 +39,33 @@ describe("dual-target hosting configuration", () => {
     ]);
     expect(SECURITY_HEADERS["Content-Security-Policy"]).toContain("default-src 'self'");
     expect(SECURITY_HEADERS["X-Content-Type-Options"]).toBe("nosniff");
+  });
+
+  it("allows React debugging eval only in development", () => {
+    const productionCsp = createNextSecurityHeaders().find(
+      ({ key }) => key === "Content-Security-Policy",
+    )?.value;
+    const developmentCsp = createNextSecurityHeaders(true).find(
+      ({ key }) => key === "Content-Security-Policy",
+    )?.value;
+
+    expect(productionCsp).not.toContain("'unsafe-eval'");
+    expect(developmentCsp).toContain("'unsafe-eval'");
+  });
+
+  it("tolerates browser-injected body attributes during hydration", async () => {
+    const layoutSource = await readFile(new URL("app/layout.tsx", root), "utf8");
+
+    expect(layoutSource).toContain("<body suppressHydrationWarning>");
+  });
+
+  it("uses a header-only Vercel bypass for Node smoke requests", async () => {
+    const smokeSource = await readFile(new URL("tools/smoke-deployment.mjs", root), "utf8");
+
+    expect(smokeSource).toContain('"x-vercel-protection-bypass": bypass');
+    expect(smokeSource).not.toContain("x-vercel-set-bypass-cookie");
+    expect(smokeSource).toContain("Deployment request failed for");
+    expect(smokeSource).toContain('/https?:\\/\\/[^"\'<>\\s]+/g');
   });
 
   it("keeps the Cloudflare worker on the shared header source", async () => {

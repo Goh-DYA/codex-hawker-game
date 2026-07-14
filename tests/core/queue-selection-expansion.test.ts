@@ -14,6 +14,7 @@ import {
   withTile,
   type Customer,
   type GameState,
+  type PersistentGameStateV3,
   type PlacedObject,
   type SimulationCatalog,
 } from "../../src/game/core";
@@ -183,6 +184,32 @@ describe("obstacle-safe configurable queues", () => {
     const loaded = deserializeGameState(serializeGameState(configured.state), configured.state.catalog);
     expect(loaded.objects["stall-1"]?.queuePath).toEqual(points);
     expect(loaded.objects["stall-1"]?.queueDirection).toBe("south");
+  });
+
+  it("moves a saved custom queue forward when its service anchor changes by one tile", () => {
+    const game = makeQueueGame();
+    const points = [{ x: 2, y: 2 }, { x: 1, y: 2 }, { x: 1, y: 3 }, { x: 1, y: 4 }];
+    const configured = dispatchCommand(game, { type: "configure-queue", objectId: "stall-1", points });
+    expect(configured.accepted).toBe(true);
+    const stallDefinition = configured.state.catalog.placeables.stall!;
+    const migratedCatalog: SimulationCatalog = {
+      ...configured.state.catalog,
+      placeables: {
+        ...configured.state.catalog.placeables,
+        stall: {
+          ...stallDefinition,
+          queueAnchor: { ...(stallDefinition.servicePoint as NonNullable<typeof stallDefinition.servicePoint>) },
+        },
+      },
+    };
+
+    const loaded = deserializeGameState(serializeGameState(configured.state), migratedCatalog);
+    expect(loaded.objects["stall-1"]?.queuePath).toEqual([
+      { x: 3, y: 2 },
+      { x: 2, y: 2 },
+      { x: 1, y: 2 },
+      { x: 1, y: 3 },
+    ]);
   });
 
   it("preserves live queue positions and prepared orders across rerouting and undo", () => {
@@ -446,11 +473,51 @@ describe("coherent expansion boundaries and exits", () => {
     expect(getTile(result.state.map, { x: 10, y: 1 })).toBe("wall");
     expect(getTile(result.state.map, { x: 10, y: 2 })).toBe("floor");
     expect(getTile(result.state.map, { x: 1, y: 7 })).toBe("wall");
+    expect(getTile(result.state.map, { x: 0, y: 5 })).toBe("wall");
+    expect(getTile(result.state.map, { x: 7, y: 0 })).toBe("wall");
 
     const undone = dispatchCommand(result.state, { type: "undo" });
     expect(undone.accepted).toBe(true);
     expect(undone.state.exit).toEqual(initial.exit);
     expect(undone.state.map).toEqual(initial.map);
+  });
+
+  it("keeps stationary perimeter walls sealed across repeated expansions", () => {
+    const first = dispatchCommand(makeExpansionGame(), {
+      type: "expand-map",
+      addColumns: 3,
+      addRows: 2,
+    });
+    expect(first.accepted).toBe(true);
+    const second = dispatchCommand(first.state, {
+      type: "expand-map",
+      addColumns: 3,
+      addRows: 2,
+    });
+    expect(second.accepted).toBe(true);
+
+    for (let y = 0; y < second.state.map.height; y += 1) {
+      expect(getTile(second.state.map, { x: 0, y })).toBe(y === 2 ? "floor" : "wall");
+    }
+    for (let x = 0; x < second.state.map.width; x += 1) {
+      expect(getTile(second.state.map, { x, y: 0 })).toBe("wall");
+    }
+  });
+
+  it("repairs historical perimeter holes when loading a save", () => {
+    const initial = makeExpansionGame();
+    const save = JSON.parse(serializeGameState(initial)) as PersistentGameStateV3;
+    const tiles = [...save.map.tiles];
+    tiles[4 * save.map.width] = "floor";
+    const loaded = deserializeGameState(
+      { ...save, map: { ...save.map, tiles } },
+      TEST_CATALOG,
+      { config: initial.config },
+    );
+
+    expect(getTile(loaded.map, { x: 0, y: 4 })).toBe("wall");
+    expect(getTile(loaded.map, loaded.entrance)).toBe("floor");
+    expect(getTile(loaded.map, loaded.exit)).toBe("floor");
   });
 
   it("does not despawn an exiting customer at the former boundary after expansion", () => {

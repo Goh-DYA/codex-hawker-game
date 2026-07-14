@@ -27,6 +27,9 @@ test("server-renders the release game shell", async () => {
   assert.match(html, /data-testid="build-catalogue"/);
   assert.match(html, /Open centre/);
   assert.match(html, /Open settings/);
+  assert.match(html, /10×/);
+  assert.match(html, /Three ways to grow/);
+  assert.match(html, />Access</);
   assert.match(html, /manifest\.webmanifest/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/);
 });

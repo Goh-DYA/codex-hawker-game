@@ -31,6 +31,12 @@ import {
 } from "@/src/game/persistence/saveStore";
 import { registerPwa } from "@/src/game/pwa/registerPwa";
 import { utilityEffectsForPlaceable } from "@/src/game/runtime/contentUtility";
+import {
+  activityEntryMessage,
+  appendActivityEvent,
+  shouldShowPopup,
+  type ActivityEntry,
+} from "@/src/game/runtime/activityFeed";
 import { visualRecipeForPlaceable } from "@/src/game/runtime/visualRecipes";
 import type {
   BuildTool,
@@ -55,6 +61,8 @@ const INITIAL_SNAPSHOT: RuntimeSnapshot = {
   activeCustomers: 0,
   servedCustomers: 0,
   averageSatisfaction: 100,
+  hasSatisfactionRatings: false,
+  satisfactionTips: [],
   queuePressure: 0,
   queueFlowState: "good",
   queueFlowMessage: "No queues are forming and every stall approach is clear.",
@@ -71,6 +79,15 @@ const INITIAL_SNAPSHOT: RuntimeSnapshot = {
   canUndo: false,
   objectiveProgress: 0,
   objectiveTarget: 5,
+  objectives: [],
+  objectiveRefreshLabel: "8h 0m",
+  claimedMilestoneCount: 0,
+  milestoneTracks: [],
+  stallMastery: [],
+  accessPoints: [
+    { id: "entrance-1", kind: "entrance", position: { x: 0, y: 7 } },
+    { id: "exit-1", kind: "exit", position: { x: 23, y: 7 } },
+  ],
   expansionCount: 0,
   nextExpansionCost: 1_000,
   fps: 60,
@@ -84,13 +101,15 @@ const DEFAULT_SETTINGS: RuntimeSettings = {
   highContrast: false,
   textScale: 1,
   musicVolume: 0.32,
+  ambienceVolume: 0.24,
   sfxVolume: 0.55,
+  masterMuted: false,
 };
 
 function normalizeSettings(value: unknown): RuntimeSettings {
   if (!value || typeof value !== "object") return DEFAULT_SETTINGS;
   const record = value as Partial<Record<keyof RuntimeSettings, unknown>>;
-  const number = (key: "textScale" | "musicVolume" | "sfxVolume", fallback: number) =>
+  const number = (key: "textScale" | "musicVolume" | "ambienceVolume" | "sfxVolume", fallback: number) =>
     typeof record[key] === "number" && Number.isFinite(record[key])
       ? Number(record[key])
       : fallback;
@@ -106,12 +125,22 @@ function normalizeSettings(value: unknown): RuntimeSettings {
         : DEFAULT_SETTINGS.highContrast,
     textScale: Math.max(1, Math.min(1.35, number("textScale", 1))),
     musicVolume: Math.max(0, Math.min(1, number("musicVolume", 0.32))),
+    ambienceVolume: Math.max(0, Math.min(1, number("ambienceVolume", number("musicVolume", 0.24)))),
     sfxVolume: Math.max(0, Math.min(1, number("sfxVolume", 0.55))),
+    masterMuted: typeof record.masterMuted === "boolean" ? record.masterMuted : false,
   };
 }
 
-type Panel = "build" | "stalls" | "dishes" | "insights";
+type Panel = "build" | "stalls" | "dishes" | "insights" | "activity";
 type TutorialStep = 0 | 1 | 2 | 3 | 4 | 5;
+
+const PANEL_COPY: Readonly<Record<Panel, { kicker: string; title: string }>> = {
+  build: { kicker: "Build catalogue", title: "Make it yours" },
+  stalls: { kicker: "Food & drink", title: "Stalls" },
+  dishes: { kicker: "Menus", title: "Thirty dishes" },
+  insights: { kicker: "Why it happens", title: "Flow insights" },
+  activity: { kicker: "Recent events", title: "Activity" },
+};
 
 const subscribeToStaticValue = () => () => undefined;
 const getDebugSnapshot = () =>
@@ -295,6 +324,8 @@ export function HawkerSimulator() {
   const storageWarningRef = useRef(false);
   const audioWarningRef = useRef(false);
   const toastSequenceRef = useRef(0);
+  const activitySequenceRef = useRef(0);
+  const panelRef = useRef<Panel>("build");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tutorialDialogRef = useRef<HTMLElement>(null);
   const settingsDialogRef = useRef<HTMLElement>(null);
@@ -313,6 +344,8 @@ export function HawkerSimulator() {
   const [resetOpen, setResetOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<TutorialStep>(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [activityEntries, setActivityEntries] = useState<readonly ActivityEntry[]>([]);
+  const [activityUnread, setActivityUnread] = useState(0);
   const [online, setOnline] = useState(true);
   const [offlineReady, setOfflineReady] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
@@ -326,13 +359,23 @@ export function HawkerSimulator() {
   );
 
   const announce = useCallback((event: RuntimeEvent) => {
+    const activityId = ++activitySequenceRef.current;
+    setActivityEntries((current) => appendActivityEvent(current, event, activityId));
+    if (panelRef.current !== "activity") {
+      setActivityUnread((current) => Math.min(99, current + 1));
+    }
+    if (!shouldShowPopup(event)) return;
     const id = ++toastSequenceRef.current;
-    setToasts((current) => [...current.slice(-2), { ...event, id }]);
+    setToasts([{ ...event, id }]);
     window.setTimeout(
       () => setToasts((current) => current.filter((toast) => toast.id !== id)),
       event.kind === "error" ? 6_000 : 3_400,
     );
   }, []);
+
+  useEffect(() => {
+    panelRef.current = panel;
+  }, [panel]);
 
   const reportStorageIssue = useCallback(
     (message: string) => {
@@ -425,6 +468,11 @@ export function HawkerSimulator() {
               ...nextSnapshot,
               autosaveState: current.autosaveState,
             }));
+            audioRef.current?.setGameplayState(
+              nextSnapshot.isOpen,
+              nextSnapshot.activeCustomers,
+              nextSnapshot.queuePressure,
+            );
           },
           onEvent(event) {
             announce(event);
@@ -489,7 +537,13 @@ export function HawkerSimulator() {
     );
     controllerRef.current?.setQuality(settings.quality);
     controllerRef.current?.setReducedMotion(settings.reducedMotion);
-    audioRef.current?.setVolumes(settings.musicVolume, settings.sfxVolume);
+    audioRef.current?.setVoiceLimit(settings.quality === "standard" ? 16 : 8);
+    audioRef.current?.setVolumes(
+      settings.musicVolume,
+      settings.ambienceVolume,
+      settings.sfxVolume,
+      settings.masterMuted,
+    );
     void savePreference("settings", settings).catch(() =>
       reportStorageIssue("Preferences could not be saved on this device."),
     );
@@ -691,7 +745,7 @@ export function HawkerSimulator() {
       const payload = importSave(await file.text());
       controllerRef.current?.importState(payload);
       await performSave(payload);
-      announce({ kind: "success", message: "Save imported and checked." });
+      announce({ kind: "success", message: "Save imported and checked.", importance: "important" });
     } catch (error) {
       announce({
         kind: "error",
@@ -716,10 +770,6 @@ export function HawkerSimulator() {
     announce({ kind: "info", message: "A fresh centre is ready." });
   }
 
-  const objectivePercent = Math.min(
-    100,
-    (snapshot.objectiveProgress / Math.max(1, snapshot.objectiveTarget)) * 100,
-  );
   const tutorialCopy = TUTORIAL_COPY[Math.min(tutorialStep, 4)]!;
   const interfaceInert = tutorialStep < 5 || settingsOpen || helpOpen || resetOpen;
 
@@ -775,7 +825,7 @@ export function HawkerSimulator() {
             <strong>{snapshot.timeLabel}</strong>
           </div>
           <div className="speed-group" aria-label="Simulation speed">
-            {([0, 1, 2, 4] as const).map((speed) => (
+            {([0, 1, 2, 4, 10] as const).map((speed) => (
               <button
                 type="button"
                 key={speed}
@@ -812,16 +862,20 @@ export function HawkerSimulator() {
           <section className="objective-card">
             <div className="card-kicker">
               <span>Today&apos;s focus</span>
-              <span>First 5 guests</span>
+              <span>Refresh {snapshot.objectiveRefreshLabel}</span>
             </div>
-            <h2>Warm welcome</h2>
-            <p>Serve {snapshot.objectiveTarget} happy neighbours.</p>
-            <div className="objective-progress">
-              <span style={{ width: `${objectivePercent}%` }} />
+            <h2>Three ways to grow</h2>
+            <div className="objective-list">
+              {snapshot.objectives.map((objective) => (
+                <article key={objective.id} data-complete={objective.completed}>
+                  <strong>{objective.completed ? "✓ " : ""}{objective.title}</strong>
+                  <p>{objective.description}</p>
+                  <div className="objective-progress"><span style={{ width: `${Math.min(100, (objective.progress / Math.max(1, objective.target)) * 100)}%` }} /></div>
+                  <small>{Math.round(objective.progress)} / {objective.target} · ${objective.rewardCash} + {objective.rewardXp} XP</small>
+                </article>
+              ))}
+              {snapshot.objectives.length === 0 ? <small>Opening today&apos;s objective board…</small> : null}
             </div>
-            <small>
-              {snapshot.objectiveProgress} / {snapshot.objectiveTarget} complete
-            </small>
           </section>
 
           <section className="pulse-card">
@@ -845,7 +899,7 @@ export function HawkerSimulator() {
               </div>
               <div>
                 <dt>Happiness</dt>
-                <dd>{Math.round(snapshot.averageSatisfaction)}%</dd>
+                <dd>{snapshot.hasSatisfactionRatings ? `${Math.round(snapshot.averageSatisfaction)}%` : "—"}</dd>
               </div>
               <div>
                 <dt>Cleanliness</dt>
@@ -869,11 +923,13 @@ export function HawkerSimulator() {
         <section className="world-column" aria-label="Hawker centre map">
           <div className="world-toolbar">
             <div className="mode-pill">
-              <span className={snapshot.buildTool === "place" || snapshot.buildTool === "queue" ? "amber-dot" : "green-dot"} />
+              <span className={snapshot.buildTool === "place" || snapshot.buildTool === "queue" || snapshot.buildTool === "access" ? "amber-dot" : "green-dot"} />
               {snapshot.buildTool === "place"
                 ? "Build mode"
                 : snapshot.buildTool === "queue"
                   ? "Queue editor"
+                  : snapshot.buildTool === "access"
+                    ? "Access editor"
                   : snapshot.isOpen
                     ? "Centre open"
                     : "Planning mode"}
@@ -881,6 +937,8 @@ export function HawkerSimulator() {
             <div className="world-message" aria-live="polite">
               {snapshot.buildTool === "queue"
                 ? "Queue editor: choose adjacent clear tiles to bend the line; Escape finishes"
+                : snapshot.buildTool === "access"
+                  ? "Access editor: choose an entry or exit, then choose a boundary tile"
                 : selectedContent
                 ? `${localize(selectedContent.nameKey)} selected — choose a clear tile`
                 : snapshot.isOpen
@@ -899,6 +957,21 @@ export function HawkerSimulator() {
                   {tool === "select" ? "Select" : tool === "move" ? "Move" : "Remove"}
                 </button>
               ))}
+              <button
+                type="button"
+                aria-pressed={snapshot.buildTool === "access"}
+                className={snapshot.buildTool === "access" ? "is-active" : ""}
+                onClick={() => chooseTool(snapshot.buildTool === "access" ? "select" : "access")}
+              >
+                {snapshot.buildTool === "access" ? "Finish access" : "Access"}
+              </button>
+              {snapshot.buildTool === "access" ? (
+                <>
+                  <button type="button" onClick={() => controllerRef.current?.addAccessPoint("entrance")}>+ Entry</button>
+                  <button type="button" onClick={() => controllerRef.current?.addAccessPoint("exit")}>+ Exit</button>
+                  <button type="button" disabled={!snapshot.selectedAccessPointId} onClick={() => controllerRef.current?.removeSelectedAccessPoint()}>Remove access</button>
+                </>
+              ) : null}
               {snapshot.selectedObjectId && snapshot.selectedObjectDefinitionId?.startsWith("stall.") ? (
                 <button
                   type="button"
@@ -1009,16 +1082,22 @@ export function HawkerSimulator() {
           </div>
         </section>
 
-        <aside className="catalogue-panel" aria-label="Build catalogue">
+        <aside className="catalogue-panel" aria-label={`${PANEL_COPY[panel].title} panel`}>
           <div className="catalogue-heading">
             <div>
-              <span>{panel === "stalls" ? "Food & drink" : panel === "dishes" ? "Menus" : panel === "insights" ? "Why it happens" : "Build catalogue"}</span>
-              <h2>
-                {panel === "stalls" ? "Stalls" : panel === "dishes" ? "Thirty dishes" : panel === "insights" ? "Flow insights" : "Make it yours"}
-              </h2>
+              <span>{PANEL_COPY[panel].kicker}</span>
+              <h2>{PANEL_COPY[panel].title}</h2>
             </div>
             <span className="count-badge">
-              {panel === "stalls" ? STALLS.length : panel === "dishes" ? DISHES.length : panel === "insights" ? snapshot.activeCustomers : PLACEABLES.length}
+              {panel === "stalls"
+                ? STALLS.length
+                : panel === "dishes"
+                  ? DISHES.length
+                  : panel === "insights"
+                    ? snapshot.activeCustomers
+                    : panel === "activity"
+                      ? activityEntries.length
+                      : PLACEABLES.length}
             </span>
           </div>
 
@@ -1096,6 +1175,9 @@ export function HawkerSimulator() {
                         <small>
                           {placed.queueCount} queueing · {placed.customQueue ? "custom path" : `${placed.queueDirection} auto-line`}
                         </small>
+                        {snapshot.stallMastery.filter((mastery) => mastery.definitionId === placed.definitionId).map((mastery) => (
+                          <small key={mastery.definitionId}>Mastery rank {mastery.rank} · Upgrade {mastery.upgradeLevel}/4</small>
+                        ))}
                       </div>
                       <div className="queue-direction-group" aria-label={`${placed.name} queue direction`}>
                         {(["north", "east", "south", "west"] as const).map((direction) => (
@@ -1118,6 +1200,21 @@ export function HawkerSimulator() {
                           Bend line
                         </button>
                       </div>
+                      {snapshot.stallMastery.filter((mastery) => mastery.definitionId === placed.definitionId && mastery.nextUpgradeCost !== undefined).map((mastery) => (
+                        <button
+                          type="button"
+                          key={`upgrade-${mastery.definitionId}`}
+                          className="stall-upgrade-button"
+                          disabled={mastery.rank < (mastery.requiredRank ?? 1) || snapshot.cash < (mastery.nextUpgradeCost ?? 0)}
+                          onClick={() => controllerRef.current?.upgradeStall(mastery.definitionId)}
+                        >
+                          <span className="stall-upgrade-copy">
+                            Upgrade to level {mastery.upgradeLevel + 1}
+                            <small>Requires mastery rank {mastery.requiredRank}</small>
+                          </span>
+                          <strong>{money(mastery.nextUpgradeCost ?? 0)}</strong>
+                        </button>
+                      ))}
                     </article>
                   ))}
                 </section>
@@ -1170,10 +1267,13 @@ export function HawkerSimulator() {
               </label>
               {STALLS.filter((stall) => stall.id === menuStallId).map((stall) => {
                 const activeMenu = snapshot.stallMenus[stall.id] ?? [];
+                const mastery = snapshot.stallMastery.find((candidate) => candidate.definitionId === stall.id);
+                const upgrade = stall.upgradeLevels.find((candidate) => candidate.level === mastery?.upgradeLevel);
+                const menuSlots = stall.menuSlots + (upgrade?.menuSlotsBonus ?? 0);
                 return (
                   <div className="dish-list" key={stall.id}>
                     <p className="menu-capacity">
-                      {activeMenu.length} of {stall.menuSlots} menu slots active
+                      {activeMenu.length} of {menuSlots} menu slots active
                     </p>
                     {DISHES.filter((dish) => dish.stallIds.includes(stall.id)).map((dish) => {
                       const checked = activeMenu.includes(dish.id);
@@ -1192,7 +1292,7 @@ export function HawkerSimulator() {
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={gated || (!checked && activeMenu.length >= stall.menuSlots)}
+                            disabled={gated || (!checked && activeMenu.length >= menuSlots)}
                             aria-label={`Offer ${localize(dish.nameKey)}`}
                             onChange={(event) =>
                               controllerRef.current?.setDishEnabled(
@@ -1238,6 +1338,61 @@ export function HawkerSimulator() {
                 </div>
                 <em>{snapshot.freeSeats}/{snapshot.totalSeats}</em>
               </article>
+              <article data-state="good">
+                <span aria-hidden="true">★</span>
+                <div>
+                  <strong>Centre journey</strong>
+                  <p>{snapshot.claimedMilestoneCount} permanent milestones completed.</p>
+                  <dl className="milestone-progress-list">
+                    {snapshot.milestoneTracks.map((track) => (
+                      <div key={track.id}>
+                        <dt>{track.title} tier {track.tier}</dt>
+                        <dd>{Math.round(track.progress).toLocaleString()} / {track.target.toLocaleString()}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+                <em>{snapshot.claimedMilestoneCount}/16</em>
+              </article>
+              <article data-state={snapshot.hasSatisfactionRatings && snapshot.averageSatisfaction < 70 ? "warning" : "good"}>
+                <span aria-hidden="true">♥</span>
+                <div>
+                  <strong>Guest happiness</strong>
+                  <p>{snapshot.hasSatisfactionRatings ? `Recent completed visits average ${Math.round(snapshot.averageSatisfaction)}%.` : "Complete a visit to receive the first rating."}</p>
+                  {snapshot.satisfactionBreakdown ? (
+                    <dl className="happiness-breakdown" aria-label="Guest happiness factors">
+                      {[
+                        ["Food", snapshot.satisfactionBreakdown.foodQuality],
+                        ["Wait", snapshot.satisfactionBreakdown.wait],
+                        ["Value", snapshot.satisfactionBreakdown.value],
+                        ["Walking", snapshot.satisfactionBreakdown.walking],
+                        ["Comfort", snapshot.satisfactionBreakdown.comfort],
+                        ["Cleanliness", snapshot.satisfactionBreakdown.cleanliness],
+                        ["Ambience", snapshot.satisfactionBreakdown.ambience],
+                      ].map(([label, value]) => (
+                        <div key={label}>
+                          <dt>{label}</dt>
+                          <dd>{Math.round(Number(value))}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                  {snapshot.satisfactionTips.length ? (
+                    <div className="happiness-advice">
+                      <b>Ways to improve</b>
+                      <ul>
+                        {snapshot.satisfactionTips.map((tip) => (
+                          <li key={tip.factor}>
+                            <strong>{tip.label} · {Math.round(tip.score)}</strong>
+                            <span>{tip.action}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+                <em>{snapshot.hasSatisfactionRatings ? `${Math.round(snapshot.averageSatisfaction)}%` : "—"}</em>
+              </article>
               <article data-state={snapshot.trayReturnStations === 0 || snapshot.cleanliness < 70 ? "warning" : "good"}>
                 <span aria-hidden="true">↺</span>
                 <div>
@@ -1277,7 +1432,49 @@ export function HawkerSimulator() {
             </div>
           ) : null}
 
-          {selectedContent ? (
+          {panel === "activity" ? (
+            <div className="activity-panel">
+              <div className="activity-toolbar">
+                <span>Latest first · routine events stay here</span>
+                <button
+                  type="button"
+                  disabled={activityEntries.length === 0}
+                  onClick={() => {
+                    setActivityEntries([]);
+                    setActivityUnread(0);
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+              {activityEntries.length === 0 ? (
+                <div className="activity-empty">
+                  <span aria-hidden="true">◎</span>
+                  <strong>No activity yet</strong>
+                  <p>Sales, build actions and centre updates will appear here.</p>
+                </div>
+              ) : (
+                <div className="activity-list">
+                  {activityEntries.map((entry) => (
+                    <article key={entry.id} data-kind={entry.kind} data-importance={entry.importance ?? "routine"}>
+                      <span aria-hidden="true">
+                        {entry.kind === "success" ? "✓" : entry.kind === "warning" ? "!" : entry.kind === "error" ? "×" : "i"}
+                      </span>
+                      <div>
+                        <strong>
+                          {entry.kind === "success" ? "Completed" : entry.kind === "warning" ? "Attention" : entry.kind === "error" ? "Problem" : "Update"}
+                        </strong>
+                        <p>{activityEntryMessage(entry)}</p>
+                      </div>
+                      {entry.count > 1 ? <em>×{entry.count}</em> : null}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {selectedContent && panel !== "activity" ? (
             <div className="selection-card">
               <button
                 type="button"
@@ -1325,6 +1522,7 @@ export function HawkerSimulator() {
             ["stalls", "▰", "Stalls"],
             ["dishes", "◉", "Dishes"],
             ["insights", "⌁", "Insights"],
+            ["activity", "◷", "Activity"],
           ] as const
         ).map(([value, icon, label]) => (
           <button
@@ -1332,10 +1530,17 @@ export function HawkerSimulator() {
             key={value}
             className={panel === value ? "is-active" : ""}
             aria-current={panel === value ? "page" : undefined}
-            onClick={() => setPanel(value)}
+            aria-label={value === "activity" && activityUnread > 0 ? `Activity, ${activityUnread} unread` : label}
+            onClick={() => {
+              setPanel(value);
+              if (value === "activity") setActivityUnread(0);
+            }}
           >
             <span aria-hidden="true">{icon}</span>
             {label}
+            {value === "activity" && activityUnread > 0 ? (
+              <i className="dock-unread" aria-hidden="true">{activityUnread}</i>
+            ) : null}
           </button>
         ))}
         <span className="dock-divider" />
@@ -1455,7 +1660,9 @@ export function HawkerSimulator() {
               </fieldset>
               <fieldset>
                 <legend>Audio</legend>
-                <label>Ambient volume <strong>{Math.round(settings.musicVolume * 100)}%</strong><input type="range" min="0" max="1" step="0.05" value={settings.musicVolume} onChange={(event) => setSettings((current) => ({ ...current, musicVolume: Number(event.target.value) }))} /></label>
+                <label className="switch-row"><span><strong>Mute all audio</strong></span><input type="checkbox" checked={settings.masterMuted} onChange={(event) => setSettings((current) => ({ ...current, masterMuted: event.target.checked }))} /></label>
+                <label>Music volume <strong>{Math.round(settings.musicVolume * 100)}%</strong><input type="range" min="0" max="1" step="0.05" value={settings.musicVolume} onChange={(event) => setSettings((current) => ({ ...current, musicVolume: Number(event.target.value) }))} /></label>
+                <label>Ambience volume <strong>{Math.round(settings.ambienceVolume * 100)}%</strong><input type="range" min="0" max="1" step="0.05" value={settings.ambienceVolume} onChange={(event) => setSettings((current) => ({ ...current, ambienceVolume: Number(event.target.value) }))} /></label>
                 <label>Effects volume <strong>{Math.round(settings.sfxVolume * 100)}%</strong><input type="range" min="0" max="1" step="0.05" value={settings.sfxVolume} onChange={(event) => setSettings((current) => ({ ...current, sfxVolume: Number(event.target.value) }))} /></label>
               </fieldset>
               <fieldset>

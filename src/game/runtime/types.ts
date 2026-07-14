@@ -1,9 +1,38 @@
-import type { QueueDirection } from "@/src/game/core";
+import type { AccessPoint, QueueDirection, VisitRatingComponents } from "@/src/game/core";
+import type { SatisfactionTip } from "./satisfactionInsight";
 import type { QueueFlowState } from "./queueInsight";
 
 export type QualityMode = "standard" | "lower-end";
-export type GameSpeed = 0 | 1 | 2 | 4;
-export type BuildTool = "select" | "place" | "move" | "remove" | "queue";
+export type GameSpeed = 0 | 1 | 2 | 4 | 10;
+export type BuildTool = "select" | "place" | "move" | "remove" | "queue" | "access";
+
+export interface RuntimeObjective {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly progress: number;
+  readonly target: number;
+  readonly rewardCash: number;
+  readonly rewardXp: number;
+  readonly completed: boolean;
+}
+
+export interface RuntimeStallMastery {
+  readonly definitionId: string;
+  readonly points: number;
+  readonly rank: number;
+  readonly upgradeLevel: 1 | 2 | 3 | 4;
+  readonly nextUpgradeCost?: number;
+  readonly requiredRank?: number;
+}
+
+export interface RuntimeMilestoneTrack {
+  readonly id: string;
+  readonly title: string;
+  readonly tier: number;
+  readonly progress: number;
+  readonly target: number;
+}
 
 export interface RuntimeStallSummary {
   readonly objectId: string;
@@ -29,6 +58,9 @@ export interface RuntimeSnapshot {
   activeCustomers: number;
   servedCustomers: number;
   averageSatisfaction: number;
+  hasSatisfactionRatings: boolean;
+  satisfactionBreakdown?: VisitRatingComponents;
+  satisfactionTips: readonly SatisfactionTip[];
   queuePressure: number;
   queueFlowState: QueueFlowState;
   queueFlowMessage: string;
@@ -46,6 +78,13 @@ export interface RuntimeSnapshot {
   canUndo: boolean;
   objectiveProgress: number;
   objectiveTarget: number;
+  objectives: readonly RuntimeObjective[];
+  objectiveRefreshLabel: string;
+  claimedMilestoneCount: number;
+  milestoneTracks: readonly RuntimeMilestoneTrack[];
+  stallMastery: readonly RuntimeStallMastery[];
+  accessPoints: readonly AccessPoint[];
+  selectedAccessPointId?: string;
   expansionCount: number;
   nextExpansionCost: number;
   fps: number;
@@ -57,6 +96,9 @@ export interface RuntimeSnapshot {
 export interface RuntimeEvent {
   kind: "info" | "success" | "warning" | "error";
   message: string;
+  importance?: "routine" | "important";
+  groupKey?: string;
+  amount?: number;
 }
 
 export interface RuntimeSettings {
@@ -65,7 +107,9 @@ export interface RuntimeSettings {
   highContrast: boolean;
   textScale: number;
   musicVolume: number;
+  ambienceVolume: number;
   sfxVolume: number;
+  masterMuted: boolean;
 }
 
 export interface RuntimeController {
@@ -91,6 +135,10 @@ export interface RuntimeController {
   setQueueDirection(objectId: string, direction: QueueDirection): boolean;
   finishQueueEdit(): void;
   setDishEnabled(stallId: string, dishId: string, enabled: boolean): boolean;
+  addAccessPoint(kind: AccessPoint["kind"]): void;
+  selectAccessPoint(accessPointId?: string): void;
+  removeSelectedAccessPoint(): boolean;
+  upgradeStall(definitionId: string): boolean;
 }
 
 export interface RuntimeOptions {

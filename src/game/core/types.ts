@@ -5,6 +5,14 @@ export interface GridPoint {
   readonly y: number;
 }
 
+export type AccessPointKind = "entrance" | "exit";
+
+export interface AccessPoint {
+  readonly id: string;
+  readonly kind: AccessPointKind;
+  readonly position: GridPoint;
+}
+
 export interface WorldPoint {
   readonly x: number;
   readonly y: number;
@@ -47,6 +55,17 @@ export interface StallDefinition {
   readonly queueCapacity: number;
   readonly popularity: number;
   readonly quality: number;
+  readonly menuSlots?: number;
+  readonly upgradeLevels?: readonly StallUpgradeDefinition[];
+}
+
+export interface StallUpgradeDefinition {
+  readonly level: 2 | 3 | 4;
+  readonly cost: number;
+  readonly serviceTimeMultiplier: number;
+  readonly capacityBonus: number;
+  readonly qualityBonus: number;
+  readonly menuSlotsBonus: number;
 }
 
 export interface UtilityEffects {
@@ -150,6 +169,11 @@ export interface Customer {
   readonly visitElapsedMs: number;
   readonly patienceRemainingMs: number;
   readonly satisfaction: number;
+  readonly sourceEntranceId?: string;
+  readonly targetExitId?: string;
+  readonly servedStallDefinitionId?: string;
+  readonly ratingFactors?: Partial<VisitRatingComponents>;
+  readonly ratingSettled?: boolean;
   readonly targetStallId?: string;
   readonly orderedDishId?: string;
   readonly reservedSeatKey?: string;
@@ -159,6 +183,49 @@ export interface Customer {
   readonly served: boolean;
   readonly spent: number;
   readonly stuckMs: number;
+}
+
+export interface VisitRatingComponents {
+  readonly foodQuality: number;
+  readonly wait: number;
+  readonly value: number;
+  readonly walking: number;
+  readonly comfort: number;
+  readonly cleanliness: number;
+  readonly ambience: number;
+}
+
+export interface VisitRating {
+  readonly customerId: string;
+  readonly score: number;
+  readonly served: boolean;
+  readonly abandoned: boolean;
+  readonly reason: string;
+  readonly stallDefinitionId?: string;
+  readonly components: VisitRatingComponents;
+  readonly day: number;
+}
+
+export type ObjectiveKind = "serve" | "revenue" | "happiness" | "flow" | "variety" | "facility";
+
+export interface DailyObjective {
+  readonly id: string;
+  readonly day: number;
+  readonly kind: ObjectiveKind;
+  readonly title: string;
+  readonly description: string;
+  readonly target: number;
+  readonly progress: number;
+  readonly startValue: number;
+  readonly rewardCash: number;
+  readonly rewardXp: number;
+  readonly completed: boolean;
+}
+
+export interface StallMasteryState {
+  readonly points: number;
+  readonly rank: number;
+  readonly upgradeLevel: 1 | 2 | 3 | 4;
 }
 
 export interface EconomyState {
@@ -175,6 +242,10 @@ export interface ProgressionState {
   readonly reputation: number;
   readonly unlockedDefinitionIds: readonly string[];
   readonly expansionCount: number;
+  readonly focusDay: number;
+  readonly dailyObjectives: readonly DailyObjective[];
+  readonly claimedMilestoneIds: readonly string[];
+  readonly stallMastery: Readonly<Record<string, StallMasteryState>>;
 }
 
 export interface SimulationMetrics {
@@ -184,10 +255,13 @@ export interface SimulationMetrics {
   readonly pathRequests: number;
   readonly pathFailures: number;
   readonly recoveredTargets: number;
+  readonly trayReturns: number;
+  readonly visitRatings: readonly VisitRating[];
 }
 
 export interface QualitySettings {
-  readonly maxActiveCustomers: number;
+  /** @deprecated Ignored; arrival demand no longer uses a fixed customer ceiling. */
+  readonly maxActiveCustomers?: number;
   readonly maxFixedStepsPerAdvance: number;
 }
 
@@ -221,7 +295,10 @@ export interface SimulationEvent {
     | "customer-despawned"
     | "sale-completed"
     | "level-up"
-    | "target-recovered";
+    | "target-recovered"
+    | "objective-completed"
+    | "milestone-completed"
+    | "stall-upgraded";
   readonly tick: number;
   readonly entityId?: string;
   readonly message?: string;
@@ -230,6 +307,7 @@ export interface SimulationEvent {
 
 export interface UndoSnapshot {
   readonly map: GridMap;
+  readonly accessPoints: readonly AccessPoint[];
   readonly entrance: GridPoint;
   readonly exit: GridPoint;
   readonly objects: Readonly<Record<string, PlacedObject>>;
@@ -249,8 +327,10 @@ export interface UndoEntry {
 }
 
 export interface GameState {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
   readonly map: GridMap;
+  readonly accessPoints: readonly AccessPoint[];
+  /** Compatibility aliases for callers that have not migrated to accessPoints. */
   readonly entrance: GridPoint;
   readonly exit: GridPoint;
   readonly catalog: SimulationCatalog;
@@ -268,6 +348,7 @@ export interface GameState {
   readonly accumulatorMs: number;
   readonly tick: number;
   readonly elapsedMs: number;
+  readonly arrivalPerformancePressure: number;
   readonly undoStack: readonly UndoEntry[];
   readonly metrics: SimulationMetrics;
   readonly events: readonly SimulationEvent[];
@@ -275,8 +356,9 @@ export interface GameState {
 
 export interface NewGameOptions {
   readonly map: GridMap;
-  readonly entrance: GridPoint;
-  readonly exit: GridPoint;
+  readonly entrance?: GridPoint;
+  readonly exit?: GridPoint;
+  readonly accessPoints?: readonly AccessPoint[];
   readonly catalog: SimulationCatalog;
   readonly seed?: number | string;
   readonly startingCurrency?: number;
@@ -331,6 +413,27 @@ export interface SetStallQueueDirectionCommand {
   readonly direction: QueueDirection;
 }
 
+export interface AddAccessPointCommand {
+  readonly type: "add-access-point";
+  readonly accessPoint: AccessPoint;
+}
+
+export interface MoveAccessPointCommand {
+  readonly type: "move-access-point";
+  readonly accessPointId: string;
+  readonly position: GridPoint;
+}
+
+export interface RemoveAccessPointCommand {
+  readonly type: "remove-access-point";
+  readonly accessPointId: string;
+}
+
+export interface UpgradeStallCommand {
+  readonly type: "upgrade-stall";
+  readonly definitionId: string;
+}
+
 export type BuildCommand =
   | PlaceObjectCommand
   | MoveObjectCommand
@@ -338,13 +441,17 @@ export type BuildCommand =
   | RemoveObjectCommand
   | ExpandMapCommand
   | ConfigureQueueCommand
-  | SetStallQueueDirectionCommand;
+  | SetStallQueueDirectionCommand
+  | AddAccessPointCommand
+  | MoveAccessPointCommand
+  | RemoveAccessPointCommand;
 
 export type GameCommand =
   | BuildCommand
   | { readonly type: "undo" }
   | { readonly type: "set-stall-open"; readonly objectId: string; readonly open: boolean }
-  | { readonly type: "set-quality-mode"; readonly mode: QualityMode };
+  | { readonly type: "set-quality-mode"; readonly mode: QualityMode }
+  | UpgradeStallCommand;
 
 export interface CommandResult {
   readonly state: GameState;
@@ -361,10 +468,11 @@ export interface AdvanceResult {
 }
 
 export interface GameSnapshot {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
   readonly tick: number;
   readonly elapsedMs: number;
   readonly map: GridMap;
+  readonly accessPoints: readonly AccessPoint[];
   readonly qualityMode: QualityMode;
   readonly entrance: GridPoint;
   readonly exit: GridPoint;
@@ -395,6 +503,21 @@ export interface PersistentGameStateV2 {
   readonly elapsedMs: number;
 }
 
+export interface PersistentGameStateV3 {
+  readonly schemaVersion: 3;
+  readonly savedAtTick: number;
+  readonly map: GridMap;
+  readonly accessPoints: readonly AccessPoint[];
+  readonly qualityMode: QualityMode;
+  readonly objects: readonly PlacedObject[];
+  readonly economy: EconomyState;
+  readonly progression: ProgressionState;
+  readonly metrics: Pick<SimulationMetrics, "trayReturns" | "visitRatings">;
+  readonly rngState: number;
+  readonly nextCustomerSequence: number;
+  readonly elapsedMs: number;
+}
+
 export interface PersistentGameStateV1 {
   readonly schemaVersion: 1;
   readonly map: GridMap;
@@ -407,4 +530,4 @@ export interface PersistentGameStateV1 {
   readonly seed: number;
 }
 
-export type AnyPersistentGameState = PersistentGameStateV1 | PersistentGameStateV2;
+export type AnyPersistentGameState = PersistentGameStateV1 | PersistentGameStateV2 | PersistentGameStateV3;

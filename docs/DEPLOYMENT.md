@@ -67,16 +67,17 @@ Use `hawker-simulator-gohdya` in the two project commands if the preferred name 
 1. Open the account menu and select **Account Settings > Tokens**. For a team-owned project, choose the correct team scope when creating the token.
 2. Create a token named `github-actions-hawker-simulator`.
 3. Copy it once into a password manager. Do not put it in `.env`, documentation, chat, or the repository.
-4. Read `.vercel/project.json` after linking the project. Record `orgId` and `projectId`; never substitute the Sites `project_id` from `.openai/hosting.json`.
+4. Run the following commands
+    ```powershell
+    cd C:\Users\Adison\Documents\Github\codex-hawker-game
+    npx.cmd --yes vercel@55.0.0 login
+
+    npx --yes vercel@55.0.0 link --yes --project hawker-simulator
+    Get-Content .vercel\project.json
+    ```
+5. Read `.vercel/project.json` after linking the project. Record `orgId` and `projectId`; never substitute the Sites `project_id` from `.openai/hosting.json`.
 
 Expected result: you have three values ready for GitHub: the token, Vercel organization ID, and Vercel project ID.
-
-CLI alternative for linking and displaying the IDs:
-
-```powershell
-npx --yes vercel@55.0.0 link --yes --project hawker-simulator
-Get-Content .vercel\project.json
-```
 
 ### 3. Add GitHub Actions secrets and the production URL
 
@@ -88,9 +89,16 @@ Get-Content .vercel\project.json
    - `VERCEL_ORG_ID`
    - `VERCEL_PROJECT_ID`
 3. On **Variables**, create `VERCEL_PRODUCTION_URL` with the complete HTTPS origin and no trailing path, for example `https://hawker-simulator.vercel.app`.
-4. If Vercel Deployment Protection is enabled, also create the optional secret `VERCEL_AUTOMATION_BYPASS_SECRET` using the bypass value configured in Vercel. Do not create it when deployment protection is disabled.
+4. Configure the automation bypass when Preview or staged deployments are protected:
+   1. In Vercel, open the Hawker Simulator project and select **Settings > Deployment Protection**.
+   2. Check whether Vercel Authentication, Password Protection, or Trusted IPs applies to **Preview Deployments** or **All Deployments**. If none of these protections applies to the URLs tested by this workflow, skip the remaining substeps and do not create `VERCEL_AUTOMATION_BYPASS_SECRET`.
+   3. Under **Protection Bypass for Automation**, create a dedicated bypass secret named for this workflow, such as `github-actions-hawker-simulator`.
+   4. Copy the generated value when Vercel displays it. Treat it as a credential: do not put it in the repository, workflow YAML, issue comments, pull-request comments, screenshots, or command output.
+   5. In GitHub, return to **Repository > Settings > Secrets and variables > Actions**, select **New repository secret**, enter `VERCEL_AUTOMATION_BYPASS_SECRET` as the exact name, paste the Vercel bypass value, and save it.
+   6. Rerun the failed **Deploy Vercel preview** job. The smoke script reads this GitHub secret and sends it in the `x-vercel-protection-bypass` request header so the check reaches the Hawker Simulator instead of Vercel's authentication page.
+   7. If the bypass value is regenerated or revoked in Vercel, replace the GitHub secret immediately and rerun the deployment workflow. Never keep an obsolete value as a second repository secret.
 
-Expected result: repository settings display the names, but never reveal the stored secret values.
+Expected result: repository settings display the required secret names and production variable without revealing their values. Protected projects also display `VERCEL_AUTOMATION_BYPASS_SECRET`, and a rerun of the Preview smoke check reaches the application shell rather than Vercel's protection page.
 
 GitHub CLI alternative (each secret command reads the value securely from standard input):
 

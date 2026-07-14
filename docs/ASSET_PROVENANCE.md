@@ -17,7 +17,7 @@ All shipped art and audio must be original and reproducible from repository sour
 | App icon | Repository-authored SVG | public/icons/icon.svg | Project-original; final visual review pending | Present |
 | Social share card | OpenAI ImageGen, one generation on 2026-07-12; top-down fictional hawker-centre prompt specifying the project palette, diverse diners, communal tables, tray return, exact project title/tagline, and no brands, logos, landmark imitation, flags, or watermarks | public/og.png | Project-original generated asset subject to applicable OpenAI service terms | Present; human similarity/brand/cultural review pending |
 | Environment/background | Original Community Courtyard kit | Canvas geometry | Project-original | Implemented; visual review pending |
-| Audio cues/ambience | Repository-authored Web Audio synthesis | Web Audio nodes | Project-original | Implemented; browser/audio review pending |
+| Adaptive music, ambience, and audio cues | Repository-authored deterministic synthesis in `src/game/audio/AudioDirector.ts`; filtered oscillators, seeded phrase cycle, state-aware layers, and bounded gain buses | Web Audio nodes generated at runtime; no recorded or downloaded assets | Project-original | Implemented; automated lifecycle checks and human browser/peak-level review pending |
 | Fonts | System font stack | No bundled font | Platform-provided | Implemented |
 | Dependencies | npm lockfile packages | Bundled code | See THIRD_PARTY_NOTICES.md and package license files | Locked; final production-only and all-dependencies npm audits report 0 vulnerabilities; legal review pending |
 

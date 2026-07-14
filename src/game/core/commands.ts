@@ -1,12 +1,16 @@
 import { applyPurchase, applyRefund, calculateExpansionCost, calculateRefund, canAfford } from "./economy";
 import {
   expandGridMap,
+  getBlockedTileKeys,
   getSeatLocations,
+  isInBounds,
+  normalizeBoundaryOpenings,
   normalizeRotation,
   projectExpandedBoundaryPoint,
   validatePlacement,
+  withTile,
 } from "./grid";
-import { validateWorldNavigation } from "./pathfinding";
+import { validateWorldNavigationAccess } from "./pathfinding";
 import {
   getStallQueueCells,
   planStallQueueLayouts,
@@ -24,6 +28,8 @@ import type {
   Rotation,
   SimulationEvent,
   UndoSnapshot,
+  AccessPoint,
+  GridMap,
 } from "./types";
 
 const MAX_UNDO_ENTRIES = 20;
@@ -53,7 +59,10 @@ function isBuildCommand(command: GameCommand): command is BuildCommand {
     command.type === "remove-object" ||
     command.type === "expand-map" ||
     command.type === "configure-queue" ||
-    command.type === "set-stall-queue-direction"
+    command.type === "set-stall-queue-direction" ||
+    command.type === "add-access-point" ||
+    command.type === "move-access-point" ||
+    command.type === "remove-access-point"
   );
 }
 
@@ -80,7 +89,20 @@ function nextAllowedRotation(current: Rotation, allowed: readonly Rotation[], cl
 }
 
 function navigationError(state: GameState, objects: Readonly<Record<string, PlacedObject>>): string | undefined {
-  return validateWorldNavigation(state.map, state.entrance, state.exit, objects, state.catalog);
+  return validateWorldNavigationAccess(state.map, state.accessPoints, objects, state.catalog);
+}
+
+const accessPositions = (state: Pick<GameState, "accessPoints">) => state.accessPoints.map((point) => point.position);
+
+function withAccessAliases(state: GameState, map: GridMap, accessPoints: readonly AccessPoint[]): GameState {
+  const entrance = accessPoints.find((point) => point.kind === "entrance")?.position;
+  const exit = accessPoints.find((point) => point.kind === "exit")?.position;
+  if (!entrance || !exit) throw new RangeError("At least one entrance and one exit are required");
+  return { ...state, map, accessPoints, entrance: { ...entrance }, exit: { ...exit } };
+}
+
+function isBoundaryPoint(map: GridMap, point: { x: number; y: number }): boolean {
+  return isInBounds(map, point) && (point.x === 0 || point.y === 0 || point.x === map.width - 1 || point.y === map.height - 1);
 }
 
 function clearNavigation(customer: Customer): Customer {
@@ -204,7 +226,7 @@ function reconcileWorldGeometryChange(
     state.map,
     objects,
     state.catalog,
-    [state.entrance, state.exit],
+    accessPositions(state),
   );
   const queues = { ...reconciled.queues };
   const customers = { ...reconciled.customers };
@@ -248,6 +270,7 @@ function restoreUndoSnapshot(state: GameState, entry: GameState["undoStack"][num
   const world = {
     ...state,
     map: snapshot.map,
+    accessPoints: snapshot.accessPoints,
     entrance: snapshot.entrance,
     exit: snapshot.exit,
     objects: snapshot.objects,
@@ -277,6 +300,7 @@ function restoreUndoSnapshot(state: GameState, entry: GameState["undoStack"][num
   return {
     ...state,
     map: snapshot.map,
+    accessPoints: snapshot.accessPoints,
     entrance: snapshot.entrance,
     exit: snapshot.exit,
     objects: snapshot.objects,
@@ -321,6 +345,30 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     return accept({ ...state, qualityMode: command.mode }, [commandEvent(state, true)]);
   }
 
+  if (command.type === "upgrade-stall") {
+    const definition = state.catalog.placeables[command.definitionId];
+    if (!definition?.stall) return reject(state, "Stall definition does not exist");
+    const mastery = state.progression.stallMastery[command.definitionId] ?? { points: 0, rank: 1, upgradeLevel: 1 as const };
+    const nextLevel = (mastery.upgradeLevel + 1) as 2 | 3 | 4 | 5;
+    if (nextLevel > 4) return reject(state, "This stall is fully upgraded");
+    const requiredRank = ({ 2: 2, 3: 4, 4: 7 } as const)[nextLevel as 2 | 3 | 4];
+    if (mastery.rank < requiredRank) return reject(state, `Mastery rank ${requiredRank} is required`);
+    const upgrade = definition.stall.upgradeLevels?.find((candidate) => candidate.level === nextLevel);
+    if (!upgrade) return reject(state, "This stall has no authored upgrade at that level");
+    if (!canAfford(state.economy, upgrade.cost)) return reject(state, "Insufficient currency");
+    const progression = {
+      ...state.progression,
+      stallMastery: {
+        ...state.progression.stallMastery,
+        [command.definitionId]: { ...mastery, upgradeLevel: nextLevel as 2 | 3 | 4 },
+      },
+    };
+    return accept(
+      { ...state, economy: applyPurchase(state.economy, upgrade.cost), progression },
+      [commandEvent(state, true, `Upgraded ${command.definitionId} to level ${nextLevel}`)],
+    );
+  }
+
   if (command.type === "set-stall-open") {
     const object = state.objects[command.objectId];
     const definition = object ? state.catalog.placeables[object.definitionId] : undefined;
@@ -339,6 +387,58 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
 
   if (!isBuildCommand(command)) return reject(state, "Unsupported command");
   const before = captureUndoSnapshot(state);
+
+  if (
+    command.type === "add-access-point" ||
+    command.type === "move-access-point" ||
+    command.type === "remove-access-point"
+  ) {
+    let accessPoints = state.accessPoints.map((point) => ({ ...point, position: { ...point.position } }));
+    let map = state.map;
+    if (command.type === "add-access-point") {
+      const point = command.accessPoint;
+      if (!isValidSimulationId(point.id)) return reject(state, "Access point id must be a non-empty safe ID");
+      if (point.kind !== "entrance" && point.kind !== "exit") return reject(state, "Unknown access point kind");
+      if (accessPoints.some((candidate) => candidate.id === point.id)) return reject(state, "Access point id already exists");
+      if (!isBoundaryPoint(map, point.position)) return reject(state, "Access points must be on the map boundary");
+      if (accessPoints.some((candidate) => candidate.position.x === point.position.x && candidate.position.y === point.position.y)) {
+        return reject(state, "Access points cannot overlap");
+      }
+      if (getBlockedTileKeys(state.objects, state.catalog).has(`${point.position.x},${point.position.y}`)) {
+        return reject(state, "An object occupies that boundary tile");
+      }
+      map = withTile(map, point.position, "floor");
+      accessPoints = [...accessPoints, { ...point, position: { ...point.position } }];
+    } else {
+      const index = accessPoints.findIndex((point) => point.id === command.accessPointId);
+      if (index < 0) return reject(state, "Access point does not exist");
+      const current = accessPoints[index]!;
+      if (command.type === "remove-access-point") {
+        if (accessPoints.filter((point) => point.kind === current.kind).length <= 1) {
+          return reject(state, `At least one ${current.kind} must remain`);
+        }
+        accessPoints.splice(index, 1);
+        map = withTile(map, current.position, "wall");
+      } else {
+        if (!isBoundaryPoint(map, command.position)) return reject(state, "Access points must be on the map boundary");
+        if (accessPoints.some((candidate, candidateIndex) => candidateIndex !== index && candidate.position.x === command.position.x && candidate.position.y === command.position.y)) {
+          return reject(state, "Access points cannot overlap");
+        }
+        if (getBlockedTileKeys(state.objects, state.catalog).has(`${command.position.x},${command.position.y}`)) {
+          return reject(state, "An object occupies that boundary tile");
+        }
+        map = withTile(withTile(map, current.position, "wall"), command.position, "floor");
+        accessPoints[index] = { ...current, position: { ...command.position } };
+      }
+    }
+    const routeError = validateWorldNavigationAccess(map, accessPoints, state.objects, state.catalog);
+    if (routeError) return reject(state, routeError);
+    const world = withAccessAliases(state, map, accessPoints);
+    const reconciled = reconcileWorldGeometryChange(world, state.objects);
+    const customers = Object.fromEntries(Object.entries(reconciled.customers).map(([id, customer]) => [id, { ...customer, targetExitId: undefined }]));
+    const next = withUndo({ ...world, ...reconciled, customers }, command, before);
+    return accept(next, [commandEvent(state, true, command.type)]);
+  }
 
   if (command.type === "place-object") {
     if (!isValidSimulationId(command.objectId)) return reject(state, "Object id must be a non-empty safe ID");
@@ -361,7 +461,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       open: definition.kind === "stall",
     };
     const validation = validatePlacement(state.map, state.objects, state.catalog, object, {
-      reservedPoints: [state.entrance, state.exit],
+      reservedPoints: accessPositions(state),
     });
     if (!validation.valid) return reject(state, validation.reasons.join("; "));
     const objects = { ...state.objects, [object.id]: object };
@@ -392,20 +492,20 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     } catch (error) {
       return reject(state, error instanceof Error ? error.message : "Invalid expansion");
     }
-    const entrance = projectExpandedBoundaryPoint(state.entrance, state.map, command.addColumns, command.addRows);
-    const exit = projectExpandedBoundaryPoint(state.exit, state.map, command.addColumns, command.addRows);
-    const routeError = validateWorldNavigation(map, entrance, exit, state.objects, state.catalog);
+    const accessPoints = state.accessPoints.map((point) => ({
+      ...point,
+      position: projectExpandedBoundaryPoint(point.position, state.map, command.addColumns, command.addRows),
+    }));
+    map = normalizeBoundaryOpenings(map, accessPoints.map((point) => point.position));
+    const routeError = validateWorldNavigationAccess(map, accessPoints, state.objects, state.catalog);
     if (routeError) return reject(state, routeError);
     const cost = calculateExpansionCost(state.map, state.progression, state.config, command.addColumns, command.addRows);
     if (!canAfford(state.economy, cost)) return reject(state, "Insufficient currency");
-    const expandedState: GameState = {
+    const expandedState: GameState = withAccessAliases({
       ...state,
-      map,
-      entrance,
-      exit,
       economy: applyPurchase(state.economy, cost),
       progression: { ...state.progression, expansionCount: state.progression.expansionCount + 1 },
-    };
+    }, map, accessPoints);
     const reconciled = reconcileWorldGeometryChange(expandedState, state.objects);
     const next = withUndo(
       { ...expandedState, ...reconciled },
@@ -432,7 +532,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       state.catalog,
       updated,
       updated.queuePath,
-      [state.entrance, state.exit],
+      accessPositions(state),
     );
     if (!validation.valid) return reject(state, validation.reasons.join("; "));
     const objects = { ...state.objects, [existing.id]: updated };
@@ -441,7 +541,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       objects,
       state.catalog,
       updated,
-      [state.entrance, state.exit],
+      accessPositions(state),
     );
     if (queueCells.length === 0) return reject(state, "The configured queue conflicts with another stall or portal");
     const reconciled = reconcileWorldGeometryChange(state, objects);
@@ -463,7 +563,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       objects,
       state.catalog,
       updated,
-      [state.entrance, state.exit],
+      accessPositions(state),
     );
     if (queueCells.length === 0) return reject(state, "The queue anchor is not traversable in that layout");
     const reconciled = reconcileWorldGeometryChange(state, objects);
@@ -519,7 +619,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
   }
   const validation = validatePlacement(state.map, state.objects, state.catalog, updated, {
     ignoreObjectId: existing.id,
-    reservedPoints: [state.entrance, state.exit],
+    reservedPoints: accessPositions(state),
   });
   if (!validation.valid) return reject(state, validation.reasons.join("; "));
   if (updated.queuePath) {
@@ -529,7 +629,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       state.catalog,
       updated,
       updated.queuePath,
-      [state.entrance, state.exit],
+      accessPositions(state),
     );
     if (!queueValidation.valid) return reject(state, queueValidation.reasons.join("; "));
   }

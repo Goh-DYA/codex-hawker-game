@@ -38,7 +38,7 @@ describe("customer lifecycle", () => {
     });
   });
 
-  it("lower-end mode enforces its fixed-step and crowd budgets", () => {
+  it("lower-end mode enforces its fixed-step budget without a crowd ceiling", () => {
     const low = makeGame({
       qualityMode: "lower-end",
       config: {
@@ -51,7 +51,7 @@ describe("customer lifecycle", () => {
     expect(advanced.fixedSteps).toBe(3);
     expect(advanced.droppedMs).toBe(700);
     const crowded = runUntil(advanced.state, (state) => state.tick >= 50, 100);
-    expect(Object.keys(crowded.customers).length).toBeLessThanOrEqual(2);
+    expect(Object.keys(crowded.customers).length).toBeGreaterThan(2);
   });
 });
 

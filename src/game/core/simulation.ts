@@ -1,4 +1,4 @@
-import { applySale, getUnlockedDefinitionIds, markAbandonedVisit } from "./economy";
+import { applySale, getUnlockedDefinitionIds } from "./economy";
 import {
   getBlockedTileKeys,
   getObjectQueueAnchor,
@@ -14,6 +14,12 @@ import { getCustomerQueueCell, planStallQueueLayouts } from "./queueing";
 import { choose, nextFloat } from "./rng";
 import { compareIds } from "./ordering";
 import { cloneCustomer } from "./state";
+import {
+  awardStallMastery,
+  effectiveStallDefinition,
+  operatingDay,
+  updateProgressionSystems,
+} from "./progression";
 import {
   adjustedEatingDurationMs,
   getGlobalWayfinding,
@@ -65,6 +71,15 @@ interface MoveResult {
 }
 
 function createDraft(state: GameState, tick: number): Draft {
+  const effectiveCatalog = {
+    ...state.catalog,
+    placeables: Object.fromEntries(Object.entries(state.catalog.placeables).map(([id, definition]) => [
+      id,
+      definition.stall
+        ? { ...definition, stall: effectiveStallDefinition(state, id, definition.stall) }
+        : definition,
+    ])),
+  };
   return {
     source: state,
     objects: state.objects,
@@ -75,16 +90,22 @@ function createDraft(state: GameState, tick: number): Draft {
     queueCellsByStall: planStallQueueLayouts(
       state.map,
       state.objects,
-      state.catalog,
-      [state.entrance, state.exit],
+      effectiveCatalog,
+      state.accessPoints.map((point) => point.position),
     ),
     seatReservations: { ...state.seatReservations },
     economy: { ...state.economy },
-    progression: { ...state.progression, unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds] },
+    progression: {
+      ...state.progression,
+      unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds],
+      dailyObjectives: state.progression.dailyObjectives.map((objective) => ({ ...objective })),
+      claimedMilestoneIds: [...state.progression.claimedMilestoneIds],
+      stallMastery: Object.fromEntries(Object.entries(state.progression.stallMastery).map(([id, mastery]) => [id, { ...mastery }])),
+    },
     rngState: state.rngState,
     nextCustomerSequence: state.nextCustomerSequence,
     spawnCountdownMs: state.spawnCountdownMs,
-    metrics: { ...state.metrics },
+    metrics: { ...state.metrics, visitRatings: state.metrics.visitRatings.map((rating) => ({ ...rating, components: { ...rating.components } })) },
     events: [],
     tick,
   };
@@ -124,7 +145,15 @@ function getStall(draft: Draft, stallId: string | undefined): StallRuntime | und
   if (!object || !object.open || definition?.kind !== "stall" || !definition.stall || !queueAnchor || queueCells.length === 0) {
     return undefined;
   }
-  return { object, definition, queueAnchor, queueCells };
+  return {
+    object,
+    definition: {
+      ...definition,
+      stall: effectiveStallDefinition({ progression: draft.progression }, object.definitionId, definition.stall),
+    },
+    queueAnchor,
+    queueCells,
+  };
 }
 
 function blockedTiles(draft: Draft): ReadonlySet<string> {
@@ -234,9 +263,71 @@ function markRecovery(draft: Draft, customer: Customer, message: string): void {
   event(draft, { type: "target-recovered", entityId: customer.id, message });
 }
 
-function beginExit(draft: Draft, source: Customer, abandoned: boolean): Customer {
+function normalizeQuality(value: number): number {
+  return Math.max(0, Math.min(100, value <= 1 ? value * 100 : value * 20));
+}
+
+function chooseExit(draft: Draft, customer: Customer) {
+  const exits = draft.source.accessPoints.filter((point) => point.kind === "exit");
+  const blocked = blockedTiles(draft);
+  return exits
+    .map((exit) => ({ exit, path: findPath(draft.source.map, customer.position, exit.position, { blocked }).path }))
+    .filter((candidate): candidate is { exit: (typeof exits)[number]; path: readonly GridPoint[] } => Boolean(candidate.path))
+    .sort((a, b) => a.path.length - b.path.length || compareIds(a.exit.id, b.exit.id))[0]?.exit ?? exits[0];
+}
+
+function settleVisitRating(draft: Draft, source: Customer, abandoned: boolean, reason: string): Customer {
+  if (source.ratingSettled) return source;
+  const archetype = getArchetype(draft, source);
+  const supplied = source.ratingFactors ?? {};
+  const components = {
+    foodQuality: supplied.foodQuality ?? (source.served ? 70 : 0),
+    wait: supplied.wait ?? Math.max(0, Math.min(100, (source.patienceRemainingMs / Math.max(1, archetype.patienceMs)) * 100)),
+    value: supplied.value ?? (source.served ? 70 : 20),
+    walking: supplied.walking ?? Math.max(35, 100 - (source.visitElapsedMs / draft.source.config.maxVisitMs) * 65),
+    comfort: supplied.comfort ?? (source.served ? 65 : 20),
+    cleanliness: supplied.cleanliness ?? 70,
+    ambience: supplied.ambience ?? 65,
+  };
+  let score =
+    components.foodQuality * 0.3 +
+    components.wait * 0.2 +
+    components.value * 0.15 +
+    components.walking * 0.1 +
+    components.comfort * 0.1 +
+    components.cleanliness * 0.1 +
+    components.ambience * 0.05;
+  if (abandoned) score = Math.min(source.served ? 62 : 45, score - (source.served ? 12 : 28));
+  score = Math.round(Math.max(0, Math.min(100, score)));
+  const rating = {
+    customerId: source.id,
+    score,
+    served: source.served,
+    abandoned,
+    reason,
+    stallDefinitionId: source.servedStallDefinitionId,
+    components,
+    day: operatingDay(draft.source.elapsedMs),
+  };
+  draft.metrics = { ...draft.metrics, visitRatings: [...draft.metrics.visitRatings, rating].slice(-50) };
+  if (abandoned) draft.economy = { ...draft.economy, abandonedVisits: draft.economy.abandonedVisits + 1 };
+  const reputation = Math.max(0, Math.min(5, draft.progression.reputation + (score - 70) / 500));
+  draft.progression = { ...draft.progression, reputation };
+  if (source.served && source.servedStallDefinitionId) {
+    draft.progression = awardStallMastery(
+      { progression: draft.progression },
+      source.servedStallDefinitionId,
+      score,
+    );
+  }
+  return { ...source, satisfaction: score / 20, ratingSettled: true };
+}
+
+function beginExit(draft: Draft, source: Customer, abandoned: boolean, reason = abandoned ? "abandoned" : "served"): Customer {
   let customer = releaseSeat(draft, source);
   removeFromAllQueues(draft, customer.id);
+  customer = settleVisitRating(draft, customer, abandoned, reason);
+  const targetExit = chooseExit(draft, customer);
   customer = transition(draft, customer, "walking-to-exit");
   customer = {
     ...customer,
@@ -244,13 +335,9 @@ function beginExit(draft: Draft, source: Customer, abandoned: boolean): Customer
     orderedDishId: customer.orderedDishId,
     reservedSeatKey: undefined,
     targetTrayReturnId: undefined,
+    targetExitId: targetExit?.id,
     satisfaction: abandoned ? Math.max(0, customer.satisfaction - 1) : customer.satisfaction,
   };
-  if (abandoned) {
-    const update = markAbandonedVisit(draft.economy, draft.progression);
-    draft.economy = update.economy;
-    draft.progression = update.progression;
-  }
   return customer;
 }
 
@@ -267,12 +354,19 @@ function spawnCustomer(draft: Draft): void {
   const selected = choose(draft.rngState, archetypes);
   draft.rngState = selected.state;
   const id = `customer-${draft.nextCustomerSequence}`;
+  const entrances = draft.source.accessPoints.filter((point) => point.kind === "entrance");
+  const entrance = [...entrances].sort((a, b) => {
+    const nearbyA = Object.values(draft.customers).filter((customer) => Math.abs(customer.position.x - a.position.x) + Math.abs(customer.position.y - a.position.y) <= 3).length;
+    const nearbyB = Object.values(draft.customers).filter((customer) => Math.abs(customer.position.x - b.position.x) + Math.abs(customer.position.y - b.position.y) <= 3).length;
+    return nearbyA - nearbyB || compareIds(a.id, b.id);
+  })[0];
+  if (!entrance) return;
   draft.nextCustomerSequence += 1;
   draft.customers[id] = {
     id,
     archetypeId: selected.value.id,
     status: "choosing-stall",
-    position: { ...draft.source.entrance },
+    position: { ...entrance.position },
     path: [],
     pathIndex: 0,
     movementProgress: 0,
@@ -280,6 +374,7 @@ function spawnCustomer(draft: Draft): void {
     visitElapsedMs: 0,
     patienceRemainingMs: selected.value.patienceMs,
     satisfaction: 3,
+    sourceEntranceId: entrance.id,
     hasTray: false,
     served: false,
     spent: 0,
@@ -407,12 +502,14 @@ function activePreparationCount(draft: Draft, stallId: string): number {
 }
 
 function completeSale(draft: Draft, source: Customer, dish: DishDefinition): Customer {
+  const servedStall = source.targetStallId ? draft.objects[source.targetStallId] : undefined;
+  const stallDefinition = servedStall ? draft.source.catalog.placeables[servedStall.definitionId]?.stall : undefined;
   const update = applySale(
     draft.economy,
     draft.progression,
     dish.price,
     dish.quality,
-    draft.source.config.reputationGainPerVisit,
+    0,
   );
   draft.economy = update.economy;
   draft.progression = {
@@ -429,11 +526,17 @@ function completeSale(draft: Draft, source: Customer, dish: DishDefinition): Cus
   return {
     ...transition(draft, source, "seeking-seat"),
     targetStallId: undefined,
+    servedStallDefinitionId: servedStall?.definitionId,
     orderedDishId: dish.id,
     hasTray: true,
     served: true,
     spent: source.spent + dish.price,
-    satisfaction: Math.min(5, source.satisfaction + dish.quality * 0.1),
+    satisfaction: Math.min(5, source.satisfaction + normalizeQuality(dish.quality) / 100),
+    ratingFactors: {
+      ...source.ratingFactors,
+      foodQuality: Math.min(100, normalizeQuality(dish.quality) * 0.7 + normalizeQuality(stallDefinition?.quality ?? dish.quality) * 0.3),
+      value: Math.max(25, Math.min(100, 120 - (dish.price / Math.max(1, getArchetype(draft, source).budget)) * 70)),
+    },
   };
 }
 
@@ -597,6 +700,12 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
             customer.satisfaction + 0.25 + utilitySatisfactionBonus(diningUtility),
           ),
         ),
+        ratingFactors: {
+          ...customer.ratingFactors,
+          comfort: Math.max(45, Math.min(100, 76 + diningUtility.ambience * 6)),
+          cleanliness: Math.max(35, Math.min(100, 82 + diningUtility.cleanliness * 8 + diningUtility.cleaningEfficiency * 6)),
+          ambience: Math.max(40, Math.min(100, 72 + diningUtility.ambience * 9)),
+        },
       };
     }
 
@@ -626,6 +735,7 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         draft.source.catalog,
         point,
       );
+      draft.metrics = { ...draft.metrics, trayReturns: draft.metrics.trayReturns + 1 };
       return beginExit(
         draft,
         {
@@ -643,7 +753,10 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
     }
 
     case "walking-to-exit": {
-      const movement = moveToward(draft, customer, draft.source.exit, deltaMs);
+      const targetExit = draft.source.accessPoints.find((point) => point.id === customer.targetExitId && point.kind === "exit")
+        ?? chooseExit(draft, customer);
+      if (!targetExit) return undefined;
+      const movement = moveToward(draft, customer, targetExit.position, deltaMs);
       if (!movement.arrived && !movement.failed) return movement.customer;
       removeFromAllQueues(draft, customer.id);
       releaseSeat(draft, customer);
@@ -668,10 +781,27 @@ export function stepSimulation(state: GameState): GameState {
   const draft = createDraft(state, tick);
   draft.spawnCountdownMs -= deltaMs;
 
-  const quality = state.qualityMode === "standard" ? state.config.standard : state.config.lowerEnd;
-  if (draft.spawnCountdownMs <= 0 && Object.keys(draft.customers).length < quality.maxActiveCustomers) {
+  if (draft.spawnCountdownMs <= 0) {
     spawnCustomer(draft);
-    draft.spawnCountdownMs += state.config.spawnIntervalMs;
+    const active = Object.keys(draft.customers).length;
+    const seats = getSeatLocations(draft.objects, draft.source.catalog).length;
+    const stalls = openStalls(draft);
+    const serviceCapacity = stalls.reduce((sum, stall) => sum + (stall.definition.stall?.preparationCapacity ?? 1), 0);
+    const queueCount = Object.values(draft.queues).reduce((sum, queue) => sum + queue.length, 0);
+    const queueCapacity = stalls.reduce((sum, stall) => sum + Math.min(stall.queueCells.length, stall.definition.stall?.queueCapacity ?? 0), 0);
+    const infrastructure = Math.max(4, seats + serviceCapacity * 3 + draft.source.accessPoints.filter((point) => point.kind === "entrance").length * 4);
+    const occupancyPressure = active / infrastructure;
+    const queuePressure = queueCount / Math.max(1, queueCapacity);
+    const reputationDemand = 0.75 + (draft.progression.reputation / 5) * 1.25;
+    const stallDemand = Math.max(0.6, Math.sqrt(Math.max(1, stalls.length)) * (stalls.reduce((sum, stall) => sum + (stall.definition.stall?.popularity ?? 0.5), 0) / Math.max(1, stalls.length)));
+    const minute = (draft.source.elapsedMs / 1_000) % 480;
+    const timeDemand = 0.8 + Math.sin((minute / 480) * Math.PI) * 0.55;
+    const backpressure = 1 + occupancyPressure ** 2 * 2.5 + queuePressure ** 2 * 3 + draft.source.arrivalPerformancePressure * 4;
+    const quality = state.qualityMode === "standard" ? state.config.standard : state.config.lowerEnd;
+    const interval = quality.maxActiveCustomers === undefined
+      ? (state.config.spawnIntervalMs / Math.max(0.2, reputationDemand * stallDemand * timeDemand)) * backpressure
+      : state.config.spawnIntervalMs;
+    draft.spawnCountdownMs += Math.max(1, interval);
   }
 
   const ids = Object.keys(draft.customers).sort((a, b) => {
@@ -687,7 +817,7 @@ export function stepSimulation(state: GameState): GameState {
     else delete draft.customers[id];
   }
 
-  return {
+  const next = {
     ...state,
     customers: draft.customers,
     queues: draft.queues,
@@ -705,6 +835,7 @@ export function stepSimulation(state: GameState): GameState {
     ),
     events: draft.events,
   };
+  return updateProgressionSystems(next);
 }
 
 export function advanceSimulation(state: GameState, realDeltaMs: number): AdvanceResult {
@@ -731,15 +862,22 @@ export function advanceSimulation(state: GameState, realDeltaMs: number): Advanc
 export function assertSimulationInvariants(state: GameState): void {
   const customerIds = new Set(Object.keys(state.customers));
   const queued = new Set<string>();
+  const invariantCatalog = {
+    ...state.catalog,
+    placeables: Object.fromEntries(Object.entries(state.catalog.placeables).map(([id, definition]) => [
+      id,
+      definition.stall ? { ...definition, stall: effectiveStallDefinition(state, id, definition.stall) } : definition,
+    ])),
+  };
   const queueCellsByStall = planStallQueueLayouts(
     state.map,
     state.objects,
-    state.catalog,
-    [state.entrance, state.exit],
+    invariantCatalog,
+    state.accessPoints.map((point) => point.position),
   );
   for (const [stallId, queue] of Object.entries(state.queues)) {
     const stall = state.objects[stallId];
-    const definition = stall ? state.catalog.placeables[stall.definitionId] : undefined;
+    const definition = stall ? invariantCatalog.placeables[stall.definitionId] : undefined;
     if (!stall || definition?.kind !== "stall" || !definition.stall) {
       throw new Error(`Queue exists for missing or invalid stall ${stallId}`);
     }
@@ -776,7 +914,10 @@ export function assertSimulationInvariants(state: GameState): void {
     if (!Number.isFinite(value) || value < 0) throw new Error(`Economy value ${name} is invalid`);
   }
   for (const [name, value] of Object.entries(state.metrics)) {
-    if (!Number.isSafeInteger(value) || value < 0) throw new Error(`Metric ${name} is invalid`);
+    if (typeof value === "number" && (!Number.isSafeInteger(value) || value < 0)) throw new Error(`Metric ${name} is invalid`);
+  }
+  if (state.metrics.visitRatings.length > 50 || state.metrics.visitRatings.some((rating) => !Number.isFinite(rating.score) || rating.score < 0 || rating.score > 100)) {
+    throw new Error("Visit ratings are invalid");
   }
   if (state.metrics.spawnedCustomers !== state.metrics.despawnedCustomers + customerIds.size) {
     throw new Error("Spawn/despawn/active customer accounting does not balance");
