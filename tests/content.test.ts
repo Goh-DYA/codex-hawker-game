@@ -54,6 +54,12 @@ describe("launch content", () => {
     }
   });
 
+  it("starts every stall queue at the service counter", () => {
+    for (const stall of STALLS) {
+      assert.deepEqual(stall.queueAnchor, stall.servicePoint, `${stall.id} leaves a gap before its queue`);
+    }
+  });
+
   it("provides complete non-placeholder English copy", () => {
     const records = [...STALLS, ...DISHES, ...PLACEABLES, ...CUSTOMER_ARCHETYPES];
     assert.equal(Object.keys(ENGLISH_LOCALIZATION).length, records.length * 2);

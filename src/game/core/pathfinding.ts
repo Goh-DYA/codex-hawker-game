@@ -10,7 +10,7 @@ import {
   pointKey,
   samePoint,
 } from "./grid";
-import type { GridMap, GridPoint, PlacedObject, SimulationCatalog } from "./types";
+import type { AccessPoint, GridMap, GridPoint, PlacedObject, SimulationCatalog } from "./types";
 import { compareIds } from "./ordering";
 import { validateConfiguredQueuePath } from "./queueing";
 
@@ -169,8 +169,39 @@ export function validateWorldNavigation(
   objects: Readonly<Record<string, PlacedObject>>,
   catalog: SimulationCatalog,
 ): string | undefined {
+  return validateWorldNavigationAccess(
+    map,
+    [
+      { id: "entrance-1", kind: "entrance", position: entrance },
+      { id: "exit-1", kind: "exit", position: exit },
+    ],
+    objects,
+    catalog,
+  );
+}
+
+/** Validates all access points and every operational interaction against the shared walkable network. */
+export function validateWorldNavigationAccess(
+  map: GridMap,
+  accessPoints: readonly AccessPoint[],
+  objects: Readonly<Record<string, PlacedObject>>,
+  catalog: SimulationCatalog,
+): string | undefined {
+  const entrances = accessPoints.filter((point) => point.kind === "entrance");
+  const exits = accessPoints.filter((point) => point.kind === "exit");
+  if (entrances.length === 0 || exits.length === 0) return "At least one entrance and one exit are required";
   const blocked = getBlockedTileKeys(objects, catalog);
-  if (!isReachable(map, entrance, exit, { blocked })) return "Placement would block the entrance-to-exit route";
+  for (const entrance of entrances) {
+    if (!exits.some((exit) => isReachable(map, entrance.position, exit.position, { blocked }))) {
+      return `Placement would block the entrance-to-exit route for ${entrance.id}`;
+    }
+  }
+  for (const exit of exits) {
+    if (!entrances.some((entrance) => isReachable(map, entrance.position, exit.position, { blocked }))) {
+      return `Exit ${exit.id} would not be reachable from an entrance`;
+    }
+  }
+  const reservedPoints = accessPoints.map((point) => point.position);
 
   for (const object of Object.values(objects).sort((a, b) => compareIds(a.id, b.id))) {
     const definition = catalog.placeables[object.definitionId];
@@ -182,7 +213,7 @@ export function validateWorldNavigation(
         catalog,
         object,
         object.queuePath,
-        [entrance, exit],
+        reservedPoints,
       );
       if (!queueValidation.valid) return `Queue path for ${object.id} is invalid: ${queueValidation.reasons.join("; ")}`;
     }
@@ -202,7 +233,7 @@ export function validateWorldNavigation(
       if (blocked.has(pointKey(destination)) && !blockedByOwnObject) {
         return `Interaction point for ${object.id} is blocked by another object`;
       }
-      if (!isReachable(map, entrance, destination, { blocked, allowEndBlocked: blockedByOwnObject })) {
+      if (!entrances.some((entrance) => isReachable(map, entrance.position, destination, { blocked, allowEndBlocked: blockedByOwnObject }))) {
         return `Interaction point for ${object.id} would be unreachable`;
       }
     }
@@ -216,7 +247,7 @@ export function validateWorldNavigation(
     if (blocked.has(pointKey(seat.point)) && !blockedByOwnObject) {
       return `Seat point for ${seat.objectId} is blocked by another object`;
     }
-    if (!isReachable(map, entrance, seat.point, { blocked, allowEndBlocked: blockedByOwnObject })) {
+    if (!entrances.some((entrance) => isReachable(map, entrance.position, seat.point, { blocked, allowEndBlocked: blockedByOwnObject }))) {
       return `Seat point for ${seat.objectId} would be unreachable`;
     }
   }

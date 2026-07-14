@@ -6,6 +6,7 @@ export * from "./pathfinding";
 export * from "./queueing";
 export * from "./utility";
 export * from "./economy";
+export * from "./progression";
 export * from "./validation";
 export * from "./state";
 export * from "./commands";

@@ -1,9 +1,10 @@
 import { getUnlockedDefinitionIds } from "./economy";
 import { getTile, pointKey, validatePlacement } from "./grid";
-import { isReachable, validateWorldNavigation } from "./pathfinding";
+import { isReachable, validateWorldNavigationAccess } from "./pathfinding";
 import { validateConfiguredQueuePath } from "./queueing";
 import { hashSeed } from "./rng";
 import { compareIds } from "./ordering";
+import { createDailyObjectives } from "./progression";
 import type {
   Customer,
   GameSnapshot,
@@ -15,6 +16,7 @@ import type {
   SimulationConfigOverrides,
   SimulationMetrics,
   UndoSnapshot,
+  AccessPoint,
 } from "./types";
 import { assertValidCatalog, isValidSimulationId } from "./validation";
 
@@ -27,8 +29,8 @@ export const DEFAULT_SIMULATION_CONFIG: SimulationConfig = {
   expansionBaseCostPerTile: 5,
   expansionCostGrowth: 1.35,
   buildUndoWindowMs: 5_000,
-  standard: { maxActiveCustomers: 80, maxFixedStepsPerAdvance: 20 },
-  lowerEnd: { maxActiveCustomers: 40, maxFixedStepsPerAdvance: 10 },
+  standard: { maxFixedStepsPerAdvance: 40 },
+  lowerEnd: { maxFixedStepsPerAdvance: 20 },
 };
 
 function mergeConfig(config: SimulationConfigOverrides | undefined): SimulationConfig {
@@ -53,9 +55,6 @@ function mergeConfig(config: SimulationConfigOverrides | undefined): SimulationC
     throw new RangeError("reputationGainPerVisit must be non-negative");
   }
   for (const [name, settings] of [["standard", merged.standard], ["lowerEnd", merged.lowerEnd]] as const) {
-    if (!Number.isInteger(settings.maxActiveCustomers) || settings.maxActiveCustomers <= 0) {
-      throw new RangeError(`${name}.maxActiveCustomers must be a positive integer`);
-    }
     if (!Number.isInteger(settings.maxFixedStepsPerAdvance) || settings.maxFixedStepsPerAdvance <= 0) {
       throw new RangeError(`${name}.maxFixedStepsPerAdvance must be a positive integer`);
     }
@@ -77,17 +76,47 @@ const EMPTY_METRICS: SimulationMetrics = {
   pathRequests: 0,
   pathFailures: 0,
   recoveredTargets: 0,
+  trayReturns: 0,
+  visitRatings: [],
 };
+
+function initialAccessPoints(options: NewGameOptions): readonly AccessPoint[] {
+  const supplied = options.accessPoints?.map((point) => ({
+    ...point,
+    position: { ...point.position },
+  }));
+  if (supplied?.length) return supplied;
+  if (!options.entrance || !options.exit) {
+    throw new RangeError("At least one entrance and one exit are required");
+  }
+  return [
+    { id: "entrance-1", kind: "entrance", position: { ...options.entrance } },
+    { id: "exit-1", kind: "exit", position: { ...options.exit } },
+  ];
+}
 
 export function createNewGame(options: NewGameOptions): GameState {
   assertValidCatalog(options.catalog);
   assertValidMap(options.map);
-  if (getTile(options.map, options.entrance) !== "floor" || getTile(options.map, options.exit) !== "floor") {
+  const accessPoints = initialAccessPoints(options);
+  const entrances = accessPoints.filter((point) => point.kind === "entrance");
+  const exits = accessPoints.filter((point) => point.kind === "exit");
+  if (entrances.length === 0 || exits.length === 0) throw new RangeError("At least one entrance and one exit are required");
+  if (new Set(accessPoints.map((point) => point.id)).size !== accessPoints.length) {
+    throw new RangeError("Access point ids must be unique");
+  }
+  if (accessPoints.some((point) => point.position.x !== 0 && point.position.y !== 0 && point.position.x !== options.map.width - 1 && point.position.y !== options.map.height - 1)) {
+    throw new RangeError("Access points must be on the map boundary");
+  }
+  if (accessPoints.some((point) => getTile(options.map, point.position) !== "floor")) {
     throw new RangeError("Entrance and exit must be floor tiles inside the map");
   }
-  if (!isReachable(options.map, options.entrance, options.exit)) {
+  if (entrances.some((entrance) => !exits.some((exit) => isReachable(options.map, entrance.position, exit.position)))) {
     throw new RangeError("Entrance and exit must be connected by floor tiles");
   }
+  const entrance = entrances[0]!.position;
+  const exit = exits[0]!.position;
+  const reservedPoints = accessPoints.map((point) => point.position);
   if (!Number.isFinite(options.startingCurrency ?? 1_000) || (options.startingCurrency ?? 1_000) < 0) {
     throw new RangeError("Starting currency must be non-negative");
   }
@@ -98,7 +127,7 @@ export function createNewGame(options: NewGameOptions): GameState {
     if (objects[source.id]) throw new RangeError(`Duplicate initial object id: ${source.id}`);
     const object = clonePlacedObject(source);
     const validation = validatePlacement(options.map, objects, options.catalog, object, {
-      reservedPoints: [options.entrance, options.exit],
+      reservedPoints,
     });
     if (!validation.valid) throw new RangeError(`Invalid initial object ${object.id}: ${validation.reasons.join("; ")}`);
     objects[object.id] = object;
@@ -111,27 +140,22 @@ export function createNewGame(options: NewGameOptions): GameState {
       options.catalog,
       object,
       object.queuePath,
-      [options.entrance, options.exit],
+      reservedPoints,
     );
     if (!queueValidation.valid) {
       throw new RangeError(`Invalid initial queue for ${object.id}: ${queueValidation.reasons.join("; ")}`);
     }
   }
-  const navigationError = validateWorldNavigation(
-    options.map,
-    options.entrance,
-    options.exit,
-    objects,
-    options.catalog,
-  );
+  const navigationError = validateWorldNavigationAccess(options.map, accessPoints, objects, options.catalog);
   if (navigationError) throw new RangeError(`Invalid initial world navigation: ${navigationError}`);
 
   const initialLevel = 1;
-  return {
-    schemaVersion: 2,
+  const state: GameState = {
+    schemaVersion: 3,
     map: cloneMap(options.map),
-    entrance: { ...options.entrance },
-    exit: { ...options.exit },
+    accessPoints,
+    entrance: { ...entrance },
+    exit: { ...exit },
     catalog: options.catalog,
     config: mergeConfig(options.config),
     qualityMode: options.qualityMode ?? "standard",
@@ -160,6 +184,10 @@ export function createNewGame(options: NewGameOptions): GameState {
         options.initiallyUnlockedDefinitionIds,
       ),
       expansionCount: 0,
+      focusDay: 0,
+      dailyObjectives: [],
+      claimedMilestoneIds: [],
+      stallMastery: {},
     },
     rngState: hashSeed(options.seed ?? "hawker-simulator"),
     nextCustomerSequence: 1,
@@ -167,9 +195,18 @@ export function createNewGame(options: NewGameOptions): GameState {
     accumulatorMs: 0,
     tick: 0,
     elapsedMs: 0,
+    arrivalPerformancePressure: 0,
     undoStack: [],
     metrics: { ...EMPTY_METRICS },
     events: [],
+  };
+  return {
+    ...state,
+    progression: {
+      ...state.progression,
+      focusDay: 1,
+      dailyObjectives: createDailyObjectives(state, 1),
+    },
   };
 }
 
@@ -196,6 +233,7 @@ export function cloneCustomer(customer: Customer): Customer {
 export function captureUndoSnapshot(state: GameState): UndoSnapshot {
   return {
     map: cloneMap(state.map),
+    accessPoints: state.accessPoints.map((point) => ({ ...point, position: { ...point.position } })),
     entrance: { ...state.entrance },
     exit: { ...state.exit },
     objects: Object.fromEntries(Object.entries(state.objects).map(([id, object]) => [id, clonePlacedObject(object)])),
@@ -209,10 +247,11 @@ export function createSnapshot(state: GameState): GameSnapshot {
   const objects = Object.values(state.objects).map(clonePlacedObject).sort((a, b) => compareIds(a.id, b.id));
   const customers = Object.values(state.customers).map(cloneCustomer).sort((a, b) => compareIds(a.id, b.id));
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     tick: state.tick,
     elapsedMs: state.elapsedMs,
     map: cloneMap(state.map),
+    accessPoints: state.accessPoints.map((point) => ({ ...point, position: { ...point.position } })),
     qualityMode: state.qualityMode,
     entrance: { ...state.entrance },
     exit: { ...state.exit },
@@ -221,8 +260,14 @@ export function createSnapshot(state: GameState): GameSnapshot {
     queues: Object.fromEntries(Object.entries(state.queues).map(([id, queue]) => [id, [...queue]])),
     seatReservations: { ...state.seatReservations },
     economy: { ...state.economy },
-    progression: { ...state.progression, unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds] },
-    metrics: { ...state.metrics },
+    progression: {
+      ...state.progression,
+      unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds],
+      dailyObjectives: state.progression.dailyObjectives.map((objective) => ({ ...objective })),
+      claimedMilestoneIds: [...state.progression.claimedMilestoneIds],
+      stallMastery: Object.fromEntries(Object.entries(state.progression.stallMastery).map(([id, mastery]) => [id, { ...mastery }])),
+    },
+    metrics: { ...state.metrics, visitRatings: state.metrics.visitRatings.map((rating) => ({ ...rating, components: { ...rating.components } })) },
     canUndo: state.undoStack.length > 0,
     events: state.events.map((event) => ({ ...event })),
   };

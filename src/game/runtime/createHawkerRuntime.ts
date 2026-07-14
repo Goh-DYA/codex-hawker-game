@@ -10,12 +10,14 @@ import {
 } from "@/src/content";
 import {
   advanceSimulation,
+  averageVisitRating,
   calculateExpansionCost,
   createGridMap,
   createNewGame,
   createSnapshot,
   deserializeGameState,
   dispatchCommand,
+  effectiveStallDefinition,
   findPath,
   getBlockedTileKeys,
   getObjectOccupiedTiles,
@@ -23,6 +25,7 @@ import {
   getSeatLocations,
   getUtilityInfluence,
   mealConsumptionFraction,
+  OPERATING_DAY_MS,
   planStallQueueLayouts,
   persistentStateFromGame,
   tileToWorld,
@@ -45,11 +48,13 @@ import type {
   BuildTool,
   GameSpeed,
   RuntimeController,
+  RuntimeEvent,
   RuntimeOptions,
   RuntimeSnapshot,
 } from "./types";
 import { utilityEffectsForPlaceable } from "./contentUtility";
 import { deriveQueueFlowInsight } from "./queueInsight";
+import { deriveSatisfactionTips } from "./satisfactionInsight";
 import {
   animationPoseForCustomer,
   stableVisualHash,
@@ -208,6 +213,8 @@ function buildCatalog(): {
         queueCapacity: 7,
         popularity: stall.popularity,
         quality: stall.quality + Math.min(0.05, averageDishPrice / 300),
+        menuSlots: stall.menuSlots,
+        upgradeLevels: stall.upgradeLevels.map((upgrade) => ({ ...upgrade })),
       },
     };
     visuals[stall.id] = {
@@ -353,21 +360,30 @@ function timeLabel(elapsedMs: number) {
   return `${clockHour}:${minute.toString().padStart(2, "0")} ${suffix}`;
 }
 
-function formatSimulationEvent(event: SimulationEvent): {
-  kind: "info" | "success" | "warning" | "error";
-  message: string;
-} | undefined {
+function formatSimulationEvent(event: SimulationEvent): RuntimeEvent | undefined {
   if (event.type === "sale-completed") {
-    return { kind: "success", message: `A neighbour enjoyed their meal · +$${event.amount ?? 0}` };
+    return {
+      kind: "success",
+      message: `A neighbour enjoyed their meal · +$${event.amount ?? 0}`,
+      importance: "routine",
+      groupKey: "sales",
+      amount: event.amount ?? 0,
+    };
   }
   if (event.type === "level-up") {
-    return { kind: "success", message: "Centre level increased — new catalogue entries unlocked." };
+    return { kind: "success", message: "Centre level increased — new catalogue entries unlocked.", importance: "important" };
+  }
+  if (event.type === "objective-completed") {
+    return { kind: "success", message: `${event.message ?? "Today's focus"} complete · +$${event.amount ?? 0}`, importance: "important" };
+  }
+  if (event.type === "milestone-completed") {
+    return { kind: "success", message: `Centre journey milestone complete · +$${event.amount ?? 0}`, importance: "important" };
   }
   if (event.type === "command-rejected") {
-    return { kind: "error", message: event.message ?? "That build action is not valid." };
+    return { kind: "error", message: event.message ?? "That build action is not valid.", importance: "important" };
   }
   if (event.type === "target-recovered") {
-    return { kind: "warning", message: "A guest rerouted after the layout changed." };
+    return { kind: "warning", message: "A guest rerouted after the layout changed.", importance: "routine", groupKey: "reroutes" };
   }
   return undefined;
 }
@@ -511,8 +527,12 @@ export async function createHawkerRuntime(
   let queueEditingStallId: string | undefined;
   let queueDraft: readonly GridPoint[] = [];
   let buildTool: BuildTool = "select";
+  let selectedAccessPointId: string | undefined;
+  let pendingAccessKind: "entrance" | "exit" | undefined;
+  let accessSequence = state.accessPoints.length + 1;
   let selectedRotation: Rotation = 0;
   let speed: GameSpeed = 1;
+  let speedBeforeAccess: GameSpeed = 1;
   let reducedMotion = options.settings.reducedMotion;
   let debugOverlay = false;
   let objectSequence = Object.keys(state.objects).length + 1;
@@ -546,6 +566,18 @@ export async function createHawkerRuntime(
     return result.accepted;
   }
 
+  function effectiveCatalog(): SimulationCatalog {
+    return {
+      ...catalog,
+      placeables: Object.fromEntries(Object.entries(catalog.placeables).map(([id, definition]) => [
+        id,
+        definition.stall
+          ? { ...definition, stall: effectiveStallDefinition(state, id, definition.stall) }
+          : definition,
+      ])),
+    };
+  }
+
   function currentSnapshot(): RuntimeSnapshot {
     const snapshot = createSnapshot(state);
     const seats = getSeatLocations(state.objects, catalog);
@@ -553,7 +585,6 @@ export async function createHawkerRuntime(
     const placedContent = snapshot.objects
       .map((object) => CONTENT_PLACEABLE_BY_ID.get(object.definitionId))
       .filter((item) => item !== undefined);
-    const ambience = placedContent.reduce((sum, item) => sum + item.ambienceValue, 0);
     const cleanlinessSupport = placedContent.reduce(
       (sum, item) => sum + item.cleanlinessModifier,
       0,
@@ -561,23 +592,33 @@ export async function createHawkerRuntime(
     const trayReturnStations = snapshot.objects.filter(
       (object) => catalog.placeables[object.definitionId]?.kind === "tray-return",
     ).length;
-    const averageSatisfaction = snapshot.customers.length
-      ? (snapshot.customers.reduce((sum, customer) => sum + customer.satisfaction, 0) /
-          snapshot.customers.length) *
-          20 +
-        Math.min(8, ambience * 0.25)
-      : 100;
+    const averageSatisfaction = averageVisitRating(state);
+    const satisfactionBreakdown = snapshot.metrics.visitRatings.length
+      ? Object.fromEntries(
+          ["foodQuality", "wait", "value", "walking", "comfort", "cleanliness", "ambience"].map((key) => [
+            key,
+            snapshot.metrics.visitRatings.reduce((sum, rating) => sum + rating.components[key as keyof typeof rating.components], 0) /
+              snapshot.metrics.visitRatings.length,
+          ]),
+        ) as unknown as RuntimeSnapshot["satisfactionBreakdown"]
+      : undefined;
     const nextLevelExperience = xpRequiredForLevel(snapshot.progression.level + 1);
     const queueLayouts = planStallQueueLayouts(
       snapshot.map,
       state.objects,
-      catalog,
-      [snapshot.entrance, snapshot.exit],
+      effectiveCatalog(),
+      snapshot.accessPoints.map((point) => point.position),
     );
-    const mainGuestRoute =
-      findPath(snapshot.map, snapshot.entrance, snapshot.exit, {
-        blocked: getBlockedTileKeys(state.objects, catalog),
-      }).path ?? [];
+    const blocked = getBlockedTileKeys(state.objects, catalog);
+    const routeCells = new Map<string, GridPoint>();
+    for (const entrance of snapshot.accessPoints.filter((point) => point.kind === "entrance")) {
+      for (const exit of snapshot.accessPoints.filter((point) => point.kind === "exit")) {
+        for (const point of findPath(snapshot.map, entrance.position, exit.position, { blocked }).path ?? []) {
+          routeCells.set(`${point.x},${point.y}`, point);
+        }
+      }
+    }
+    const mainGuestRoute = [...routeCells.values()];
     const queueFlow = deriveQueueFlowInsight(
       snapshot.objects
         .filter((object) => catalog.placeables[object.definitionId]?.kind === "stall")
@@ -589,7 +630,9 @@ export async function createHawkerRuntime(
             open: object.open,
             queueCount: count,
             routeCapacity: cells.length,
-            designedCapacity: definition?.stall?.queueCapacity ?? cells.length,
+            designedCapacity: definition?.stall
+              ? effectiveStallDefinition(state, object.definitionId, definition.stall).queueCapacity
+              : cells.length,
             occupiedCells: cells.slice(0, count),
           };
         }),
@@ -622,6 +665,16 @@ export async function createHawkerRuntime(
           open: object.open,
         };
       });
+    const milestoneTracks = [
+      { id: "service", title: "Service", values: [50, 250, 1_000, 5_000], progress: snapshot.economy.completedVisits },
+      { id: "hospitality", title: "Hospitality", values: [75, 85, 90, 95], progress: averageSatisfaction ?? 0 },
+      { id: "variety", title: "Variety", values: [2, 4, 6, 8], progress: new Set(snapshot.objects.filter((object) => object.open && catalog.placeables[object.definitionId]?.kind === "stall").map((object) => object.definitionId)).size },
+      { id: "growth", title: "Growth", values: [3, 7, 12, 20], progress: snapshot.progression.level },
+    ].map((track) => {
+      const tier = snapshot.progression.claimedMilestoneIds.filter((id) => id.startsWith(`${track.id}-`)).length;
+      return { id: track.id, title: track.title, tier, progress: track.progress, target: track.values[Math.min(3, tier)]! };
+    });
+    const remainingObjectiveMinutes = Math.ceil((OPERATING_DAY_MS - (snapshot.elapsedMs % OPERATING_DAY_MS)) / 1_000);
     return {
       cash: snapshot.economy.currency,
       reputation: snapshot.progression.reputation * 20,
@@ -635,7 +688,10 @@ export async function createHawkerRuntime(
       quality: snapshot.qualityMode,
       activeCustomers: snapshot.customers.length,
       servedCustomers: snapshot.economy.completedVisits,
-      averageSatisfaction: Math.max(0, Math.min(100, averageSatisfaction)),
+      averageSatisfaction: Math.max(0, Math.min(100, averageSatisfaction ?? 0)),
+      hasSatisfactionRatings: averageSatisfaction !== undefined,
+      satisfactionBreakdown,
+      satisfactionTips: deriveSatisfactionTips(satisfactionBreakdown),
       queuePressure: queueFlow.pressure,
       queueFlowState: queueFlow.state,
       queueFlowMessage: queueFlow.message,
@@ -666,6 +722,32 @@ export async function createHawkerRuntime(
       canUndo: snapshot.canUndo,
       objectiveProgress: Math.min(5, snapshot.economy.completedVisits),
       objectiveTarget: 5,
+      objectives: snapshot.progression.dailyObjectives.map((objective) => ({
+        id: objective.id,
+        title: objective.title,
+        description: objective.description,
+        progress: objective.progress,
+        target: objective.target,
+        rewardCash: objective.rewardCash,
+        rewardXp: objective.rewardXp,
+        completed: objective.completed,
+      })),
+      objectiveRefreshLabel: `${Math.floor(remainingObjectiveMinutes / 60)}h ${remainingObjectiveMinutes % 60}m`,
+      claimedMilestoneCount: snapshot.progression.claimedMilestoneIds.length,
+      milestoneTracks,
+      stallMastery: STALLS.map((definition) => {
+        const mastery = snapshot.progression.stallMastery[definition.id] ?? { points: 0, rank: 1, upgradeLevel: 1 as const };
+        const nextLevel = mastery.upgradeLevel + 1;
+        const nextUpgrade = definition.upgradeLevels.find((upgrade) => upgrade.level === nextLevel);
+        return {
+          definitionId: definition.id,
+          ...mastery,
+          nextUpgradeCost: nextUpgrade?.cost,
+          requiredRank: nextLevel === 2 ? 2 : nextLevel === 3 ? 4 : nextLevel === 4 ? 7 : undefined,
+        };
+      }),
+      accessPoints: snapshot.accessPoints,
+      selectedAccessPointId,
       expansionCount: snapshot.progression.expansionCount,
       nextExpansionCost: calculateExpansionCost(
         snapshot.map,
@@ -727,6 +809,33 @@ export async function createHawkerRuntime(
 
   function handleTile(point: GridPoint) {
     hoverTile = point;
+    if (buildTool === "access") {
+      const existing = state.accessPoints.find(
+        (accessPoint) => accessPoint.position.x === point.x && accessPoint.position.y === point.y,
+      );
+      if (existing) {
+        selectedAccessPointId = existing.id;
+        pendingAccessKind = undefined;
+        options.onEvent({ kind: "info", message: `${existing.kind === "entrance" ? "Entrance" : "Exit"} selected. Choose a boundary tile to move it.` });
+        emitHud(true);
+        activeScene?.render(true);
+        return;
+      }
+      if (pendingAccessKind) {
+        const id = `${pendingAccessKind}-${accessSequence++}`;
+        if (runCommand({ type: "add-access-point", accessPoint: { id, kind: pendingAccessKind, position: point } })) {
+          selectedAccessPointId = id;
+          pendingAccessKind = undefined;
+        }
+        return;
+      }
+      if (selectedAccessPointId) {
+        runCommand({ type: "move-access-point", accessPointId: selectedAccessPointId, position: point });
+        return;
+      }
+      options.onEvent({ kind: "info", message: "Choose Add entrance or Add exit, or select an existing access point." });
+      return;
+    }
     if (buildTool === "queue") {
       const stall = queueEditingStallId ? state.objects[queueEditingStallId] : undefined;
       const definition = stall ? catalog.placeables[stall.definitionId] : undefined;
@@ -922,6 +1031,10 @@ export async function createHawkerRuntime(
       lastFrameAt = now;
       if (speed > 0 && isCentreOpen()) {
         const startedAt = performance.now();
+        state = {
+          ...state,
+          arrivalPerformancePressure: Math.max(0, Math.min(1, (lastSimulationMs - 8) / 16)),
+        };
         const result = advanceSimulation(state, frameDelta * speed);
         const beforeUnlockCount = state.progression.unlockedDefinitionIds.length;
         state = reconcileRuntimeUnlocks(result.state);
@@ -934,6 +1047,7 @@ export async function createHawkerRuntime(
           options.onEvent({
             kind: "success",
             message: "New catalogue choices are now available.",
+            importance: "important",
           });
           options.onPersistentChange(persistentPayload());
           lastPeriodicSaveAt = now;
@@ -999,8 +1113,9 @@ export async function createHawkerRuntime(
     for (let y = 0; y < snapshot.map.height; y += 1) {
       for (let x = 0; x < snapshot.map.width; x += 1) {
         const tile = snapshot.map.tiles[y * snapshot.map.width + x];
-        const isEntrance = x === snapshot.entrance.x && y === snapshot.entrance.y;
-        const isExit = x === snapshot.exit.x && y === snapshot.exit.y;
+        const accessPoint = snapshot.accessPoints.find((point) => point.position.x === x && point.position.y === y);
+        const isEntrance = accessPoint?.kind === "entrance";
+        const isExit = accessPoint?.kind === "exit";
         const alternate = (x + y) % 2 === 0;
         const isExpansion = x >= MAP_WIDTH || y >= MAP_HEIGHT;
         graphics.fillStyle(
@@ -1035,23 +1150,22 @@ export async function createHawkerRuntime(
     // Keep the route legend truthful by drawing the current walkable path.
     // Because this is derived from the live map and furniture blockers, it
     // follows turns and reaches the migrated exit after every expansion.
-    const guestRoute = findPath(snapshot.map, snapshot.entrance, snapshot.exit, {
-      blocked: getBlockedTileKeys(state.objects, catalog),
-    }).path ?? [];
     graphics.lineStyle(3, 0xfff7e5, 0.82);
-    for (let index = 1; index < guestRoute.length; index += 1) {
-      const previous = guestRoute[index - 1] as GridPoint;
-      const current = guestRoute[index] as GridPoint;
-      const startX = (previous.x + 0.5) * TILE_SIZE;
-      const startY = (previous.y + 0.5) * TILE_SIZE;
-      const deltaX = (current.x - previous.x) * TILE_SIZE;
-      const deltaY = (current.y - previous.y) * TILE_SIZE;
-      graphics.lineBetween(
-        startX + deltaX * 0.12,
-        startY + deltaY * 0.12,
-        startX + deltaX * 0.68,
-        startY + deltaY * 0.68,
-      );
+    for (const entrance of snapshot.accessPoints.filter((point) => point.kind === "entrance")) {
+      for (const exit of snapshot.accessPoints.filter((point) => point.kind === "exit")) {
+        const guestRoute = findPath(snapshot.map, entrance.position, exit.position, {
+          blocked: getBlockedTileKeys(state.objects, catalog),
+        }).path ?? [];
+        for (let index = 1; index < guestRoute.length; index += 1) {
+          const previous = guestRoute[index - 1] as GridPoint;
+          const current = guestRoute[index] as GridPoint;
+          const startX = (previous.x + 0.5) * TILE_SIZE;
+          const startY = (previous.y + 0.5) * TILE_SIZE;
+          const deltaX = (current.x - previous.x) * TILE_SIZE;
+          const deltaY = (current.y - previous.y) * TILE_SIZE;
+          graphics.lineBetween(startX + deltaX * 0.12, startY + deltaY * 0.12, startX + deltaX * 0.68, startY + deltaY * 0.68);
+        }
+      }
     }
 
     const drawPortal = (point: GridPoint, label: string, pointsInward: boolean) => {
@@ -1079,8 +1193,9 @@ export async function createHawkerRuntime(
       scene.addLabel(labelX, centreY - 21, label);
     };
 
-    drawPortal(snapshot.entrance, "ENTRY", true);
-    drawPortal(snapshot.exit, "EXIT", false);
+    for (const point of snapshot.accessPoints) {
+      drawPortal(point.position, point.kind === "entrance" ? "ENTRY" : "EXIT", point.kind === "entrance");
+    }
   }
 
   interface ObjectVisualBounds {
@@ -2016,8 +2131,8 @@ export async function createHawkerRuntime(
     const queueLayouts = planStallQueueLayouts(
       snapshot.map,
       state.objects,
-      catalog,
-      [snapshot.entrance, snapshot.exit],
+      effectiveCatalog(),
+      snapshot.accessPoints.map((point) => point.position),
     );
     for (const stall of snapshot.objects) {
       const definition = catalog.placeables[stall.definitionId];
@@ -2071,7 +2186,7 @@ export async function createHawkerRuntime(
       const candidate = placementCandidate(hoverTile);
       if (candidate) {
         const result = validatePlacement(state.map, state.objects, catalog, candidate, {
-          reservedPoints: [state.entrance, state.exit],
+          reservedPoints: state.accessPoints.map((point) => point.position),
         });
         const cells = result.occupiedTiles;
         for (const cell of cells) {
@@ -2101,6 +2216,11 @@ export async function createHawkerRuntime(
   }
 
   function setBuildTool(tool: BuildTool) {
+    const leavingAccess = buildTool === "access" && tool !== "access";
+    if (tool === "access" && buildTool !== "access") {
+      speedBeforeAccess = speed === 0 ? 1 : speed;
+      speed = 0;
+    }
     buildTool = tool;
     if (tool !== "move") pendingMoveId = undefined;
     if (tool !== "place") selectedBuildId = undefined;
@@ -2109,6 +2229,11 @@ export async function createHawkerRuntime(
       queueDraft = [];
     }
     if (tool !== "queue") selectedObjectId = undefined;
+    if (tool !== "access") {
+      selectedAccessPointId = undefined;
+      pendingAccessKind = undefined;
+    }
+    if (leavingAccess) speed = speedBeforeAccess;
     emitHud(true);
     activeScene?.render(true);
   }
@@ -2248,6 +2373,8 @@ export async function createHawkerRuntime(
       recomputeObjectSequence();
       selectedBuildId = undefined;
       selectedObjectId = undefined;
+      selectedAccessPointId = undefined;
+      pendingAccessKind = undefined;
       buildTool = "select";
       speed = 1;
       lastPersistentRevenue = 0;
@@ -2285,6 +2412,7 @@ export async function createHawkerRuntime(
         options.onEvent({
           kind: "success",
           message: "The dining hall expanded by four columns and two rows.",
+          importance: "important",
         });
       }
       return accepted;
@@ -2344,10 +2472,13 @@ export async function createHawkerRuntime(
       const current = [...(stallMenus[stallId] ?? [])];
       const hasDish = current.includes(dishId);
       if (enabled === hasDish) return true;
-      if (enabled && current.length >= definition.menuSlots) {
+      const mastery = state.progression.stallMastery[stallId];
+      const upgrade = definition.upgradeLevels.find((candidate) => candidate.level === mastery?.upgradeLevel);
+      const menuSlots = definition.menuSlots + (upgrade?.menuSlotsBonus ?? 0);
+      if (enabled && current.length >= menuSlots) {
         options.onEvent({
           kind: "warning",
-          message: `${localized(definition.nameKey)} has ${definition.menuSlots} menu slots. Turn off another dish first.`,
+          message: `${localized(definition.nameKey)} has ${menuSlots} menu slots. Turn off another dish first.`,
         });
         return false;
       }
@@ -2371,6 +2502,35 @@ export async function createHawkerRuntime(
         message: `${localized(definition.nameKey)} menu updated.`,
       });
       return true;
+    },
+    addAccessPoint(kind) {
+      setBuildTool("access");
+      pendingAccessKind = kind;
+      selectedAccessPointId = undefined;
+      selectedBuildId = undefined;
+      selectedObjectId = undefined;
+      options.onEvent({ kind: "info", message: `Choose a clear boundary tile for the new ${kind}.` });
+      emitHud(true);
+      activeScene?.render(true);
+    },
+    selectAccessPoint(accessPointId) {
+      if (accessPointId && !state.accessPoints.some((point) => point.id === accessPointId)) return;
+      setBuildTool("access");
+      selectedAccessPointId = accessPointId;
+      pendingAccessKind = undefined;
+      emitHud(true);
+      activeScene?.render(true);
+    },
+    removeSelectedAccessPoint() {
+      if (!selectedAccessPointId) return false;
+      const accepted = runCommand({ type: "remove-access-point", accessPointId: selectedAccessPointId });
+      if (accepted) selectedAccessPointId = undefined;
+      return accepted;
+    },
+    upgradeStall(definitionId) {
+      const accepted = runCommand({ type: "upgrade-stall", definitionId });
+      if (accepted) options.onEvent({ kind: "success", message: "Stall mastery upgrade purchased.", importance: "important" });
+      return accepted;
     },
   };
 

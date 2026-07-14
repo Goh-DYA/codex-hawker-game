@@ -1,5 +1,10 @@
 import { calculateLevel, getUnlockedDefinitionIds } from "./economy";
-import { validatePlacement } from "./grid";
+import {
+  getObjectQueueAnchor,
+  normalizeBoundaryOpenings,
+  samePoint,
+  validatePlacement,
+} from "./grid";
 import { createNewGame } from "./state";
 import { compareIds } from "./ordering";
 import type {
@@ -8,13 +13,17 @@ import type {
   GridMap,
   PersistentGameStateV1,
   PersistentGameStateV2,
+  PersistentGameStateV3,
   PlacedObject,
   QualityMode,
   SimulationCatalog,
   SimulationConfigOverrides,
+  DailyObjective,
+  StallMasteryState,
+  VisitRating,
 } from "./types";
 
-export const PERSISTENT_SCHEMA_VERSION = 2 as const;
+export const PERSISTENT_SCHEMA_VERSION = 3 as const;
 
 export class PersistenceError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -176,10 +185,121 @@ function parseV2(value: Record<string, unknown>): PersistentGameStateV2 {
       reputation: Math.max(0, Math.min(5, finite(value.progression.reputation, "progression.reputation", 0))),
       unlockedDefinitionIds: unlocks as string[],
       expansionCount: safeInteger(value.progression.expansionCount, "progression.expansionCount", 0),
+      focusDay: 0,
+      dailyObjectives: [],
+      claimedMilestoneIds: [],
+      stallMastery: {},
     },
     rngState: safeInteger(value.rngState, "rngState", 1, 0xffff_ffff),
     nextCustomerSequence,
     elapsedMs: safeInteger(value.elapsedMs, "elapsedMs", 0),
+  };
+}
+
+function parseDailyObjectives(value: unknown): readonly DailyObjective[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry, index) => {
+    if (!isRecord(entry)) throw new PersistenceError(`progression.dailyObjectives[${index}] must be an object`);
+    const kind = entry.kind;
+    if (!["serve", "revenue", "happiness", "flow", "variety", "facility"].includes(String(kind))) {
+      throw new PersistenceError(`progression.dailyObjectives[${index}].kind is invalid`);
+    }
+    if (typeof entry.completed !== "boolean") throw new PersistenceError(`progression.dailyObjectives[${index}].completed must be boolean`);
+    return {
+      id: stringValue(entry.id, `progression.dailyObjectives[${index}].id`),
+      day: safeInteger(entry.day, `progression.dailyObjectives[${index}].day`, 1),
+      kind: kind as DailyObjective["kind"],
+      title: stringValue(entry.title, `progression.dailyObjectives[${index}].title`),
+      description: stringValue(entry.description, `progression.dailyObjectives[${index}].description`),
+      target: finite(entry.target, `progression.dailyObjectives[${index}].target`, 0),
+      progress: finite(entry.progress, `progression.dailyObjectives[${index}].progress`, 0),
+      startValue: finite(entry.startValue, `progression.dailyObjectives[${index}].startValue`, 0),
+      rewardCash: finite(entry.rewardCash, `progression.dailyObjectives[${index}].rewardCash`, 0),
+      rewardXp: safeInteger(entry.rewardXp, `progression.dailyObjectives[${index}].rewardXp`, 0),
+      completed: entry.completed,
+    };
+  });
+}
+
+function parseMastery(value: unknown): Readonly<Record<string, StallMasteryState>> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(Object.entries(value).map(([id, entry]) => {
+    if (!isRecord(entry)) throw new PersistenceError(`progression.stallMastery.${id} must be an object`);
+    const upgradeLevel = safeInteger(entry.upgradeLevel, `progression.stallMastery.${id}.upgradeLevel`, 1, 4);
+    return [id, {
+      points: safeInteger(entry.points, `progression.stallMastery.${id}.points`, 0),
+      rank: safeInteger(entry.rank, `progression.stallMastery.${id}.rank`, 1),
+      upgradeLevel: upgradeLevel as 1 | 2 | 3 | 4,
+    }];
+  }));
+}
+
+function parseVisitRatings(value: unknown): readonly VisitRating[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(-50).map((entry, index) => {
+    if (!isRecord(entry) || !isRecord(entry.components)) throw new PersistenceError(`metrics.visitRatings[${index}] must be an object`);
+    const componentsRecord = entry.components;
+    const components = Object.fromEntries(
+      ["foodQuality", "wait", "value", "walking", "comfort", "cleanliness", "ambience"].map((key) => [
+        key,
+        finite(componentsRecord[key], `metrics.visitRatings[${index}].components.${key}`, 0),
+      ]),
+    ) as unknown as VisitRating["components"];
+    if (typeof entry.served !== "boolean" || typeof entry.abandoned !== "boolean") {
+      throw new PersistenceError(`metrics.visitRatings[${index}] outcome flags must be boolean`);
+    }
+    return {
+      customerId: stringValue(entry.customerId, `metrics.visitRatings[${index}].customerId`),
+      score: finite(entry.score, `metrics.visitRatings[${index}].score`, 0),
+      served: entry.served,
+      abandoned: entry.abandoned,
+      reason: stringValue(entry.reason, `metrics.visitRatings[${index}].reason`),
+      stallDefinitionId: typeof entry.stallDefinitionId === "string" ? entry.stallDefinitionId : undefined,
+      components,
+      day: safeInteger(entry.day, `metrics.visitRatings[${index}].day`, 1),
+    };
+  });
+}
+
+function parseV3(value: Record<string, unknown>): PersistentGameStateV3 {
+  if (!Array.isArray(value.accessPoints)) throw new PersistenceError("accessPoints must be an array");
+  const accessPoints = value.accessPoints.map((entry, index) => {
+    if (!isRecord(entry)) throw new PersistenceError(`accessPoints[${index}] must be an object`);
+    if (entry.kind !== "entrance" && entry.kind !== "exit") throw new PersistenceError(`accessPoints[${index}].kind is invalid`);
+    return { id: stringValue(entry.id, `accessPoints[${index}].id`), kind: entry.kind as "entrance" | "exit", position: parsePoint(entry.position, `accessPoints[${index}].position`) };
+  });
+  const entrance = accessPoints.find((point) => point.kind === "entrance")?.position;
+  const exit = accessPoints.find((point) => point.kind === "exit")?.position;
+  if (!entrance || !exit) throw new PersistenceError("At least one entrance and one exit are required");
+  const common = parseV2({ ...value, schemaVersion: 2, entrance, exit });
+  const progressionRecord = isRecord(value.progression) ? value.progression : {};
+  const claimed = progressionRecord.claimedMilestoneIds;
+  if (claimed !== undefined && (!Array.isArray(claimed) || claimed.some((id) => typeof id !== "string"))) {
+    throw new PersistenceError("progression.claimedMilestoneIds must be a string array");
+  }
+  const metrics = isRecord(value.metrics) ? value.metrics : {};
+  return {
+    schemaVersion: 3,
+    savedAtTick: common.savedAtTick,
+    map: common.map,
+    accessPoints,
+    qualityMode: common.qualityMode,
+    objects: common.objects,
+    economy: common.economy,
+    progression: {
+      ...common.progression,
+      focusDay: safeInteger(progressionRecord.focusDay ?? 0, "progression.focusDay", 0),
+      dailyObjectives: parseDailyObjectives(progressionRecord.dailyObjectives),
+      claimedMilestoneIds: (claimed as string[] | undefined) ?? [],
+      stallMastery: parseMastery(progressionRecord.stallMastery),
+    },
+    metrics: {
+      trayReturns: safeInteger(metrics.trayReturns ?? 0, "metrics.trayReturns", 0),
+      visitRatings: parseVisitRatings(metrics.visitRatings),
+    },
+    rngState: common.rngState,
+    nextCustomerSequence: common.nextCustomerSequence,
+    elapsedMs: common.elapsedMs,
   };
 }
 
@@ -198,13 +318,33 @@ function parseV1(value: Record<string, unknown>): PersistentGameStateV1 {
   };
 }
 
-export function migratePersistentState(value: unknown): PersistentGameStateV2 {
+export function migratePersistentState(value: unknown): PersistentGameStateV3 {
   if (!isRecord(value)) throw new PersistenceError("Save data must be an object");
-  if (value.schemaVersion === 2) return parseV2(value);
+  if (value.schemaVersion === 3) return parseV3(value);
+  if (value.schemaVersion === 2) {
+    const old = parseV2(value);
+    return {
+      schemaVersion: 3,
+      savedAtTick: old.savedAtTick,
+      map: old.map,
+      accessPoints: [
+        { id: "entrance-1", kind: "entrance", position: old.entrance },
+        { id: "exit-1", kind: "exit", position: old.exit },
+      ],
+      qualityMode: old.qualityMode,
+      objects: old.objects,
+      economy: old.economy,
+      progression: old.progression,
+      metrics: { trayReturns: 0, visitRatings: [] },
+      rngState: old.rngState,
+      nextCustomerSequence: old.nextCustomerSequence,
+      elapsedMs: old.elapsedMs,
+    };
+  }
   if (value.schemaVersion !== 1) throw new PersistenceError(`Unsupported save version: ${String(value.schemaVersion)}`);
   const old = parseV1(value);
   const level = 1 + Math.floor(Math.sqrt(old.xp / 100));
-  return {
+  return migratePersistentState({
     schemaVersion: 2,
     savedAtTick: 0,
     map: old.map,
@@ -225,24 +365,27 @@ export function migratePersistentState(value: unknown): PersistentGameStateV2 {
       reputation: Math.max(0, Math.min(5, old.reputation ?? 2.5)),
       unlockedDefinitionIds: [],
       expansionCount: 0,
+      focusDay: 0,
+      dailyObjectives: [],
+      claimedMilestoneIds: [],
+      stallMastery: {},
     },
     rngState: old.seed,
     nextCustomerSequence: 1,
     elapsedMs: 0,
-  };
+  });
 }
 
-export function persistentStateFromGame(state: GameState): PersistentGameStateV2 {
+export function persistentStateFromGame(state: GameState): PersistentGameStateV3 {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     savedAtTick: state.tick,
     map: {
       ...state.map,
       worldOrigin: { ...state.map.worldOrigin },
       tiles: [...state.map.tiles],
     },
-    entrance: { ...state.entrance },
-    exit: { ...state.exit },
+    accessPoints: state.accessPoints.map((point) => ({ ...point, position: { ...point.position } })),
     qualityMode: state.qualityMode,
     objects: Object.values(state.objects)
       .sort((a, b) => compareIds(a.id, b.id))
@@ -252,7 +395,14 @@ export function persistentStateFromGame(state: GameState): PersistentGameStateV2
         queuePath: object.queuePath?.map((point) => ({ ...point })),
       })),
     economy: { ...state.economy },
-    progression: { ...state.progression, unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds] },
+    progression: {
+      ...state.progression,
+      unlockedDefinitionIds: [...state.progression.unlockedDefinitionIds],
+      dailyObjectives: state.progression.dailyObjectives.map((objective) => ({ ...objective })),
+      claimedMilestoneIds: [...state.progression.claimedMilestoneIds],
+      stallMastery: Object.fromEntries(Object.entries(state.progression.stallMastery).map(([id, mastery]) => [id, { ...mastery }])),
+    },
+    metrics: { trayReturns: state.metrics.trayReturns, visitRatings: state.metrics.visitRatings.map((rating) => ({ ...rating, components: { ...rating.components } })) },
     rngState: state.rngState,
     nextCustomerSequence: state.nextCustomerSequence,
     elapsedMs: state.elapsedMs,
@@ -270,7 +420,7 @@ export function serializeGameState(state: GameState): string {
 }
 
 function normalizeObjects(
-  save: PersistentGameStateV2,
+  save: PersistentGameStateV3,
   catalog: SimulationCatalog,
   options: DeserializeOptions,
 ): { readonly objects: readonly PlacedObject[]; readonly recovery: PersistenceRecoveryReport } {
@@ -304,9 +454,25 @@ function normalizeObjects(
         continue;
       }
     }
-    const object: PlacedObject = { ...source, definitionId };
+    const sourceObject: PlacedObject = { ...source, definitionId };
+    const queueAnchor = getObjectQueueAnchor(sourceObject, catalog);
+    const queueHead = sourceObject.queuePath?.[0];
+    const queueHeadMovedOneTile =
+      queueAnchor &&
+      queueHead &&
+      !samePoint(queueAnchor, queueHead) &&
+      Math.abs(queueAnchor.x - queueHead.x) + Math.abs(queueAnchor.y - queueHead.y) === 1;
+    const object: PlacedObject = queueHeadMovedOneTile
+      ? {
+          ...sourceObject,
+          queuePath: [queueAnchor, ...(sourceObject.queuePath?.slice(0, -1) ?? [])],
+        }
+      : sourceObject;
+    if (queueHeadMovedOneTile) {
+      warnings.push(`Moved ${object.id}'s queue head to its updated service point`);
+    }
     const validation = validatePlacement(save.map, accepted, catalog, object, {
-      reservedPoints: [save.entrance, save.exit],
+      reservedPoints: save.accessPoints.map((point) => point.position),
     });
     if (!validation.valid) {
       throw new PersistenceError(`Saved object ${object.id} has invalid placement: ${validation.reasons.join("; ")}`);
@@ -363,6 +529,10 @@ export function deserializeGameStateWithReport(
   }
   const save = migratePersistentState(raw);
   const normalized = normalizeObjects(save, catalog, options);
+  const normalizedMap = normalizeBoundaryOpenings(
+    save.map,
+    save.accessPoints.map((point) => point.position),
+  );
   const normalizedUnlocks = normalizeUnlocks(save.progression.unlockedDefinitionIds, catalog, options);
   const recovery: PersistenceRecoveryReport = {
     ...normalized.recovery,
@@ -375,9 +545,8 @@ export function deserializeGameStateWithReport(
   let base: GameState;
   try {
     base = createNewGame({
-      map: save.map,
-      entrance: save.entrance,
-      exit: save.exit,
+      map: normalizedMap,
+      accessPoints: save.accessPoints,
       catalog,
       seed: save.rngState,
       startingCurrency: recoveredEconomy.currency,
@@ -402,6 +571,7 @@ export function deserializeGameStateWithReport(
     nextCustomerSequence: save.nextCustomerSequence,
     tick: save.savedAtTick,
     elapsedMs: save.elapsedMs,
+    metrics: { ...base.metrics, trayReturns: save.metrics.trayReturns, visitRatings: save.metrics.visitRatings },
     spawnCountdownMs: 0,
     accumulatorMs: 0,
     undoStack: [],

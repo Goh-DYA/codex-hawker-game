@@ -6,6 +6,9 @@ All notable project changes are recorded here. The project is pre-release; seman
 
 ### Added
 
+- Adaptive uncapped guest demand, rolling 0–100 visit ratings, three daily objectives, permanent centre milestones, and open-ended stall mastery with authored upgrades.
+- Multiple movable boundary entrances/exits with atomic validation, undo, multi-route spawning, and schema-v3 save migration.
+- A 10× simulation option and an original state-aware procedural soundtrack with separate master mute, music, ambience, and effects controls.
 - Complete React/Phaser Hawker Simulator interface, top-down game world, onboarding, build catalogue, stall/dish menu management, objectives/insights, expansion, settings, accessibility controls, and local save tools.
 - Deterministic fixed-step customer lifecycle with queueing, ordering, collection, seat reservation, dining, tray return, exit, target recovery, economy, XP, reputation, levels, and unlock reconciliation.
 - Exact launch catalogue of 8 original stalls, 30 dishes, 80 meaningful placeables, 8 customer archetypes, and 252 English localization entries.

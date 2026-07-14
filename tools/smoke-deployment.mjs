@@ -12,17 +12,27 @@ const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 const requestHeaders = bypass
   ? {
       "x-vercel-protection-bypass": bypass,
-      "x-vercel-set-bypass-cookie": "true",
     }
   : undefined;
 
 async function request(path) {
   const url = new URL(path, baseUrl);
-  const response = await fetch(url, {
-    headers: requestHeaders,
-    redirect: "follow",
-    cache: "no-store",
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: requestHeaders,
+      redirect: "follow",
+      cache: "no-store",
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    const bypassState = bypass
+      ? "The Vercel automation bypass header was supplied."
+      : "No Vercel automation bypass secret was supplied.";
+    throw new Error(`Deployment request failed for ${url}: ${detail} ${bypassState}`, {
+      cause: error,
+    });
+  }
   assert.equal(response.status, 200, `${url} returned ${response.status}`);
   return response;
 }
@@ -56,7 +66,7 @@ assert.match(html, /data-testid="game-world"/);
 assert.match(html, /manifest\.webmanifest/);
 
 const responseOrigin = new URL(rootResponse.url).origin;
-for (const match of html.matchAll(/https?:\/\/[^"'<>\\s]+/g)) {
+for (const match of html.matchAll(/https?:\/\/[^"'<>\s]+/g)) {
   assert.equal(
     new URL(match[0]).origin,
     responseOrigin,

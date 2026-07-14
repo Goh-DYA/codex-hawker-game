@@ -281,6 +281,50 @@ export function validatePlacement(
   return { valid: uniqueReasons.length === 0, reasons: uniqueReasons, occupiedTiles };
 }
 
+function boundaryProfile(
+  map: GridMap,
+  points: readonly GridPoint[],
+): { readonly present: boolean; readonly kind: TileKind } {
+  const counts = new Map<TileKind, number>();
+  for (const point of points) {
+    const tile = getTile(map, point) as TileKind;
+    if (tile !== "floor") counts.set(tile, (counts.get(tile) ?? 0) + 1);
+  }
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const [kind, count] = ranked[0] ?? ["wall" as TileKind, 0];
+  return { present: count >= Math.max(1, Math.ceil(points.length / 2)), kind };
+}
+
+/** Seals accidental perimeter gaps while preserving registered access openings. */
+export function normalizeBoundaryOpenings(
+  map: GridMap,
+  openings: readonly GridPoint[],
+): GridMap {
+  const tiles = [...map.tiles];
+  const edges = [
+    Array.from({ length: map.width }, (_, x) => ({ x, y: 0 })),
+    Array.from({ length: map.width }, (_, x) => ({ x, y: map.height - 1 })),
+    Array.from({ length: map.height }, (_, y) => ({ x: 0, y })),
+    Array.from({ length: map.height }, (_, y) => ({ x: map.width - 1, y })),
+  ];
+
+  for (const points of edges) {
+    const profile = boundaryProfile(map, points);
+    if (!profile.present) continue;
+    for (const point of points) tiles[point.y * map.width + point.x] = profile.kind;
+  }
+  for (const point of openings) {
+    if (
+      isInBounds(map, point) &&
+      (point.x === 0 || point.y === 0 || point.x === map.width - 1 || point.y === map.height - 1)
+    ) {
+      tiles[point.y * map.width + point.x] = "floor";
+    }
+  }
+
+  return { ...map, tiles };
+}
+
 export function expandGridMap(map: GridMap, addColumns: number, addRows: number): GridMap {
   if (!Number.isInteger(addColumns) || !Number.isInteger(addRows) || addColumns < 0 || addRows < 0) {
     throw new RangeError("Map expansion values must be non-negative integers");
@@ -295,24 +339,14 @@ export function expandGridMap(map: GridMap, addColumns: number, addRows: number)
     }
   }
 
-  const boundaryProfile = (points: readonly GridPoint[]): { readonly present: boolean; readonly kind: TileKind } => {
-    const counts = new Map<TileKind, number>();
-    for (const point of points) {
-      const tile = getTile(map, point) as TileKind;
-      if (tile !== "floor") counts.set(tile, (counts.get(tile) ?? 0) + 1);
-    }
-    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    const [kind, count] = ranked[0] ?? ["wall" as TileKind, 0];
-    return { present: count >= Math.max(1, Math.ceil(points.length / 2)), kind };
-  };
   const topPoints = Array.from({ length: map.width }, (_, x) => ({ x, y: 0 }));
   const bottomPoints = Array.from({ length: map.width }, (_, x) => ({ x, y: map.height - 1 }));
   const leftPoints = Array.from({ length: map.height }, (_, y) => ({ x: 0, y }));
   const rightPoints = Array.from({ length: map.height }, (_, y) => ({ x: map.width - 1, y }));
-  const top = boundaryProfile(topPoints);
-  const bottom = boundaryProfile(bottomPoints);
-  const left = boundaryProfile(leftPoints);
-  const right = boundaryProfile(rightPoints);
+  const top = boundaryProfile(map, topPoints);
+  const bottom = boundaryProfile(map, bottomPoints);
+  const left = boundaryProfile(map, leftPoints);
+  const right = boundaryProfile(map, rightPoints);
   const setExpandedTile = (point: GridPoint, tile: TileKind): void => {
     tiles[point.y * width + point.x] = tile;
   };
@@ -322,13 +356,17 @@ export function expandGridMap(map: GridMap, addColumns: number, addRows: number)
   // purchased floor space is visually and navigationally continuous.
   if (addColumns > 0 && right.present) {
     for (let y = 0; y < map.height; y += 1) {
-      setExpandedTile({ x: map.width - 1, y }, "floor");
+      const remainsOnTop = y === 0 && top.present;
+      const remainsOnBottom = addRows === 0 && y === map.height - 1 && bottom.present;
+      if (!remainsOnTop && !remainsOnBottom) setExpandedTile({ x: map.width - 1, y }, "floor");
       setExpandedTile({ x: width - 1, y }, getTile(map, { x: map.width - 1, y }) as TileKind);
     }
   }
   if (addRows > 0 && bottom.present) {
     for (let x = 0; x < map.width; x += 1) {
-      setExpandedTile({ x, y: map.height - 1 }, "floor");
+      const remainsOnLeft = x === 0 && left.present;
+      const remainsOnRight = addColumns === 0 && x === map.width - 1 && right.present;
+      if (!remainsOnLeft && !remainsOnRight) setExpandedTile({ x, y: map.height - 1 }, "floor");
       setExpandedTile({ x, y: height - 1 }, getTile(map, { x, y: map.height - 1 }) as TileKind);
     }
   }

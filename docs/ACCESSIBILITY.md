@@ -47,7 +47,7 @@ Rapid simulation events are aggregated; announcements must not flood screen read
 
 ## Hearing
 
-- Separate master, music, ambience, UI, and effects controls plus mute.
+- Separate master mute, music, ambience, and effects controls; UI cues use the effects bus.
 - Important sounds have visual/text equivalents.
 - The game starts only after an explicit interaction and never relies on background audio.
 - No voice acting is planned; captions are required if speech is added later.
