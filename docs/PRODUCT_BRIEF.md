@@ -25,7 +25,7 @@ The game is for casual and simulation players aged 13+, launches free, requires 
 - Mouse, trackpad, and keyboard are required. Touch is optional.
 - One coherent map theme, orthographic top-down square-grid construction, pan, and zoom.
 - Place, move, rotate, store, sell, remove, and undo placeable objects and stalls.
-- Eight fictional stalls, 30 playable dishes, 80 meaningfully distinct placeables, and eight behavior archetypes.
+- Twelve fictional stalls, 46 playable dishes, 80 meaningfully distinct placeables, and twelve behavior archetypes.
 - Customer spawning, choice, pathfinding, queueing, ordering, preparation abstraction, seat reservation, eating, reactions, tray return where applicable, and departure.
 - Cash, experience, reputation, unlocks, upgrades, objectives, and map expansion.
 - Tutorial, settings, accessibility options, audio controls, local saves, and offline application shell.
@@ -42,7 +42,7 @@ Accounts, cloud saves, multiplayer, chat, leaderboards, social visits, user-gene
 The release must pass the acceptance checklist in RELEASE_CHECKLIST.md. In particular:
 
 - The complete customer lifecycle and build-mode recovery cases pass automated and browser tests.
-- Content validators prove 8 / 30 / 80 / 8 counts and no missing runtime references.
+- Content validators prove 12 / 46 / 80 / 12 counts and no missing runtime references.
 - IndexedDB recovery, save migrations, cache updates, and offline reload are verified.
 - Measured performance meets an approved supported-customer cap in both quality tiers.
 - Essential UI actions work by keyboard and do not rely on color or audio alone.

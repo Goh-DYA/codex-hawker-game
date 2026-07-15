@@ -1,6 +1,6 @@
 # Asset Provenance Register
 
-Status: Automated provenance/dependency audit current; human visual, cultural, and legal review pending
+Status: Expanded-source recipe validation passed; prior dependency audit retained; human visual, cultural, and legal review pending
 
 ## Policy
 
@@ -9,9 +9,9 @@ All shipped art and audio must be original and reproducible from repository sour
 | Asset class | Intended source | Runtime form | License / rights | State |
 |---|---|---|---|---|
 | World and expansion boundaries | Original TypeScript/Phaser procedural geometry following ART_BIBLE.md | Canvas-generated floors, walls, entrance, and exit | Project-original | Implemented; repeated-expansion development-browser evidence captured; exact-production review pending |
-| Stalls and placeables | Original semantic recipes in `src/game/runtime/visualRecipes.ts` and procedural renderers | Canvas geometry plus CSS catalogue previews | Project-original | Exactly 8 stall identities and 80 distinct placeable visual contracts/motifs covered by automated tests; human visual/cultural review pending |
-| Characters and reactions | Original modular procedural recipes with archetype and lifecycle-state variants | Canvas geometry | Project-original | Exactly 8 archetype appearances and 11 state poses covered by automated tests; moving/reduced-motion signatures present; human visual review pending |
-| Food and vessels | Original dish recipes derived from authored food sprite, container, portion-colour, and steam metadata; factual reference only | Canvas geometry | Project-original | All 30 dish metadata contracts covered; carried and table/eating states implemented; cultural review pending |
+| Stalls and placeables | Original semantic recipes in `src/game/runtime/visualRecipes.ts` and procedural renderers | Canvas geometry plus CSS catalogue previews | Project-original | Exactly 12 stall definitions use unique primary visual references and complete palettes; all 80 placeables have unique deterministic semantic contracts, motifs/forms, real-world materials, and multiple detail cues under automated tests; human visual/cultural review pending |
+| Characters and reactions | Original modular procedural recipes with archetype and lifecycle-state variants | Canvas geometry | Project-original | Exactly 12 archetype appearances and 11 state poses covered by automated tests; moving/reduced-motion signatures present; human visual review pending |
+| Food and vessels | Original dish recipes derived from authored food sprite, container, portion-colour, and steam metadata; factual reference only | Canvas geometry | Project-original | All 46 dishes use unique primary food references and distinct recipe profiles with real-food motifs, semantic serviceware, portion shapes, multiple ingredient cues, and garnish/arrangement cues; carried and table/eating states are implemented; exhaustive human visual/cultural review pending |
 | Queue overlays and editor | Original runtime geometry and DOM controls | Canvas lines/cells/badges plus HTML controls | Project-original | Counts, automatic routes, cardinal directions, bends, and saved custom paths implemented; development-browser screenshots captured |
 | UI icons | Original geometric SVG/CSS | SVG/CSS | Project-original | Implemented |
 | App icon | Repository-authored SVG | public/icons/icon.svg | Project-original; final visual review pending | Present |
@@ -40,7 +40,7 @@ AI-generated imagery needs the model/tool, prompt, output date, edits, similarit
 
 ## Release audit
 
-- [x] Automated recipe inventories cover every authored placeable, stall, dish, archetype, and lifecycle state expected by the current catalogue.
+- [x] Every authored placeable, stall, dish, archetype, and lifecycle state expected by the expanded catalogue is represented in automated recipe inventories that pass on the supported runtime.
 - [x] Development-browser captures exercise the starter scene, live service/food, queue overlays/editor, and repeated expansion geometry.
 - [ ] Every runtime visual/audio path has a register row or is generated from registered code.
 - [ ] No orphaned, test, debug, or starter asset ships.

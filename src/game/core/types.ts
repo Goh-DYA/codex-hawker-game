@@ -45,6 +45,8 @@ export interface DishDefinition {
   readonly preparationMs: number;
   readonly eatingMs: number;
   readonly quality: number;
+  /** Authored relative appeal in the inclusive 0-1 range. */
+  readonly baseDemand?: number;
   readonly preferenceTags?: readonly string[];
 }
 
@@ -120,6 +122,15 @@ export interface CustomerArchetype {
   /** How willing this archetype is to explore a less-obvious stall. Zero disables exploration. */
   readonly noveltyPreference?: number;
   readonly preferenceTags?: readonly string[];
+  /** Optional progression gates. Reputation uses the core zero-to-five scale. */
+  readonly unlockLevel?: number;
+  readonly unlockReputation?: number;
+  readonly unlockPrerequisiteIds?: readonly string[];
+  readonly visitSchedule?: {
+    readonly startHour: number;
+    readonly endHour: number;
+    readonly peakMultiplier: number;
+  };
 }
 
 export interface SimulationCatalog {
@@ -167,6 +178,8 @@ export interface Customer {
   readonly movementProgress: number;
   readonly stateElapsedMs: number;
   readonly visitElapsedMs: number;
+  /** Completed grid steps across the guest's full centre journey. */
+  readonly walkingDistanceTiles: number;
   readonly patienceRemainingMs: number;
   readonly satisfaction: number;
   readonly sourceEntranceId?: string;
@@ -197,6 +210,7 @@ export interface VisitRatingComponents {
 
 export interface VisitRating {
   readonly customerId: string;
+  readonly walkingMetricVersion: 2;
   readonly score: number;
   readonly served: boolean;
   readonly abandoned: boolean;
@@ -308,6 +322,7 @@ export interface SimulationEvent {
 export interface UndoSnapshot {
   readonly map: GridMap;
   readonly accessPoints: readonly AccessPoint[];
+  readonly routeGuidePoints: readonly GridPoint[];
   readonly entrance: GridPoint;
   readonly exit: GridPoint;
   readonly objects: Readonly<Record<string, PlacedObject>>;
@@ -330,6 +345,7 @@ export interface GameState {
   readonly schemaVersion: 3;
   readonly map: GridMap;
   readonly accessPoints: readonly AccessPoint[];
+  readonly routeGuidePoints: readonly GridPoint[];
   /** Compatibility aliases for callers that have not migrated to accessPoints. */
   readonly entrance: GridPoint;
   readonly exit: GridPoint;
@@ -359,6 +375,7 @@ export interface NewGameOptions {
   readonly entrance?: GridPoint;
   readonly exit?: GridPoint;
   readonly accessPoints?: readonly AccessPoint[];
+  readonly routeGuidePoints?: readonly GridPoint[];
   readonly catalog: SimulationCatalog;
   readonly seed?: number | string;
   readonly startingCurrency?: number;
@@ -413,6 +430,11 @@ export interface SetStallQueueDirectionCommand {
   readonly direction: QueueDirection;
 }
 
+export interface ConfigureGuestRouteCommand {
+  readonly type: "configure-guest-route";
+  readonly points: readonly GridPoint[];
+}
+
 export interface AddAccessPointCommand {
   readonly type: "add-access-point";
   readonly accessPoint: AccessPoint;
@@ -442,6 +464,7 @@ export type BuildCommand =
   | ExpandMapCommand
   | ConfigureQueueCommand
   | SetStallQueueDirectionCommand
+  | ConfigureGuestRouteCommand
   | AddAccessPointCommand
   | MoveAccessPointCommand
   | RemoveAccessPointCommand;
@@ -473,6 +496,7 @@ export interface GameSnapshot {
   readonly elapsedMs: number;
   readonly map: GridMap;
   readonly accessPoints: readonly AccessPoint[];
+  readonly routeGuidePoints: readonly GridPoint[];
   readonly qualityMode: QualityMode;
   readonly entrance: GridPoint;
   readonly exit: GridPoint;
@@ -508,6 +532,7 @@ export interface PersistentGameStateV3 {
   readonly savedAtTick: number;
   readonly map: GridMap;
   readonly accessPoints: readonly AccessPoint[];
+  readonly routeGuidePoints: readonly GridPoint[];
   readonly qualityMode: QualityMode;
   readonly objects: readonly PlacedObject[];
   readonly economy: EconomyState;

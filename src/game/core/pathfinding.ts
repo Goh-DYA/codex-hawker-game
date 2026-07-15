@@ -16,6 +16,8 @@ import { validateConfiguredQueuePath } from "./queueing";
 
 export interface PathfindingOptions {
   readonly blocked?: ReadonlySet<string>;
+  /** Floor cells that should be favoured without becoming mandatory waypoints. */
+  readonly preferred?: ReadonlySet<string>;
   readonly allowEndBlocked?: boolean;
   readonly maxVisited?: number;
 }
@@ -91,6 +93,8 @@ const NEIGHBOURS: readonly GridPoint[] = [
   { x: 0, y: 1 },
 ];
 
+const PREFERRED_STEP_COST = 0.65;
+
 export function findPath(
   map: GridMap,
   start: GridPoint,
@@ -103,6 +107,8 @@ export function findPath(
   if (samePoint(start, end)) return { path: [{ ...start }], visited: 1 };
 
   const blocked = options.blocked ?? new Set<string>();
+  const preferred = options.preferred;
+  const minimumStepCost = preferred && preferred.size > 0 ? PREFERRED_STEP_COST : 1;
   if (blocked.has(pointKey(end)) && !options.allowEndBlocked) return { path: null, visited: 0 };
   const maxVisited = options.maxVisited ?? Math.max(1, map.width * map.height);
   const open = new MinHeap();
@@ -112,7 +118,7 @@ export function findPath(
   const points = new Map<string, GridPoint>([[startKey, { ...start }]]);
   const closed = new Set<string>();
   let order = 0;
-  const startH = distance(start, end);
+  const startH = distance(start, end) * minimumStepCost;
   open.push({ point: { ...start }, key: startKey, g: 0, h: startH, f: startH, order: order++ });
   let visited = 0;
 
@@ -140,12 +146,13 @@ export function findPath(
       const key = pointKey(point);
       if (!isInBounds(map, point) || getTile(map, point) !== "floor" || closed.has(key)) continue;
       if (blocked.has(key) && !(options.allowEndBlocked && samePoint(point, end))) continue;
-      const tentative = current.g + 1;
+      const stepCost = preferred?.has(key) ? PREFERRED_STEP_COST : 1;
+      const tentative = current.g + stepCost;
       if (tentative >= (gScores.get(key) ?? Number.POSITIVE_INFINITY)) continue;
       gScores.set(key, tentative);
       cameFrom.set(key, current.key);
       points.set(key, point);
-      const h = distance(point, end);
+      const h = distance(point, end) * minimumStepCost;
       open.push({ point, key, g: tentative, h, f: tentative + h, order: order++ });
     }
   }

@@ -16,6 +16,7 @@ import {
   PLACEABLES,
   STALLS,
   validateContent,
+  type DishDefinition,
   type PlaceableDefinition,
   type StallDefinition,
 } from "@/src/content";
@@ -31,13 +32,19 @@ import {
 } from "@/src/game/persistence/saveStore";
 import { registerPwa } from "@/src/game/pwa/registerPwa";
 import { utilityEffectsForPlaceable } from "@/src/game/runtime/contentUtility";
+import { defaultStallMenusForProgression } from "@/src/game/runtime/stallMenus";
 import {
   activityEntryMessage,
   appendActivityEvent,
   shouldShowPopup,
   type ActivityEntry,
 } from "@/src/game/runtime/activityFeed";
-import { visualRecipeForPlaceable } from "@/src/game/runtime/visualRecipes";
+import {
+  CUSTOMER_INDICATOR_LEGEND,
+  visualRecipeForDish,
+  visualRecipeForPlaceable,
+  type CustomerIndicator,
+} from "@/src/game/runtime/visualRecipes";
 import type {
   BuildTool,
   GameSpeed,
@@ -47,10 +54,13 @@ import type {
   RuntimeSnapshot,
 } from "@/src/game/runtime/types";
 
+const INITIAL_LEVEL = 1;
+const INITIAL_REPUTATION = 8;
+
 const INITIAL_SNAPSHOT: RuntimeSnapshot = {
   cash: 4_200,
-  reputation: 8,
-  level: 1,
+  reputation: INITIAL_REPUTATION,
+  level: INITIAL_LEVEL,
   experience: 0,
   nextLevelExperience: 120,
   day: 1,
@@ -71,10 +81,12 @@ const INITIAL_SNAPSHOT: RuntimeSnapshot = {
   cleanliness: 100,
   trayReturnStations: 1,
   buildTool: "select",
+  routeGuidePoints: [],
   unlockedContentIds: [],
-  stallMenus: Object.fromEntries(
-    STALLS.map((stall) => [stall.id, stall.dishIds.slice(0, stall.menuSlots)]),
-  ),
+  stallMenus: defaultStallMenusForProgression({
+    level: INITIAL_LEVEL,
+    reputation: INITIAL_REPUTATION,
+  }),
   placedStalls: [],
   canUndo: false,
   objectiveProgress: 0,
@@ -106,8 +118,11 @@ const DEFAULT_SETTINGS: RuntimeSettings = {
   masterMuted: false,
 };
 
-function normalizeSettings(value: unknown): RuntimeSettings {
-  if (!value || typeof value !== "object") return DEFAULT_SETTINGS;
+function normalizeSettings(
+  value: unknown,
+  defaults: RuntimeSettings = DEFAULT_SETTINGS,
+): RuntimeSettings {
+  if (!value || typeof value !== "object") return defaults;
   const record = value as Partial<Record<keyof RuntimeSettings, unknown>>;
   const number = (key: "textScale" | "musicVolume" | "ambienceVolume" | "sfxVolume", fallback: number) =>
     typeof record[key] === "number" && Number.isFinite(record[key])
@@ -118,11 +133,11 @@ function normalizeSettings(value: unknown): RuntimeSettings {
     reducedMotion:
       typeof record.reducedMotion === "boolean"
         ? record.reducedMotion
-        : DEFAULT_SETTINGS.reducedMotion,
+        : defaults.reducedMotion,
     highContrast:
       typeof record.highContrast === "boolean"
         ? record.highContrast
-        : DEFAULT_SETTINGS.highContrast,
+        : defaults.highContrast,
     textScale: Math.max(1, Math.min(1.35, number("textScale", 1))),
     musicVolume: Math.max(0, Math.min(1, number("musicVolume", 0.32))),
     ambienceVolume: Math.max(0, Math.min(1, number("ambienceVolume", number("musicVolume", 0.24)))),
@@ -137,7 +152,7 @@ type TutorialStep = 0 | 1 | 2 | 3 | 4 | 5;
 const PANEL_COPY: Readonly<Record<Panel, { kicker: string; title: string }>> = {
   build: { kicker: "Build catalogue", title: "Make it yours" },
   stalls: { kicker: "Food & drink", title: "Stalls" },
-  dishes: { kicker: "Menus", title: "Thirty dishes" },
+  dishes: { kicker: "Menus", title: "Hawker menus" },
   insights: { kicker: "Why it happens", title: "Flow insights" },
   activity: { kicker: "Recent events", title: "Activity" },
 };
@@ -155,6 +170,167 @@ interface Toast extends RuntimeEvent {
 
 function localize(key: string) {
   return ENGLISH_LOCALIZATION[key] ?? key;
+}
+
+type CustomerLegendSymbol = CustomerIndicator | "patience";
+
+function CustomerIndicatorIcon({ indicator }: { indicator: CustomerLegendSymbol }) {
+  if (indicator === "patience") {
+    return (
+      <svg
+        className="customer-indicator-icon is-patience"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <circle cx="12" cy="12" r="3.5" fill="currentColor" opacity="0.28" />
+        <circle
+          cx="12"
+          cy="12"
+          r="8"
+          fill="none"
+          stroke="#e8b94f"
+          strokeWidth="2.5"
+          strokeDasharray="30 21"
+          transform="rotate(-90 12 12)"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="8"
+          fill="none"
+          stroke="#c75542"
+          strokeWidth="2.5"
+          strokeDasharray="10 41"
+          strokeDashoffset="-31"
+          transform="rotate(-90 12 12)"
+        />
+      </svg>
+    );
+  }
+
+  let glyph;
+  if (indicator === "question") {
+    glyph = (
+      <>
+        <circle cx="12" cy="9" r="3.5" />
+        <circle cx="12" cy="17" r="1.5" fill="currentColor" stroke="none" />
+      </>
+    );
+  } else if (indicator === "footsteps") {
+    glyph = (
+      <>
+        <ellipse cx="8.5" cy="14" rx="1.8" ry="3.6" fill="currentColor" stroke="none" />
+        <ellipse cx="15.5" cy="10" rx="1.8" ry="3.6" fill="currentColor" stroke="none" />
+      </>
+    );
+  } else if (indicator === "queue") {
+    glyph = [7, 12, 17].map((cx) => (
+      <circle key={cx} cx={cx} cy="12" r="1.7" fill="currentColor" stroke="none" />
+    ));
+  } else if (indicator === "order") {
+    glyph = (
+      <>
+        <rect x="6" y="6.5" width="12" height="8.5" rx="2" />
+        <path d="M10 15 8 19 8.5 15" />
+      </>
+    );
+  } else if (indicator === "clock") {
+    glyph = (
+      <>
+        <circle cx="12" cy="12" r="6" />
+        <path d="M12 12V8M12 12l4 2" />
+      </>
+    );
+  } else if (indicator === "seat") {
+    glyph = <path d="M7 6v11M7 13h10M17 13v5" />;
+  } else if (indicator === "meal") {
+    glyph = (
+      <>
+        <circle cx="13" cy="12" r="5.5" />
+        <path d="M6 6v12" />
+      </>
+    );
+  } else if (indicator === "return") {
+    glyph = <path d="M18 12H6m0 0 4-4m-4 4 4 4" />;
+  } else {
+    glyph = <path d="M6 12h12m0 0-4-4m4 4-4 4" />;
+  }
+
+  return (
+    <svg
+      className={`customer-indicator-icon is-${indicator}`}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle className="customer-indicator-bubble" cx="12" cy="12" r="10" />
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {glyph}
+      </g>
+    </svg>
+  );
+}
+
+function CustomerStatusLegend() {
+  return (
+    <div className="customer-status-legend">
+      <p>The bubble above each customer shows what they are doing now.</p>
+      <ul data-testid="customer-status-legend">
+        {CUSTOMER_INDICATOR_LEGEND.map((entry) => (
+          <li key={entry.indicator}>
+            <CustomerIndicatorIcon indicator={entry.indicator} />
+            <span>
+              <strong>{entry.label}</strong>
+              <small>{entry.description}</small>
+            </span>
+          </li>
+        ))}
+        <li>
+          <CustomerIndicatorIcon indicator="patience" />
+          <span>
+            <strong>Patience ring</strong>
+            <small>
+              Shows patience remaining from the queue. It turns red when low and remains visible
+              while food is prepared.
+            </small>
+          </span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+function CustomerStatusGuide() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="settings-guide" aria-label="Customer status icon guide">
+      <button
+        type="button"
+        aria-label="Customer status bubbles"
+        aria-expanded={open}
+        aria-controls="customer-status-legend-content"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>
+          <strong>Customer status bubbles</strong>
+          <small>See what every on-map symbol means</small>
+        </span>
+      </button>
+      {open ? (
+        <div id="customer-status-legend-content">
+          <CustomerStatusLegend />
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function money(value: number) {
@@ -189,21 +365,63 @@ function getContentPrice(item: PlaceableDefinition | StallDefinition) {
 
 type PreviewStyle = CSSProperties & {
   "--preview-accent": string;
-  "--preview-tilt": string;
-  "--preview-shift": string;
+};
+
+type DishPreviewStyle = CSSProperties & {
+  "--dish-portion": string;
+  "--dish-garnish": string;
 };
 
 function placeablePreview(item: PlaceableDefinition): {
   recipe: ReturnType<typeof visualRecipeForPlaceable>;
   style: PreviewStyle;
 } {
-  const recipe = visualRecipeForPlaceable(item.id, item.category);
+  const recipe = visualRecipeForPlaceable(item.id, item.category, item.tags);
   return {
     recipe,
     style: {
       "--preview-accent": `#${recipe.accent.toString(16).padStart(6, "0")}`,
-      "--preview-tilt": `${recipe.detailVariant * 5 - 20}deg`,
-      "--preview-shift": `${recipe.makerMark % 9 - 4}px`,
+    },
+  };
+}
+
+function dishPresentation(recipe: ReturnType<typeof visualRecipeForDish>) {
+  const presentation = recipe.presentation;
+  if (presentation.vessel === "tall-drinking-glass") return "tall-drink";
+  if (presentation.vessel === "kopitiam-cup-and-saucer") return "mug";
+  return {
+    "rice-mound": "composed-rice",
+    porridge: "porridge",
+    "noodle-tangle": "noodles",
+    broth: "soup",
+    liquid: "mug",
+    "shaved-ice": "shaved-dessert",
+    flatbread: presentation.motif.includes("thosai") ? "rolled-bread" : "flatbread",
+    "cake-cubes": "fried-plate",
+    omelette: "fried-plate",
+    fritters: "small-cakes",
+    dumplings: "dumplings",
+    skewers: "skewers",
+    "grilled-pieces": "grilled",
+    pudding: "porridge",
+    "whole-seafood": "seafood",
+    "leaf-parcel": "leaf-parcel",
+    buns: "dumplings",
+  }[presentation.portionShape];
+}
+
+function dishPreview(dish: (typeof DISHES)[number]): {
+  recipe: ReturnType<typeof visualRecipeForDish>;
+  presentation: string;
+  style: DishPreviewStyle;
+} {
+  const recipe = visualRecipeForDish(dish);
+  return {
+    recipe,
+    presentation: dishPresentation(recipe),
+    style: {
+      "--dish-portion": `#${recipe.portionColour.toString(16).padStart(6, "0")}`,
+      "--dish-garnish": `#${recipe.garnishColour.toString(16).padStart(6, "0")}`,
     },
   };
 }
@@ -229,7 +447,7 @@ function utilityEffects(item: PlaceableDefinition): readonly string[] {
     effects.push(`Cleaning efficiency ${signedEffect(resolved.cleaningEfficiency * 100, "%")}`);
   }
   if (resolved.movementSpeed !== 0) {
-    effects.push(`Walking flow ${signedEffect(resolved.movementSpeed * 100, "%")}`);
+    effects.push(`Walking speed ${signedEffect(resolved.movementSpeed * 100, "%")}`);
   }
   if (resolved.wayfinding > 0) {
     effects.push(`Wayfinding ${signedEffect(resolved.wayfinding * 100, "%")}`);
@@ -260,9 +478,15 @@ function primaryUtility(item: PlaceableDefinition) {
 
 const UNLOCKABLE_CONTENT = [...PLACEABLES, ...STALLS] as const;
 const UNLOCKABLE_BY_ID = new Map(UNLOCKABLE_CONTENT.map((item) => [item.id, item]));
+const CUSTOMER_PERSONAS_BY_UNLOCK = [...CUSTOMER_ARCHETYPES].sort(
+  (left, right) =>
+    left.unlockRequirement.level - right.unlockRequirement.level ||
+    left.unlockRequirement.reputation - right.unlockRequirement.reputation ||
+    left.id.localeCompare(right.id, "en-SG"),
+);
 
 function unlockLabel(
-  item: PlaceableDefinition | StallDefinition,
+  item: Pick<PlaceableDefinition | StallDefinition | DishDefinition, "nameKey" | "unlockRequirement">,
   level: number,
   reputation: number,
   unlockedContentIds: readonly string[],
@@ -436,8 +660,13 @@ export function HawkerSimulator() {
         let completedTutorial = false;
         let initialStates: readonly unknown[] = [];
         try {
+          const initialSettings = {
+            ...DEFAULT_SETTINGS,
+            reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+          };
           savedSettings = normalizeSettings(
-            await loadPreference<unknown>("settings", DEFAULT_SETTINGS),
+            await loadPreference<unknown>("settings", undefined),
+            initialSettings,
           );
           completedTutorial =
             (await loadPreference<unknown>("tutorial-complete", false)) === true;
@@ -537,6 +766,7 @@ export function HawkerSimulator() {
     );
     controllerRef.current?.setQuality(settings.quality);
     controllerRef.current?.setReducedMotion(settings.reducedMotion);
+    controllerRef.current?.setHighContrast(settings.highContrast);
     audioRef.current?.setVoiceLimit(settings.quality === "standard" ? 16 : 8);
     audioRef.current?.setVolumes(
       settings.musicVolume,
@@ -675,6 +905,14 @@ export function HawkerSimulator() {
     audioRef.current?.play("ui");
   }
 
+  function chooseRouteTool() {
+    const nextTool: BuildTool = snapshot.buildTool === "route" ? "select" : "route";
+    chooseTool(nextTool);
+    if (nextTool === "route") {
+      window.requestAnimationFrame(() => gameHostRef.current?.focus());
+    }
+  }
+
   function setGameSpeed(speed: GameSpeed) {
     unlockAudio();
     controllerRef.current?.setSpeed(speed);
@@ -772,6 +1010,14 @@ export function HawkerSimulator() {
 
   const tutorialCopy = TUTORIAL_COPY[Math.min(tutorialStep, 4)]!;
   const interfaceInert = tutorialStep < 5 || settingsOpen || helpOpen || resetOpen;
+  const unlockedCustomerCount = CUSTOMER_ARCHETYPES.filter(
+    (customer) =>
+      customer.unlockRequirement.level <= snapshot.level &&
+      customer.unlockRequirement.reputation <= snapshot.reputation &&
+      customer.unlockRequirement.prerequisiteIds.every((id) =>
+        snapshot.unlockedContentIds.includes(id),
+      ),
+  ).length;
 
   return (
     <main
@@ -841,7 +1087,7 @@ export function HawkerSimulator() {
           <button
             type="button"
             className="icon-button"
-            aria-label="Open settings"
+            aria-label="Open settings and icon guide"
             onClick={() => setSettingsOpen(true)}
           >
             ⚙
@@ -923,27 +1169,31 @@ export function HawkerSimulator() {
         <section className="world-column" aria-label="Hawker centre map">
           <div className="world-toolbar">
             <div className="mode-pill">
-              <span className={snapshot.buildTool === "place" || snapshot.buildTool === "queue" || snapshot.buildTool === "access" ? "amber-dot" : "green-dot"} />
+              <span className={snapshot.buildTool === "place" || snapshot.buildTool === "queue" || snapshot.buildTool === "access" || snapshot.buildTool === "route" ? "amber-dot" : "green-dot"} />
               {snapshot.buildTool === "place"
                 ? "Build mode"
                 : snapshot.buildTool === "queue"
                   ? "Queue editor"
                   : snapshot.buildTool === "access"
                     ? "Access editor"
-                  : snapshot.isOpen
-                    ? "Centre open"
-                    : "Planning mode"}
+                    : snapshot.buildTool === "route"
+                      ? "Route editor"
+                      : snapshot.isOpen
+                        ? "Centre open"
+                        : "Planning mode"}
             </div>
             <div className="world-message" aria-live="polite">
               {snapshot.buildTool === "queue"
                 ? "Queue editor: choose adjacent clear tiles to bend the line; Escape finishes"
                 : snapshot.buildTool === "access"
                   ? "Access editor: choose an entry or exit, then choose a boundary tile"
-                : selectedContent
-                ? `${localize(selectedContent.nameKey)} selected — choose a clear tile`
-                : snapshot.isOpen
-                  ? `${snapshot.activeCustomers} neighbours are visiting`
-                  : "Arrange your centre, then open the shutters"}
+                : snapshot.buildTool === "route"
+                  ? "Route editor: choose clear floor tiles to guide guests; choose a guide again to remove it; Escape finishes"
+                  : selectedContent
+                    ? `${localize(selectedContent.nameKey)} selected — choose a clear tile`
+                    : snapshot.isOpen
+                      ? `${snapshot.activeCustomers} neighbours are visiting`
+                      : "Arrange your centre, then open the shutters"}
             </div>
             <div className="tool-segment" aria-label="Build tools">
               {(["select", "move", "remove"] as const).map((tool) => (
@@ -964,6 +1214,14 @@ export function HawkerSimulator() {
                 onClick={() => chooseTool(snapshot.buildTool === "access" ? "select" : "access")}
               >
                 {snapshot.buildTool === "access" ? "Finish access" : "Access"}
+              </button>
+              <button
+                type="button"
+                aria-pressed={snapshot.buildTool === "route"}
+                className={snapshot.buildTool === "route" ? "is-active" : ""}
+                onClick={chooseRouteTool}
+              >
+                {snapshot.buildTool === "route" ? "Finish route" : "Route"}
               </button>
               {snapshot.buildTool === "access" ? (
                 <>
@@ -994,7 +1252,9 @@ export function HawkerSimulator() {
               className="game-host"
               data-testid="game-world"
               role="application"
-              aria-label="Interactive hawker centre. Use arrow keys to move the build cursor, Enter to place, R to rotate, and Escape to cancel."
+              aria-label={snapshot.buildTool === "route"
+                ? "Guest route editor. Use arrow keys to move the route cursor, Enter to add or remove a preferred route guide, and Escape to finish."
+                : "Interactive hawker centre. Use arrow keys to move the build cursor, Enter to place, R to rotate, and Escape to cancel."}
               tabIndex={0}
             >
               {loading ? (
@@ -1040,7 +1300,8 @@ export function HawkerSimulator() {
             </div>
 
             <div className="map-legend" aria-label="Map legend">
-              <span><i className="legend-route" /> Guest route</span>
+              <span><i className="legend-preferred-route" /> Preferred route guide</span>
+              <span><i className="legend-predicted-route" /> Predicted guest path</span>
               <span><i className="legend-queue" /> Queue</span>
               <span><i className="legend-seat" /> Reserved seat</span>
             </div>
@@ -1056,19 +1317,43 @@ export function HawkerSimulator() {
                   : "Saved on this device"}
             </div>
             <div className="edit-actions">
-              <button
-                type="button"
-                disabled={!snapshot.canUndo}
-                onClick={() => controllerRef.current?.undo()}
-              >
-                ↶ Undo
-              </button>
-              <button type="button" onClick={() => controllerRef.current?.rotateSelection()}>
-                ↻ Rotate <kbd>R</kbd>
-              </button>
-              <button type="button" onClick={() => chooseTool("select")}>
-                Cancel <kbd>Esc</kbd>
-              </button>
+              {snapshot.buildTool === "route" ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={!snapshot.canUndo}
+                    onClick={() => controllerRef.current?.undo()}
+                  >
+                    ↶ Undo
+                  </button>
+                  <button
+                    type="button"
+                    disabled={snapshot.routeGuidePoints.length === 0}
+                    onClick={() => controllerRef.current?.clearGuestRoute()}
+                  >
+                    Clear route
+                  </button>
+                  <button type="button" onClick={() => chooseTool("select")}>
+                    Finish <kbd>Esc</kbd>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={!snapshot.canUndo}
+                    onClick={() => controllerRef.current?.undo()}
+                  >
+                    ↶ Undo
+                  </button>
+                  <button type="button" onClick={() => controllerRef.current?.rotateSelection()}>
+                    ↻ Rotate <kbd>R</kbd>
+                  </button>
+                  <button type="button" onClick={() => chooseTool("select")}>
+                    Cancel <kbd>Esc</kbd>
+                  </button>
+                </>
+              )}
             </div>
             <button
               type="button"
@@ -1141,9 +1426,9 @@ export function HawkerSimulator() {
                     >
                       <span
                         className={`item-art item-${item.category}`}
-                        data-silhouette={preview.recipe.silhouetteVariant}
-                        data-detail={preview.recipe.detailVariant}
-                        data-mark={preview.recipe.makerMark.toString(16).padStart(2, "0")}
+                        data-motif={preview.recipe.motif}
+                        data-form={preview.recipe.form}
+                        data-material={preview.recipe.material}
                         style={preview.style}
                         aria-hidden="true"
                       >
@@ -1231,6 +1516,7 @@ export function HawkerSimulator() {
                   >
                     <span
                       className="stall-swatch"
+                      data-stall={stall.id.slice("stall.".length)}
                       style={{
                         background: `linear-gradient(145deg, ${stall.visual.palette[0]}, ${stall.visual.palette[1]})`,
                       }}
@@ -1277,12 +1563,42 @@ export function HawkerSimulator() {
                     </p>
                     {DISHES.filter((dish) => dish.stallIds.includes(stall.id)).map((dish) => {
                       const checked = activeMenu.includes(dish.id);
+                      const preview = dishPreview(dish);
                       const gated =
                         dish.unlockRequirement.level > snapshot.level ||
-                        dish.unlockRequirement.reputation > snapshot.reputation;
+                        dish.unlockRequirement.reputation > snapshot.reputation ||
+                        dish.unlockRequirement.prerequisiteIds.some(
+                          (id) => !snapshot.unlockedContentIds.includes(id),
+                        );
+                      const atCapacity = !checked && activeMenu.length >= menuSlots;
+                      const unavailableReason = gated
+                        ? unlockLabel(
+                            dish,
+                            snapshot.level,
+                            snapshot.reputation,
+                            snapshot.unlockedContentIds,
+                          )
+                        : atCapacity
+                          ? `All ${menuSlots} menu slots are active`
+                          : undefined;
+                      const reasonId = `dish-menu-reason-${dish.id.slice("dish.".length)}`;
                       return (
                         <label key={dish.id} className="dish-row menu-dish-row">
-                          <span style={{ background: dish.portionColour }} aria-hidden="true" />
+                          <span
+                            className="dish-preview"
+                            data-dish={dish.id.slice("dish.".length)}
+                            data-form={preview.recipe.foodForm}
+                            data-motif={preview.recipe.presentation.motif}
+                            data-presentation={preview.presentation}
+                            data-semantic={preview.recipe.presentation.semanticKey}
+                            data-vessel={preview.recipe.presentation.vessel}
+                            style={preview.style}
+                            aria-hidden="true"
+                          >
+                            <i className="dish-preview-portion" />
+                            <i className="dish-preview-garnish" />
+                            <i className="dish-preview-side" />
+                          </span>
                           <div>
                             <strong>{localize(dish.nameKey)}</strong>
                             <small>
@@ -1292,8 +1608,9 @@ export function HawkerSimulator() {
                           <input
                             type="checkbox"
                             checked={checked}
-                            disabled={gated || (!checked && activeMenu.length >= menuSlots)}
-                            aria-label={`Offer ${localize(dish.nameKey)}`}
+                            disabled={Boolean(unavailableReason)}
+                            aria-label={`Offer ${localize(dish.nameKey)}${unavailableReason ? `, unavailable: ${unavailableReason}` : ""}`}
+                            aria-describedby={unavailableReason ? reasonId : undefined}
                             onChange={(event) =>
                               controllerRef.current?.setDishEnabled(
                                 stall.id,
@@ -1302,8 +1619,8 @@ export function HawkerSimulator() {
                               )
                             }
                           />
-                          {gated ? (
-                            <em>Lvl {dish.unlockRequirement.level}</em>
+                          {unavailableReason ? (
+                            <em id={reasonId}>{unavailableReason}</em>
                           ) : null}
                         </label>
                       );
@@ -1358,21 +1675,23 @@ export function HawkerSimulator() {
                 <span aria-hidden="true">♥</span>
                 <div>
                   <strong>Guest happiness</strong>
-                  <p>{snapshot.hasSatisfactionRatings ? `Recent completed visits average ${Math.round(snapshot.averageSatisfaction)}%.` : "Complete a visit to receive the first rating."}</p>
+                  <p>{snapshot.hasSatisfactionRatings ? `Recent guest visits average ${Math.round(snapshot.averageSatisfaction)}%.` : "Complete a visit to receive the first rating."}</p>
                   {snapshot.satisfactionBreakdown ? (
                     <dl className="happiness-breakdown" aria-label="Guest happiness factors">
                       {[
                         ["Food", snapshot.satisfactionBreakdown.foodQuality],
                         ["Wait", snapshot.satisfactionBreakdown.wait],
                         ["Value", snapshot.satisfactionBreakdown.value],
-                        ["Walking", snapshot.satisfactionBreakdown.walking],
+                        ["Route efficiency", snapshot.satisfactionBreakdown.walking],
                         ["Comfort", snapshot.satisfactionBreakdown.comfort],
                         ["Cleanliness", snapshot.satisfactionBreakdown.cleanliness],
                         ["Ambience", snapshot.satisfactionBreakdown.ambience],
                       ].map(([label, value]) => (
                         <div key={label}>
                           <dt>{label}</dt>
-                          <dd>{Math.round(Number(value))}</dd>
+                          <dd aria-label={`${label} ${Math.round(Number(value))} out of 100`}>
+                            {Math.round(Number(value))}/100
+                          </dd>
                         </div>
                       ))}
                     </dl>
@@ -1410,10 +1729,42 @@ export function HawkerSimulator() {
               <article data-state="neutral">
                 <span aria-hidden="true">◎</span>
                 <div>
-                  <strong>Archetypes active</strong>
-                  <p>Workers, families, students and five other behaviour profiles visit as you progress.</p>
+                  <strong>Customer personas</strong>
+                  <p>
+                    {unlockedCustomerCount} of {CUSTOMER_ARCHETYPES.length} distinct behaviour
+                    profiles can currently visit.
+                  </p>
+                  <details className="persona-roster">
+                    <summary>Browse the persona roster</summary>
+                    <ul>
+                      {CUSTOMER_PERSONAS_BY_UNLOCK.map((customer) => {
+                        const unlocked =
+                          customer.unlockRequirement.level <= snapshot.level &&
+                          customer.unlockRequirement.reputation <= snapshot.reputation &&
+                          customer.unlockRequirement.prerequisiteIds.every((id) =>
+                            snapshot.unlockedContentIds.includes(id),
+                          );
+                        return (
+                          <li key={customer.id} data-locked={!unlocked}>
+                            <strong>{localize(customer.nameKey)}</strong>
+                            <span>{localize(customer.descriptionKey)}</span>
+                            <small>
+                              {unlocked
+                                ? "Can visit now"
+                                : unlockLabel(
+                                    customer,
+                                    snapshot.level,
+                                    snapshot.reputation,
+                                    snapshot.unlockedContentIds,
+                                  )}
+                            </small>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </details>
                 </div>
-                <em>{CUSTOMER_ARCHETYPES.length}</em>
+                <em>{unlockedCustomerCount}/{CUSTOMER_ARCHETYPES.length}</em>
               </article>
               <button
                 type="button"
@@ -1626,10 +1977,11 @@ export function HawkerSimulator() {
         <div className="modal-backdrop" role="presentation">
           <section ref={settingsDialogRef} className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabIndex={-1} inert={resetOpen} aria-hidden={resetOpen}>
             <header>
-              <div><span>Preferences</span><h2 id="settings-title">Settings</h2></div>
+              <div><span>Preferences &amp; guide</span><h2 id="settings-title">Settings</h2></div>
               <button type="button" aria-label="Close settings" onClick={() => setSettingsOpen(false)}>×</button>
             </header>
             <div className="settings-content">
+              <CustomerStatusGuide />
               <fieldset>
                 <legend>Performance</legend>
                 <label>

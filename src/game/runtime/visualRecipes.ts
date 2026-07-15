@@ -2,22 +2,41 @@ import type {
   CustomerArchetypeDefinition,
   DishDefinition,
   PlaceableCategory,
+  StallDefinition,
 } from "@/src/content";
 import type { CustomerStatus } from "@/src/game/core";
 
-/**
- * A small, deterministic visual contract for code-native placeable art.
- *
- * The runtime deliberately does not depend on downloaded sprite sheets. Every
- * catalogue entry receives a stable accent, silhouette variant, detail variant,
- * and seven-bit maker's mark from its content id. Category renderers combine
- * these with semantic motifs (chair backs, planter leaves, display cases, etc.).
- */
+export type PlaceableMaterial =
+  | "laminate"
+  | "timber"
+  | "terrazzo"
+  | "moulded-plastic"
+  | "upholstery"
+  | "stainless-steel"
+  | "powder-coated-metal"
+  | "glass"
+  | "ceramic"
+  | "woven-fibre"
+  | "fabric"
+  | "masonry"
+  | "living-foliage"
+  | "painted-board"
+  | "composite";
+
+/** A deterministic, renderer-friendly contract for code-native placeable art. */
 export interface PlaceableVisualRecipe {
   readonly id: string;
   readonly category: PlaceableCategory;
   /** Semantic catalogue motif, for example `round-cafe-table` or `tray-return-arrow-sign`. */
   readonly motif: string;
+  /** Broad physical form that renderers can use instead of parsing the id. */
+  readonly form: string;
+  /** Dominant real-world material and finish. */
+  readonly material: PlaceableMaterial;
+  /** Drawable construction or identity cues, sourced from catalogue tags and id vocabulary. */
+  readonly detailCues: readonly string[];
+  /** Stable semantic identity that does not depend on colour or hash variants. */
+  readonly semanticKey: string;
   readonly seed: number;
   readonly silhouetteVariant: number;
   readonly detailVariant: number;
@@ -48,12 +67,119 @@ export function stableVisualHash(value: string): number {
   return hash >>> 0;
 }
 
+const GENERIC_PLACEABLE_WORDS = new Set([
+  "item",
+  "table",
+  "seat",
+  "station",
+  "fixture",
+  "facility",
+  "decor",
+]);
+
+const PLACEABLE_FORM_RULES: readonly (readonly [RegExp, string])[] = [
+  [/terrazzo|round-cafe/, "round-pedestal"],
+  [/compact-square/, "compact-square-top"],
+  [/long-communal/, "long-communal-slab"],
+  [/family-trestle/, "wide-trestle"],
+  [/accessible-end/, "accessible-notched-top"],
+  [/snack-ledge/, "raised-narrow-ledge"],
+  [/folding-overflow/, "folding-cross-brace"],
+  [/acoustic-booth/, "high-back-booth"],
+  [/bench/, "multi-place-bench"],
+  [/stool|perch/, "pedestal-stool"],
+  [/arm-chair/, "support-arm-chair"],
+  [/chair/, "backed-chair"],
+  [/display-case/, "glazed-display-case"],
+  [/ticket-dispenser/, "ticket-pedestal"],
+  [/counter/, "service-counter"],
+  [/shelf|rack|tray-return/, "open-rack"],
+  [/cart|trolley/, "wheeled-cart"],
+  [/sorter/, "multi-stream-receptacle"],
+  [/waste-bin|general-waste/, "lidded-receptacle"],
+  [/tube-light/, "linear-light"],
+  [/pendant/, "suspended-shade"],
+  [/lantern/, "lantern-cluster"],
+  [/string-light/, "festoon-cable"],
+  [/path-light/, "low-bollard"],
+  [/skylight/, "glazed-ceiling-panel"],
+  [/task-light/, "focused-luminaire"],
+  [/column-fan/, "tower-fan"],
+  [/exhaust/, "boxed-extractor"],
+  [/ceiling-fan/, "suspended-rotor"],
+  [/wall-circulation/, "caged-wall-rotor"],
+  [/fan/, "caged-floor-rotor"],
+  [/trellis/, "climbing-trellis"],
+  [/hanging/, "hanging-basket"],
+  [/trough|border-bed/, "linear-planter"],
+  [/planter|garden-pot/, "floor-planter"],
+  [/directory|preview-board|identity-sign/, "information-board"],
+  [/sign|marker/, "wayfinding-sign"],
+  [/queue-rail/, "post-and-belt"],
+  [/wind-screen/, "transparent-screen"],
+  [/half-wall/, "solid-half-wall"],
+  [/divider|screen/, "freestanding-screen"],
+  [/sink|basin/, "wash-basin"],
+  [/fountain/, "drinking-fountain"],
+  [/cupboard|cabinet/, "wall-cabinet"],
+  [/utility-point/, "protected-service-box"],
+  [/mural/, "wall-mural"],
+  [/noticeboard/, "pin-board"],
+  [/bunting/, "hanging-bunting"],
+  [/flower-vase/, "tabletop-vase"],
+  [/clock/, "feature-clock"],
+];
+
+function placeableForm(motif: string, category: PlaceableCategory): string {
+  return PLACEABLE_FORM_RULES.find(([pattern]) => pattern.test(motif))?.[1] ?? `${category}-form`;
+}
+
+function placeableMaterial(
+  motif: string,
+  category: PlaceableCategory,
+  tags: readonly string[],
+): PlaceableMaterial {
+  const context = `${motif} ${tags.join(" ")}`;
+  if (category === "plant") return "living-foliage";
+  if (/terrazzo/.test(context)) return "terrazzo";
+  if (/laminate/.test(context)) return "laminate";
+  if (/clear|glass|skylight|display-case/.test(context)) return "glass";
+  if (/tile|mural/.test(context)) return "ceramic";
+  if (/woven|lantern/.test(context)) return "woven-fibre";
+  if (/fabric|bunting/.test(context)) return "fabric";
+  if (/acoustic|cushion|upholster/.test(context)) return "upholstery";
+  if (/moulded|stacking|booster/.test(context)) return "moulded-plastic";
+  if (/timber|trestle|communal|bench|noticeboard/.test(context)) return "timber";
+  if (/concrete|masonry/.test(context)) return "masonry";
+  if (category === "stall-fixture" || category === "tray-waste" || category === "facility") {
+    return "stainless-steel";
+  }
+  if (category === "fan" || category === "lighting" || category === "seat") {
+    return "powder-coated-metal";
+  }
+  if (category === "signage" || category === "decor") return "painted-board";
+  if (category === "table" || category === "divider") return "timber";
+  return "composite";
+}
+
+function placeableDetailCues(motif: string, tags: readonly string[]): readonly string[] {
+  const motifCues = motif
+    .split("-")
+    .filter((word) => word.length > 3 && !GENERIC_PLACEABLE_WORDS.has(word));
+  return [...new Set([...tags, ...motifCues])].slice(0, 5);
+}
+
 export function visualRecipeForPlaceable(
   id: string,
   category: PlaceableCategory,
+  tags: readonly string[] = [],
 ): PlaceableVisualRecipe {
   const seed = stableVisualHash(`${category}:${id}`);
   const motif = id.replace(/^item\./, "");
+  const form = placeableForm(motif, category);
+  const material = placeableMaterial(motif, category, tags);
+  const detailCues = placeableDetailCues(motif, tags);
+  const semanticKey = `${category}:${form}:${material}:${detailCues.join("+")}`;
   const silhouetteVariant = seed % 7;
   const detailVariant = Math.floor(seed / 7) % 9;
   const makerMark = Math.floor(seed / 63) & 0x7f;
@@ -62,13 +188,58 @@ export function visualRecipeForPlaceable(
     id,
     category,
     motif,
+    form,
+    material,
+    detailCues,
+    semanticKey,
     seed,
     silhouetteVariant,
     detailVariant,
     accent,
     makerMark,
-    contractKey: `${category}:${motif}:${silhouetteVariant}:${detailVariant}:${makerMark}:${accent.toString(16)}`,
+    contractKey: `${semanticKey}:${silhouetteVariant}:${detailVariant}:${makerMark}:${accent.toString(16)}`,
   };
+}
+
+export type DishVesselProfile =
+  | "ceramic-plate"
+  | "deep-ceramic-bowl"
+  | "kopitiam-cup-and-saucer"
+  | "tall-drinking-glass"
+  | "banana-leaf-lined-plate"
+  | "shared-oval-platter"
+  | "bamboo-steamer";
+
+export type DishPortionShape =
+  | "rice-mound"
+  | "porridge"
+  | "noodle-tangle"
+  | "broth"
+  | "liquid"
+  | "shaved-ice"
+  | "flatbread"
+  | "cake-cubes"
+  | "omelette"
+  | "fritters"
+  | "dumplings"
+  | "skewers"
+  | "grilled-pieces"
+  | "pudding"
+  | "whole-seafood"
+  | "leaf-parcel"
+  | "buns";
+
+export interface DishPresentationProfile {
+  readonly source: "catalogue" | "inferred";
+  /** Recognisable plated composition rather than a palette-only variant. */
+  readonly motif: string;
+  readonly vessel: DishVesselProfile;
+  readonly portionShape: DishPortionShape;
+  /** Main real-world ingredients a renderer should depict. */
+  readonly ingredientCues: readonly string[];
+  /** Garnish, sauce, wrapping, or arrangement cues that distinguish similar dishes. */
+  readonly detailCues: readonly string[];
+  readonly semanticKey: string;
 }
 
 export interface DishVisualRecipe {
@@ -81,22 +252,150 @@ export interface DishVisualRecipe {
   readonly steam: DishDefinition["steamEffect"];
   readonly foodFrame: string;
   readonly containerFrame: string;
+  readonly presentation: DishPresentationProfile;
   readonly contractKey: string;
 }
+
+interface DishPresentationSeed {
+  readonly motif: string;
+  readonly portionShape: DishPortionShape;
+  readonly ingredients: readonly string[];
+  readonly details: readonly string[];
+}
+
+function dishProfile(
+  motif: string,
+  portionShape: DishPortionShape,
+  ingredients: readonly string[],
+  details: readonly string[],
+): DishPresentationSeed {
+  return { motif, portionShape, ingredients, details };
+}
+
+const DISH_PRESENTATIONS: Readonly<Record<string, DishPresentationSeed>> = {
+  "poached-chicken-rice": dishProfile("poached-chicken-slices-beside-rice", "rice-mound", ["fragrant-rice", "poached-chicken", "cucumber"], ["dark-soy", "chilli-cup"]),
+  "roast-chicken-rice": dishProfile("roast-chicken-slices-over-rice", "rice-mound", ["fragrant-rice", "roast-chicken", "cucumber"], ["crisp-skin", "dark-soy"]),
+  "soya-tofu-rice": dishProfile("tofu-cubes-and-greens-over-rice", "rice-mound", ["rice", "braised-tofu", "leafy-greens"], ["soy-glaze", "spring-onion"]),
+  "chicken-congee": dishProfile("silky-congee-with-chicken-shreds", "porridge", ["rice-porridge", "shredded-chicken", "ginger"], ["fried-shallot", "spring-onion"]),
+  "nasi-lemak": dishProfile("coconut-rice-with-clustered-sides", "rice-mound", ["coconut-rice", "egg", "anchovy", "peanut", "cucumber"], ["banana-leaf", "sambal"]),
+  "mee-rebus": dishProfile("yellow-noodles-in-thick-gravy", "noodle-tangle", ["yellow-noodles", "egg", "bean-sprout"], ["spiced-gravy", "lime"]),
+  "soto-ayam": dishProfile("chicken-and-rice-cake-in-clear-broth", "broth", ["chicken", "rice-cake", "clear-broth"], ["coriander", "fried-shallot"]),
+  "lontong-sayur": dishProfile("rice-cake-cubes-in-coconut-gravy", "broth", ["rice-cake", "cabbage", "tofu"], ["coconut-gravy", "sambal"]),
+  kopi: dishProfile("dark-kopi-with-creamy-surface", "liquid", ["coffee", "condensed-milk"], ["kopitiam-cup", "coffee-rim"]),
+  "sugarcane-juice": dishProfile("pale-sugarcane-juice-over-ice", "liquid", ["sugarcane-juice", "ice"], ["tall-glass", "citrus-wedge"]),
+  "ice-kacang": dishProfile("rainbow-syrup-over-shaved-ice", "shaved-ice", ["shaved-ice", "red-bean", "jelly"], ["rainbow-syrup", "condensed-milk"]),
+  "char-kway-teow": dishProfile("dark-flat-noodles-with-seafood", "noodle-tangle", ["flat-rice-noodles", "prawn", "cockle", "egg"], ["dark-soy", "garlic-chive"]),
+  "hokkien-prawn-mee": dishProfile("golden-noodles-with-prawn-and-squid", "noodle-tangle", ["yellow-noodles", "prawn", "squid", "egg"], ["prawn-stock", "lime"]),
+  "fried-carrot-cake": dishProfile("radish-cake-cubes-scrambled-with-egg", "cake-cubes", ["radish-cake", "egg", "preserved-radish"], ["white-style", "spring-onion"]),
+  "oyster-omelette": dishProfile("crisp-omelette-with-plump-oysters", "omelette", ["egg", "oyster", "starch-crisp"], ["coriander", "chilli-sauce"]),
+  "roti-prata": dishProfile("folded-prata-with-curry-side", "flatbread", ["layered-flatbread", "curry"], ["folded-quarters", "curry-cup"]),
+  "mee-goreng-mamak": dishProfile("red-wok-noodles-with-egg-and-tofu", "noodle-tangle", ["yellow-noodles", "egg", "tofu"], ["chilli-tomato-sauce", "lime"]),
+  "chicken-murtabak": dishProfile("stuffed-murtabak-cut-into-squares", "flatbread", ["stuffed-flatbread", "minced-chicken", "onion"], ["cut-squares", "curry-cup"]),
+  "nasi-briyani": dishProfile("spiced-rice-with-large-chicken-piece", "rice-mound", ["briyani-rice", "chicken", "cucumber"], ["fried-onion", "curry-gravy"]),
+  "masala-thosai": dishProfile("rolled-thosai-with-potato-filling", "flatbread", ["thosai", "masala-potato", "sambar"], ["rolled-crepe", "chutney-cups"]),
+  "idli-sambar": dishProfile("three-idli-cakes-in-sambar", "dumplings", ["idli", "sambar", "coconut-chutney"], ["three-white-cakes", "curry-leaf"]),
+  "vadai-set": dishProfile("crisp-vadai-rings-with-dips", "fritters", ["lentil-vadai", "sambar", "coconut-chutney"], ["ring-shape", "curry-leaf"]),
+  "lemon-rice": dishProfile("yellow-lemon-rice-with-peanuts", "rice-mound", ["lemon-rice", "peanut", "mustard-seed"], ["curry-leaf", "lemon-wedge"]),
+  "nyonya-laksa": dishProfile("noodles-in-orange-coconut-laksa", "broth", ["rice-noodles", "prawn", "fish-cake", "egg"], ["coconut-laksa", "laksa-leaf"]),
+  "ayam-buah-keluak": dishProfile("dark-braised-chicken-with-keluak", "rice-mound", ["rice", "braised-chicken", "buah-keluak"], ["dark-gravy", "heritage-braise"]),
+  "chap-chye": dishProfile("mixed-braised-vegetables-beside-rice", "rice-mound", ["rice", "cabbage", "mushroom", "bean-curd"], ["light-braise", "glass-noodle"]),
+  "babi-pongteh": dishProfile("pork-and-potato-in-fermented-soy-gravy", "rice-mound", ["rice", "braised-pork", "potato"], ["fermented-soy-gravy", "coriander"]),
+  "sambal-stingray": dishProfile("stingray-fillet-on-banana-leaf", "whole-seafood", ["stingray", "sambal"], ["banana-leaf", "lime-wedge"]),
+  "sliced-fish-soup": dishProfile("fish-slices-and-greens-in-clear-soup", "broth", ["fish-slices", "leafy-greens", "clear-broth"], ["tomato", "spring-onion"]),
+  "black-pepper-crab": dishProfile("whole-crab-in-black-pepper-sauce", "whole-seafood", ["whole-crab", "black-pepper"], ["visible-claws", "pepper-sauce"]),
+  "bak-chor-mee": dishProfile("mee-pok-with-minced-pork-and-mushroom", "noodle-tangle", ["mee-pok", "minced-pork", "mushroom", "fishball"], ["chilli-vinegar", "spring-onion"]),
+  "fishball-mee-pok": dishProfile("flat-noodles-with-round-fishballs", "noodle-tangle", ["mee-pok", "fishball", "leafy-greens"], ["fishball-cluster", "light-soy"]),
+  "lor-mee": dishProfile("thick-noodles-in-dark-starchy-gravy", "noodle-tangle", ["thick-noodles", "braised-egg", "fish-cake"], ["dark-lor-gravy", "garlic-vinegar"]),
+  "teochew-fish-dumpling-soup": dishProfile("fish-dumplings-in-clear-teochew-broth", "broth", ["fish-dumpling", "fishball", "clear-broth"], ["lettuce", "spring-onion"]),
+  "chicken-satay-set": dishProfile("chicken-satay-skewers-with-peanut-sauce", "skewers", ["chicken-satay", "cucumber", "rice-cake"], ["bamboo-skewers", "peanut-sauce"]),
+  "bbq-chicken-wings": dishProfile("charred-chicken-wings-in-a-row", "grilled-pieces", ["chicken-wing", "charred-glaze"], ["grill-marks", "lime-wedge"]),
+  "beef-satay-set": dishProfile("beef-satay-skewers-with-peanut-sauce", "skewers", ["beef-satay", "cucumber", "rice-cake"], ["bamboo-skewers", "peanut-sauce"]),
+  "sambal-grilled-squid": dishProfile("scored-squid-coated-in-sambal", "whole-seafood", ["grilled-squid", "sambal"], ["scored-body", "charred-edge"]),
+  "har-gow": dishProfile("translucent-har-gow-in-bamboo-basket", "dumplings", ["shrimp-dumpling", "wheat-starch-wrapper"], ["pleated-wrapper", "bamboo-steamer"]),
+  "siew-mai": dishProfile("open-topped-siew-mai-in-bamboo-basket", "dumplings", ["pork-dumpling", "prawn"], ["open-wrapper", "diced-carrot", "bamboo-steamer"]),
+  "char-siew-bao": dishProfile("white-char-siew-buns-in-bamboo-basket", "buns", ["steamed-bun", "char-siew"], ["split-top", "bamboo-steamer"]),
+  "lotus-leaf-rice": dishProfile("opened-lotus-leaf-rice-parcel", "leaf-parcel", ["glutinous-rice", "chicken", "mushroom"], ["lotus-leaf-wrap", "parcel-folds"]),
+  chendol: dishProfile("green-chendol-jelly-in-coconut-ice", "shaved-ice", ["chendol-jelly", "coconut-milk", "shaved-ice"], ["palm-sugar", "red-bean"]),
+  "tau-huay": dishProfile("silky-tofu-pudding-with-syrup", "pudding", ["tofu-pudding", "sugar-syrup"], ["silky-surface", "ceramic-bowl"]),
+  "teh-tarik": dishProfile("frothy-pulled-tea-in-glass", "liquid", ["black-tea", "condensed-milk"], ["foam-cap", "pulled-tea-bubbles"]),
+  "pulut-hitam": dishProfile("black-glutinous-rice-with-coconut-swirl", "pudding", ["black-glutinous-rice", "coconut-milk"], ["white-coconut-swirl", "thick-pudding"]),
+};
 
 function parseHexColour(value: string, fallback: number) {
   const parsed = Number.parseInt(value.replace("#", ""), 16);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function dishVesselProfile(frame: string): DishVesselProfile {
+  if (frame.includes("leaf")) return "banana-leaf-lined-plate";
+  if (frame.includes("platter")) return "shared-oval-platter";
+  if (frame.includes("glass")) return "tall-drinking-glass";
+  if (frame.includes("cup")) return "kopitiam-cup-and-saucer";
+  if (frame.includes("bowl")) return "deep-ceramic-bowl";
+  return "ceramic-plate";
+}
+
+function fallbackDishPresentation(dish: DishDefinition, identity: string): DishPresentationSeed {
+  const portionShape: DishPortionShape =
+    dish.category === "rice"
+      ? "rice-mound"
+      : dish.category === "noodles"
+        ? "noodle-tangle"
+        : dish.category === "soup"
+          ? "broth"
+          : dish.category === "bread"
+            ? "flatbread"
+            : dish.category === "drink"
+              ? "liquid"
+              : dish.category === "dessert"
+                ? dish.preferenceTags.includes("cold") ? "shaved-ice" : "pudding"
+                : dish.category === "seafood"
+                  ? "whole-seafood"
+                  : "grilled-pieces";
+  const ingredientCues = [...new Set([dish.category, ...dish.preferenceTags])]
+    .filter((cue) => !["comfort", "filling", "premium", "shareable"].includes(cue))
+    .slice(0, 4);
+  return dishProfile(
+    `${identity}-${portionShape}`,
+    portionShape,
+    ingredientCues.length > 0 ? ingredientCues : [dish.category],
+    dish.dietaryTags.includes("spicy") ? ["chilli-garnish"] : ["catalogue-garnish"],
+  );
+}
+
 export function visualRecipeForDish(dish: DishDefinition): DishVisualRecipe {
   const seed = stableVisualHash(dish.id);
+  const identity = dish.foodSprite.frame || dish.id.replace(/^dish\./, "");
+  const knownPresentation = DISH_PRESENTATIONS[identity]
+    ?? DISH_PRESENTATIONS[dish.id.replace(/^dish\./, "")];
+  const presentationSeed = knownPresentation ?? fallbackDishPresentation(dish, identity);
+  const vesselProfile = presentationSeed.details.includes("bamboo-steamer")
+    ? "bamboo-steamer"
+    : dishVesselProfile(dish.containerSprite.frame);
+  const semanticKey = [
+    presentationSeed.motif,
+    vesselProfile,
+    presentationSeed.portionShape,
+    presentationSeed.ingredients.join("+"),
+    presentationSeed.details.join("+"),
+  ].join(":");
+  const presentation: DishPresentationProfile = {
+    source: knownPresentation ? "catalogue" : "inferred",
+    motif: presentationSeed.motif,
+    vessel: vesselProfile,
+    portionShape: presentationSeed.portionShape,
+    ingredientCues: presentationSeed.ingredients,
+    detailCues: presentationSeed.details,
+    semanticKey,
+  };
   const vessel: DishVisualRecipe["vessel"] =
-    dish.category === "drink"
+    vesselProfile === "kopitiam-cup-and-saucer" || vesselProfile === "tall-drinking-glass"
       ? "cup"
-      : dish.category === "soup" || dish.category === "noodles" || dish.category === "dessert"
+      : vesselProfile === "deep-ceramic-bowl"
         ? "bowl"
-        : dish.category === "small-plate"
+        : vesselProfile === "banana-leaf-lined-plate" ||
+            vesselProfile === "shared-oval-platter" ||
+            vesselProfile === "bamboo-steamer"
           ? "tray"
           : "plate";
   const foodForm: DishVisualRecipe["foodForm"] =
@@ -126,21 +425,26 @@ export function visualRecipeForDish(dish: DishDefinition): DishVisualRecipe {
     steam: dish.steamEffect,
     foodFrame: `${dish.foodSprite.atlas}:${dish.foodSprite.frame}`,
     containerFrame: `${dish.containerSprite.atlas}:${dish.containerSprite.frame}`,
-    contractKey: `${dish.id}:${vessel}:${foodForm}:${dish.portionColour}:${garnishColour.toString(16)}:${dish.foodSprite.frame}:${dish.containerSprite.frame}`,
+    presentation,
+    contractKey: `${dish.id}:${semanticKey}:${vessel}:${foodForm}:${dish.portionColour}:${garnishColour.toString(16)}:${dish.foodSprite.frame}:${dish.containerSprite.frame}`,
   };
 }
 
 export interface CustomerVisualRecipe {
   readonly id: string;
+  readonly outfitSilhouette: CustomerArchetypeDefinition["visualRules"]["outfitSilhouette"];
+  readonly garmentPattern: CustomerArchetypeDefinition["visualRules"]["garmentPattern"];
+  readonly accessory: CustomerArchetypeDefinition["visualRules"]["carryProp"];
+  readonly accessoryChance: number;
+  /** Visual treatment excluding the already-unique content ID. */
+  readonly renderSignature: string;
+  readonly contractKey: string;
+}
+
+export interface CustomerAppearance {
   readonly skin: number;
   readonly clothing: number;
   readonly accent: number;
-  readonly bodyVariant: number;
-  readonly accessory: CustomerArchetypeDefinition["visualRules"]["carryProp"];
-  readonly accessoryChance: number;
-  readonly bodyFrames: readonly string[];
-  readonly paletteNames: readonly string[];
-  readonly contractKey: string;
 }
 
 const SKIN_TONES = [0xe2b08a, 0xc98e68, 0xaa7256, 0x845642, 0x6f4737] as const;
@@ -149,23 +453,32 @@ const CLOTHING = [0x355e78, 0xc8624c, 0x6d8e5d, 0x9a5e77, 0xd69a35, 0x4d7390, 0x
 export function visualRecipeForCustomer(
   archetype: CustomerArchetypeDefinition,
 ): CustomerVisualRecipe {
-  const seed = stableVisualHash(archetype.id);
+  const renderSignature = [
+    archetype.visualRules.outfitSilhouette,
+    archetype.visualRules.garmentPattern,
+    archetype.visualRules.carryProp,
+  ].join(":");
+  return {
+    id: archetype.id,
+    outfitSilhouette: archetype.visualRules.outfitSilhouette,
+    garmentPattern: archetype.visualRules.garmentPattern,
+    accessory: archetype.visualRules.carryProp,
+    accessoryChance: archetype.visualRules.accessoryChance,
+    renderSignature,
+    contractKey: `${archetype.id}:${renderSignature}`,
+  };
+}
+
+/**
+ * Keeps skin tone and clothing colours independent from behavioural personas.
+ * Appearance is stable per customer so rerenders do not make people flicker.
+ */
+export function customerAppearanceForId(customerId: string): CustomerAppearance {
+  const seed = stableVisualHash(customerId);
   const skin = SKIN_TONES[(seed >>> 3) % SKIN_TONES.length] as number;
   const clothing = CLOTHING[(seed >>> 9) % CLOTHING.length] as number;
   const accent = ACCENTS[(seed >>> 15) % ACCENTS.length] as number;
-  const bodyVariant = (seed >>> 20) % Math.max(1, archetype.visualRules.bodyFrames.length);
-  return {
-    id: archetype.id,
-    skin,
-    clothing,
-    accent,
-    bodyVariant,
-    accessory: archetype.visualRules.carryProp,
-    accessoryChance: archetype.visualRules.accessoryChance,
-    bodyFrames: archetype.visualRules.bodyFrames,
-    paletteNames: archetype.visualRules.clothingPalettes,
-    contractKey: `${archetype.id}:${archetype.visualRules.bodyFrames.join(",")}:${archetype.visualRules.clothingPalettes.join(",")}:${archetype.visualRules.carryProp}`,
-  };
+  return { skin, clothing, accent };
 }
 
 export interface CustomerAnimationPose {
@@ -177,9 +490,74 @@ export interface CustomerAnimationPose {
   readonly carriesFood: boolean;
   readonly showsMeal: boolean;
   readonly showsTray: boolean;
-  readonly indicator: "question" | "footsteps" | "queue" | "order" | "clock" | "seat" | "meal" | "return" | "exit";
+  readonly indicator: CustomerIndicator;
   readonly signature: string;
 }
+
+export type CustomerIndicator =
+  | "question"
+  | "footsteps"
+  | "queue"
+  | "order"
+  | "clock"
+  | "seat"
+  | "meal"
+  | "return"
+  | "exit";
+
+export interface CustomerIndicatorLegendEntry {
+  readonly indicator: CustomerIndicator;
+  readonly label: string;
+  readonly description: string;
+}
+
+export const CUSTOMER_INDICATOR_LEGEND = [
+  {
+    indicator: "question",
+    label: "Choosing a stall",
+    description: "Comparing open stalls and their available dishes.",
+  },
+  {
+    indicator: "footsteps",
+    label: "On the move",
+    description: "Moving towards a queue or a reserved seat.",
+  },
+  {
+    indicator: "queue",
+    label: "In the queue",
+    description: "Waiting in line to place an order.",
+  },
+  {
+    indicator: "order",
+    label: "Ordering",
+    description: "Placing an order at the stall counter.",
+  },
+  {
+    indicator: "clock",
+    label: "Waiting for food",
+    description: "Waiting for the stall to finish preparing the dish.",
+  },
+  {
+    indicator: "seat",
+    label: "Finding a seat",
+    description: "Looking for an available, reachable seat.",
+  },
+  {
+    indicator: "meal",
+    label: "Eating",
+    description: "Dining at the reserved seat.",
+  },
+  {
+    indicator: "return",
+    label: "Returning a tray",
+    description: "Finding or walking to a tray-return point.",
+  },
+  {
+    indicator: "exit",
+    label: "Leaving",
+    description: "Walking to an exit after finishing or leaving early.",
+  },
+] as const satisfies readonly CustomerIndicatorLegendEntry[];
 
 const POSE_BY_STATUS: Readonly<Record<CustomerStatus, Omit<CustomerAnimationPose, "state" | "bob" | "stride" | "armSwing" | "signature">>> = {
   "choosing-stall": { pose: "consider", carriesFood: false, showsMeal: false, showsTray: false, indicator: "question" },
@@ -214,5 +592,464 @@ export function animationPoseForCustomer(
     stride,
     armSwing,
     signature: `${status}:${base.pose}:${base.indicator}:${base.carriesFood ? 1 : 0}:${base.showsMeal ? 1 : 0}:${base.showsTray ? 1 : 0}`,
+  };
+}
+
+export type StallVendorActivity = "idle" | "order" | "prepare";
+
+export type StallVendorHairStyle =
+  | "cropped"
+  | "side-part"
+  | "wavy"
+  | "coiled"
+  | "tied-back"
+  | "close-cut";
+
+export type StallVendorApronStyle = "bib" | "cross-back" | "waist" | "utility";
+
+export type StallVendorHeadwear =
+  | "service-cap"
+  | "visor"
+  | "headband"
+  | "hair-wrap"
+  | "chef-cap"
+  | "hairnet";
+
+export type StallVendorTool =
+  | "cleaver"
+  | "ladle"
+  | "long-spout-kettle"
+  | "wok-spatula"
+  | "noodle-basket"
+  | "griddle-spatula"
+  | "measuring-cup"
+  | "grill-tongs"
+  | "batter-cup"
+  | "steamer-cloth"
+  | "braising-ladle"
+  | "fish-turner";
+
+export type StallVendorWorkAction =
+  | "chop"
+  | "ladle"
+  | "pour"
+  | "wok-toss"
+  | "blanch"
+  | "griddle-turn"
+  | "layer-dessert"
+  | "turn-skewers"
+  | "spread-batter"
+  | "lift-steamer"
+  | "stir-braise"
+  | "chargrill";
+
+export type StallVendorEmblem =
+  | "sunburst"
+  | "lime-leaf"
+  | "coffee-cup"
+  | "flame"
+  | "noodle-ribbon"
+  | "lantern"
+  | "raindrop"
+  | "compass"
+  | "tamarind-leaf"
+  | "bamboo-knot"
+  | "hearth-tile"
+  | "harbour-wave";
+
+/** A stable, renderer-ready identity for the worker assigned to a stall. */
+export interface StallVendorRecipe {
+  readonly stallId: string;
+  readonly seed: number;
+  readonly skin: number;
+  readonly hair: number;
+  readonly shirt: number;
+  readonly apron: number;
+  readonly apronTrim: number;
+  readonly hairStyle: StallVendorHairStyle;
+  readonly apronStyle: StallVendorApronStyle;
+  readonly headwear: StallVendorHeadwear;
+  readonly tool: StallVendorTool;
+  readonly workAction: StallVendorWorkAction;
+  readonly emblem: StallVendorEmblem;
+  /** Visual treatment excluding the already-unique stall ID. */
+  readonly renderSignature: string;
+  readonly contractKey: string;
+}
+
+export interface StallVendorAnimationPose {
+  readonly activity: StallVendorActivity;
+  /** Vertical body offset in pixels. */
+  readonly bob: number;
+  /** Horizontal torso offset in pixels. */
+  readonly lean: number;
+  /** Horizontal head offset in pixels. */
+  readonly headTurn: number;
+  /** Normalized working-arm pose in the range -1 to 1. */
+  readonly workingArm: number;
+  /** Normalized support-arm pose in the range -1 to 1. */
+  readonly supportArm: number;
+  /** Tool rotation in radians. */
+  readonly toolAngle: number;
+  /** Vertical tool offset in pixels, where positive values lift the tool. */
+  readonly toolLift: number;
+  /** Horizontal reach towards the counter or customer in pixels. */
+  readonly reach: number;
+  readonly signature: string;
+}
+
+interface StallVendorProfileSeed {
+  readonly skinIndex: number;
+  readonly hairIndex: number;
+  readonly shirtIndex: number;
+  readonly apronIndex: number;
+  readonly hairStyle: StallVendorHairStyle;
+  readonly apronStyle: StallVendorApronStyle;
+  readonly headwear: StallVendorHeadwear;
+  readonly tool: StallVendorTool;
+  readonly workAction: StallVendorWorkAction;
+  readonly emblem: StallVendorEmblem;
+}
+
+const VENDOR_HAIR = [0x211915, 0x3a281f, 0x553927, 0x2d2524] as const;
+const VENDOR_APRONS = [
+  0xe8dfcf,
+  0x315f54,
+  0x6d5140,
+  0x313b45,
+  0xc76f55,
+  0x5d6177,
+  0xd6c6a1,
+  0x394f67,
+  0x647044,
+  0xb54f43,
+  0x30766d,
+  0x35556e,
+] as const;
+
+const STALL_VENDOR_PROFILES: Readonly<Record<string, StallVendorProfileSeed>> = {
+  "stall.sunrise-roost": {
+    skinIndex: 2,
+    hairIndex: 0,
+    shirtIndex: 4,
+    apronIndex: 0,
+    hairStyle: "cropped",
+    apronStyle: "bib",
+    headwear: "service-cap",
+    tool: "cleaver",
+    workAction: "chop",
+    emblem: "sunburst",
+  },
+  "stall.coconut-lime": {
+    skinIndex: 4,
+    hairIndex: 2,
+    shirtIndex: 6,
+    apronIndex: 1,
+    hairStyle: "tied-back",
+    apronStyle: "cross-back",
+    headwear: "hair-wrap",
+    tool: "ladle",
+    workAction: "ladle",
+    emblem: "lime-leaf",
+  },
+  "stall.kopi-canopy": {
+    skinIndex: 0,
+    hairIndex: 1,
+    shirtIndex: 2,
+    apronIndex: 2,
+    hairStyle: "side-part",
+    apronStyle: "waist",
+    headwear: "visor",
+    tool: "long-spout-kettle",
+    workAction: "pour",
+    emblem: "coffee-cup",
+  },
+  "stall.cinder-wok": {
+    skinIndex: 3,
+    hairIndex: 3,
+    shirtIndex: 0,
+    apronIndex: 3,
+    hairStyle: "close-cut",
+    apronStyle: "utility",
+    headwear: "headband",
+    tool: "wok-spatula",
+    workAction: "wok-toss",
+    emblem: "flame",
+  },
+  "stall.mee-pok-junction": {
+    skinIndex: 1,
+    hairIndex: 0,
+    shirtIndex: 5,
+    apronIndex: 4,
+    hairStyle: "wavy",
+    apronStyle: "bib",
+    headwear: "chef-cap",
+    tool: "noodle-basket",
+    workAction: "blanch",
+    emblem: "noodle-ribbon",
+  },
+  "stall.tiffin-lantern": {
+    skinIndex: 2,
+    hairIndex: 1,
+    shirtIndex: 7,
+    apronIndex: 5,
+    hairStyle: "coiled",
+    apronStyle: "cross-back",
+    headwear: "hairnet",
+    tool: "griddle-spatula",
+    workAction: "griddle-turn",
+    emblem: "lantern",
+  },
+  "stall.sweet-monsoon": {
+    skinIndex: 4,
+    hairIndex: 2,
+    shirtIndex: 3,
+    apronIndex: 6,
+    hairStyle: "cropped",
+    apronStyle: "waist",
+    headwear: "service-cap",
+    tool: "measuring-cup",
+    workAction: "layer-dessert",
+    emblem: "raindrop",
+  },
+  "stall.satay-meridian": {
+    skinIndex: 1,
+    hairIndex: 3,
+    shirtIndex: 1,
+    apronIndex: 7,
+    hairStyle: "tied-back",
+    apronStyle: "utility",
+    headwear: "hair-wrap",
+    tool: "grill-tongs",
+    workAction: "turn-skewers",
+    emblem: "compass",
+  },
+  "stall.tamarind-leaf": {
+    skinIndex: 3,
+    hairIndex: 1,
+    shirtIndex: 6,
+    apronIndex: 8,
+    hairStyle: "side-part",
+    apronStyle: "bib",
+    headwear: "visor",
+    tool: "batter-cup",
+    workAction: "spread-batter",
+    emblem: "tamarind-leaf",
+  },
+  "stall.bamboo-basket": {
+    skinIndex: 0,
+    hairIndex: 0,
+    shirtIndex: 4,
+    apronIndex: 9,
+    hairStyle: "close-cut",
+    apronStyle: "cross-back",
+    headwear: "headband",
+    tool: "steamer-cloth",
+    workAction: "lift-steamer",
+    emblem: "bamboo-knot",
+  },
+  "stall.straits-hearth": {
+    skinIndex: 2,
+    hairIndex: 3,
+    shirtIndex: 2,
+    apronIndex: 10,
+    hairStyle: "wavy",
+    apronStyle: "waist",
+    headwear: "chef-cap",
+    tool: "braising-ladle",
+    workAction: "stir-braise",
+    emblem: "hearth-tile",
+  },
+  "stall.harbour-ember": {
+    skinIndex: 4,
+    hairIndex: 2,
+    shirtIndex: 5,
+    apronIndex: 11,
+    hairStyle: "coiled",
+    apronStyle: "utility",
+    headwear: "hairnet",
+    tool: "fish-turner",
+    workAction: "chargrill",
+    emblem: "harbour-wave",
+  },
+};
+
+const VENDOR_HAIR_STYLES = [
+  "cropped",
+  "side-part",
+  "wavy",
+  "coiled",
+  "tied-back",
+  "close-cut",
+] as const satisfies readonly StallVendorHairStyle[];
+const VENDOR_APRON_STYLES = ["bib", "cross-back", "waist", "utility"] as const satisfies readonly StallVendorApronStyle[];
+const VENDOR_HEADWEAR = [
+  "service-cap",
+  "visor",
+  "headband",
+  "hair-wrap",
+  "chef-cap",
+  "hairnet",
+] as const satisfies readonly StallVendorHeadwear[];
+const VENDOR_EMBLEMS = [
+  "sunburst",
+  "lime-leaf",
+  "coffee-cup",
+  "flame",
+  "noodle-ribbon",
+  "lantern",
+  "raindrop",
+  "compass",
+  "tamarind-leaf",
+  "bamboo-knot",
+  "hearth-tile",
+  "harbour-wave",
+] as const satisfies readonly StallVendorEmblem[];
+
+const VENDOR_ACTION_RULES: readonly (readonly [RegExp, StallVendorTool, StallVendorWorkAction])[] = [
+  [/chop/, "cleaver", "chop"],
+  [/wok/, "wok-spatula", "wok-toss"],
+  [/noodle|blanch/, "noodle-basket", "blanch"],
+  [/skewer/, "grill-tongs", "turn-skewers"],
+  [/spread/, "batter-cup", "spread-batter"],
+  [/steamer/, "steamer-cloth", "lift-steamer"],
+  [/braise/, "braising-ladle", "stir-braise"],
+  [/chargrill|grill/, "fish-turner", "chargrill"],
+  [/griddle/, "griddle-spatula", "griddle-turn"],
+  [/coconut-pour|glass-pull/, "measuring-cup", "layer-dessert"],
+  [/pour/, "long-spout-kettle", "pour"],
+  [/ladle/, "ladle", "ladle"],
+];
+
+function fallbackVendorProfile(stall: StallDefinition, seed: number): StallVendorProfileSeed {
+  const animationKey = stall.animationReferences.join(":");
+  const action = VENDOR_ACTION_RULES.find(([pattern]) => pattern.test(animationKey));
+  return {
+    skinIndex: seed >>> 3,
+    hairIndex: seed >>> 7,
+    shirtIndex: seed >>> 11,
+    apronIndex: seed >>> 15,
+    hairStyle: VENDOR_HAIR_STYLES[(seed >>> 5) % VENDOR_HAIR_STYLES.length] as StallVendorHairStyle,
+    apronStyle: VENDOR_APRON_STYLES[(seed >>> 9) % VENDOR_APRON_STYLES.length] as StallVendorApronStyle,
+    headwear: VENDOR_HEADWEAR[(seed >>> 13) % VENDOR_HEADWEAR.length] as StallVendorHeadwear,
+    tool: action?.[1] ?? "ladle",
+    workAction: action?.[2] ?? "ladle",
+    emblem: VENDOR_EMBLEMS[(seed >>> 17) % VENDOR_EMBLEMS.length] as StallVendorEmblem,
+  };
+}
+
+function parseVendorColour(value: string, fallback: number) {
+  const parsed = Number.parseInt(value.replace("#", ""), 16);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export function visualRecipeForStallVendor(stall: StallDefinition): StallVendorRecipe {
+  const seed = stableVisualHash(`vendor:${stall.id}`);
+  const profile = STALL_VENDOR_PROFILES[stall.id] ?? fallbackVendorProfile(stall, seed);
+  const skin = SKIN_TONES[profile.skinIndex % SKIN_TONES.length] as number;
+  const hair = VENDOR_HAIR[profile.hairIndex % VENDOR_HAIR.length] as number;
+  const shirt = CLOTHING[profile.shirtIndex % CLOTHING.length] as number;
+  const apron = VENDOR_APRONS[profile.apronIndex % VENDOR_APRONS.length] as number;
+  const apronTrim = parseVendorColour(stall.visual.palette[2], ACCENTS[seed % ACCENTS.length] as number);
+  const renderSignature = [
+    skin.toString(16),
+    hair.toString(16),
+    shirt.toString(16),
+    apron.toString(16),
+    apronTrim.toString(16),
+    profile.hairStyle,
+    profile.apronStyle,
+    profile.headwear,
+    profile.tool,
+    profile.workAction,
+    profile.emblem,
+  ].join(":");
+  return {
+    stallId: stall.id,
+    seed,
+    skin,
+    hair,
+    shirt,
+    apron,
+    apronTrim,
+    hairStyle: profile.hairStyle,
+    apronStyle: profile.apronStyle,
+    headwear: profile.headwear,
+    tool: profile.tool,
+    workAction: profile.workAction,
+    emblem: profile.emblem,
+    renderSignature,
+    contractKey: `${stall.id}:${renderSignature}`,
+  };
+}
+
+export function vendorAnimationPoseForStall(
+  recipe: StallVendorRecipe,
+  tick: number,
+  reducedMotion: boolean,
+  activity: StallVendorActivity,
+): StallVendorAnimationPose {
+  const signature = `${activity}:${recipe.workAction}:${reducedMotion ? "still" : "motion"}`;
+  if (reducedMotion) {
+    return {
+      activity,
+      bob: 0,
+      lean: 0,
+      headTurn: 0,
+      workingArm: 0,
+      supportArm: 0,
+      toolAngle: 0,
+      toolLift: 0,
+      reach: 0,
+      signature,
+    };
+  }
+
+  const seedPhase = (recipe.seed % 29) * 0.17;
+  const phase = tick * (activity === "prepare" ? 0.62 : activity === "order" ? 0.39 : 0.21) + seedPhase;
+  const wave = Math.sin(phase);
+  const crossWave = Math.cos(phase * 0.73 + seedPhase * 0.5);
+  if (activity === "idle") {
+    return {
+      activity,
+      bob: wave * 0.55,
+      lean: crossWave * 0.3,
+      headTurn: Math.sin(phase * 0.47) * 0.8,
+      workingArm: wave * 0.08,
+      supportArm: -wave * 0.06,
+      toolAngle: crossWave * 0.025,
+      toolLift: Math.max(0, wave) * 0.25,
+      reach: 0,
+      signature,
+    };
+  }
+  if (activity === "order") {
+    return {
+      activity,
+      bob: wave * 0.3,
+      lean: 0.8 + crossWave * 0.25,
+      headTurn: 0.9 + wave * 0.45,
+      workingArm: 0.35 + wave * 0.14,
+      supportArm: -0.18 + crossWave * 0.1,
+      toolAngle: wave * 0.04,
+      toolLift: Math.max(0, crossWave) * 0.4,
+      reach: 2.8 + wave * 0.7,
+      signature,
+    };
+  }
+
+  const liftingAction = recipe.workAction === "pour" || recipe.workAction === "lift-steamer";
+  const sweepingAction = recipe.workAction === "spread-batter" || recipe.workAction === "stir-braise";
+  return {
+    activity,
+    bob: crossWave * 0.45,
+    lean: 0.55 + Math.abs(wave) * 0.8,
+    headTurn: wave * 0.45,
+    workingArm: wave * (liftingAction ? 0.72 : 0.9),
+    supportArm: crossWave * (sweepingAction ? 0.52 : 0.34),
+    toolAngle: wave * (liftingAction ? 0.58 : sweepingAction ? 0.42 : 0.32),
+    toolLift: liftingAction ? (wave + 1) * 1.8 : Math.abs(wave) * 1.15,
+    reach: sweepingAction ? crossWave * 2.2 : 1.1 + Math.abs(crossWave) * 1.2,
+    signature,
   };
 }

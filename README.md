@@ -23,15 +23,19 @@ Every operating stall displays its queue count. Players can select a cardinal au
 
 ![The stall management panel and an L-shaped custom queue route in the game world](docs/images/hawker-custom-queue.png)
 
+### Guide guest movement
+
+The Route editor lets players paint preferred walking lanes across clear floor tiles. Guests use the guides for every leg of a visit when practical, while obstacle-safe fallback routing keeps incomplete lanes from trapping them. Route guides are saved, undoable, and reserved from blocking furniture and stall queues.
+
 
 ## Launch content
 
-- 8 original operational stalls
-- 30 named dishes
+- 12 original operational stalls
+- 46 named dishes
 - 80 meaningfully distinct placeable catalogue items
-- 8 customer archetypes
+- 12 customer archetypes
 - 1 top-down neighbourhood-hall map theme
-- 252 English localization entries
+- 300 English localization entries
 
 The validator counts catalogue entries by distinct gameplay definition, not by recolour. It checks links, IDs, assets, localization, collisions, rotations, unlocks, affordability, and behavioural uniqueness.
 
@@ -67,7 +71,8 @@ Controls:
 
 - Drag the map to pan; wheel or `+`/`-` to zoom.
 - Arrow keys move and follow the keyboard build cursor.
-- `Enter` places or selects, `R` rotates, `Esc` cancels, `U` undoes.
+- `Enter` places, selects, or toggles a preferred route tile; `R` rotates, `Esc` finishes/cancels, and `U` undoes.
+- Choose **Route** to paint or erase preferred guest lanes with the pointer or keyboard cursor.
 - `Space` pauses while the world has focus.
 - The HTML controls expose build, stall, dish-menu, insight, speed, save, and settings actions.
 
@@ -127,7 +132,7 @@ Start with:
 
 ## Release status
 
-The repository produces a deployable build and the final automated release suite passes, but the project must not be described as production-approved until the current status report confirms exact Chrome/Edge/Firefox, offline restart/update, render performance, long-soak, accessibility, cultural, security, and qualified legal/privacy review evidence. No human or external approval is implied by the internal checklists.
+The expanded 12-stall / 46-dish source passes the automated release gate on bundled Node.js `v24.14.0`, including both Sites/Vinext and Vercel production builds. The project must not be described as production-approved until the current artifact record and exact Chrome/Edge/Firefox, offline restart/update, render performance, long-soak, accessibility, cultural, security, and qualified legal/privacy review evidence are complete. The Node benchmark does not measure the renderer's full-frame redraw and per-frame text recreation, and no human or external approval is implied by the internal checklists.
 
 ## License and provenance
 

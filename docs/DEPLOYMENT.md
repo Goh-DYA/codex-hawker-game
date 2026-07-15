@@ -138,13 +138,18 @@ Use the dashboard to assign required reviewers; it is the clearest place to veri
 
 **User action — GitHub dashboard**
 
-1. Run the workflow at least once so GitHub learns the check name.
-2. Open **Repository > Settings > Rules > Rulesets** and create or edit the ruleset targeting `main`.
+1. Open or update a pull request and wait for **Verify and deploy to Vercel** to finish at least once. GitHub only offers checks that it has already observed.
+2. Open **Repository > Settings > Rules > Rulesets** and create or edit the ruleset that targets `main` (or the repository's default branch).
 3. Enable **Require status checks to pass**.
-4. Add the check named `verify` from **Verify and deploy to Vercel**.
-5. Require the branch to be up to date before merging if that matches the repository's merge policy.
+4. Select **Add checks**, search for `verify`, and add the check produced by **GitHub Actions** for the **Verify and deploy to Vercel** workflow.
+5. Confirm that the required `verify` check is associated with **GitHub Actions**, not the **Vercel** GitHub App. Vercel reports separate deployment checks and cannot satisfy the workflow's `verify` requirement.
+6. If an existing `verify` requirement is associated with Vercel, remove it and add the GitHub Actions version again.
+7. Enable **Require branches to be up to date before merging** only if that matches the repository's merge policy.
+8. Save the ruleset, then reopen or refresh the pull request and confirm that the `verify` requirement is satisfied after the workflow passes.
 
 Expected result: a pull request cannot merge while `verify` is pending or failing.
+
+If every visible check is green but GitHub reports **Merging was blocked due to rule violation errors**, recheck the app associated with the required status check. This usually means the ruleset expects `verify` from Vercel while the successful `verify` check came from GitHub Actions.
 
 CLI alternative for inspecting existing rules and checks:
 

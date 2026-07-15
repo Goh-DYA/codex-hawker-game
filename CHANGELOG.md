@@ -8,6 +8,7 @@ All notable project changes are recorded here. The project is pre-release; seman
 
 - Adaptive uncapped guest demand, rolling 0–100 visit ratings, three daily objectives, permanent centre milestones, and open-ended stall mastery with authored upgrades.
 - Multiple movable boundary entrances/exits with atomic validation, undo, multi-route spawning, and schema-v3 save migration.
+- An undoable, saved Route editor that lets players paint preferred keep-clear walking lanes; guests favour them without losing safe fallback paths.
 - A 10× simulation option and an original state-aware procedural soundtrack with separate master mute, music, ambience, and effects controls.
 - Complete React/Phaser Hawker Simulator interface, top-down game world, onboarding, build catalogue, stall/dish menu management, objectives/insights, expansion, settings, accessibility controls, and local save tools.
 - Deterministic fixed-step customer lifecycle with queueing, ordering, collection, seat reservation, dining, tray return, exit, target recovery, economy, XP, reputation, levels, and unlock reconciliation.
@@ -21,6 +22,11 @@ All notable project changes are recorded here. The project is pre-release; seman
 
 ### Changed
 
+- Added a keyboard-accessible customer-status legend to Settings, covering all nine speech bubbles and the patience ring with matching shapes and text explanations.
+- Expanded the customer-persona roster from 8 to 12 behavior archetypes and 300 English localization entries, adding Afternoon Treat Stopper, Plant-Forward Planner, Quiet Break Regular, and Night-Shift Recharger while reframing Senior Comfort Seeker as the neutral Comfort-Seeking Regular.
+- Expanded the launch roster from 8 to 12 fictional stalls and from 30 to 46 dishes, with unique primary stall/food visual references and dedicated real-food renderer treatments for the new menu.
+- Upgraded all 12 stalls with layered code-native facades, active-menu food and drink displays, cuisine-appropriate animated vendor work actions, and closed shutters that conceal the service scene; reduced motion freezes vendor action while retaining a clear static vendor pose.
+- Replaced the elapsed-time-derived Walking rating with full-journey route-efficiency scoring based on actual traversed tiles, including the exit leg and safe normalization of legacy ratings.
 - Replaced the Sites starter-facing experience with the original Hawker Simulator release candidate.
 - Selected orthographic top-down, shape-led illustrated 2D as the final launch perspective and visual system.
 - Deferred Phaser/runtime code from the initial React shell and added standard/lower-end runtime budgets.

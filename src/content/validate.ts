@@ -4,14 +4,15 @@ import { launchContentSchema } from "./schemas";
 import type { PlaceableCategory } from "./types";
 
 const EXPECTED_COUNTS = {
-  stalls: 8,
-  dishes: 30,
+  stalls: 12,
+  dishes: 46,
   minimumPlaceables: 80,
-  customerArchetypes: 8,
+  customerArchetypes: 12,
 } as const;
 
 const PLACEHOLDER_PATTERN =
   /(?:\b(?:todo|tbd|placeholder|unnamed|lorem ipsum|coming soon)\b|^test(?: item)?$)/i;
+const PEANUT_PATTERN = /\bpeanuts?\b/i;
 
 export interface ContentValidationReport {
   readonly version: string;
@@ -152,6 +153,8 @@ export const validateContent = (
 
   const dishById = new Map(content.dishes.map((dish) => [dish.id, dish]));
   const stallById = new Map(content.stalls.map((stall) => [stall.id, stall]));
+  const stallVisualReferences = new Set<string>();
+  const stallPaletteSignatures = new Set<string>();
 
   for (const stall of content.stalls) {
     check(
@@ -166,6 +169,20 @@ export const validateContent = (
       new Set(stall.dishIds).size === stall.dishIds.length,
       `${stall.id} lists the same dish more than once.`,
     );
+    const stallVisualReference = `${stall.visual.sprite.atlas}:${stall.visual.sprite.frame}`;
+    check(
+      !stallVisualReferences.has(stallVisualReference),
+      `${stall.id} reuses stall visual ${stallVisualReference}.`,
+    );
+    stallVisualReferences.add(stallVisualReference);
+
+    const stallPaletteSignature = stall.visual.palette.join(":").toUpperCase();
+    check(
+      !stallPaletteSignatures.has(stallPaletteSignature),
+      `${stall.id} reuses another stall's complete colour palette.`,
+    );
+    stallPaletteSignatures.add(stallPaletteSignature);
+
     for (const dishId of stall.dishIds) {
       const dish = dishById.get(dishId);
       check(Boolean(dish), `${stall.id} links to missing dish ${dishId}.`);
@@ -174,8 +191,20 @@ export const validateContent = (
         `${stall.id} -> ${dishId} is not reciprocated by the dish.`,
       );
     }
+    check(
+      stall.dishIds.some((dishId) => {
+        const dish = dishById.get(dishId);
+        return (
+          dish !== undefined &&
+          dish.unlockRequirement.level <= stall.unlockRequirement.level &&
+          dish.unlockRequirement.reputation <= stall.unlockRequirement.reputation
+        );
+      }),
+      `${stall.id} has no dish available when the stall unlocks.`,
+    );
   }
 
+  const dishVisualReferences = new Set<string>();
   for (const dish of content.dishes) {
     check(
       dish.stallIds.length === 1,
@@ -198,6 +227,20 @@ export const validateContent = (
           `${dish.id} reputation requirement is below its stall ${stall.id}.`,
         );
       }
+    }
+    const dishVisualReference = `${dish.foodSprite.atlas}:${dish.foodSprite.frame}`;
+    check(
+      !dishVisualReferences.has(dishVisualReference),
+      `${dish.id} reuses food visual ${dishVisualReference}.`,
+    );
+    dishVisualReferences.add(dishVisualReference);
+
+    const description = content.localization[dish.descriptionKey];
+    if (typeof description === "string" && PEANUT_PATTERN.test(description)) {
+      check(
+        dish.dietaryTags.includes("contains-peanuts"),
+        `${dish.id} mentions peanuts but is missing the contains-peanuts dietary tag.`,
+      );
     }
   }
 
@@ -417,6 +460,7 @@ export const validateContent = (
 
   const roles = new Set<string>();
   const behaviorSignatures = new Set<string>();
+  const visualSignatures = new Set<string>();
   for (const customer of content.customerArchetypes) {
     check(
       customer.budgetRange[0] <= customer.budgetRange[1],
@@ -437,6 +481,7 @@ export const validateContent = (
     roles.add(customer.gameplayRole.toLocaleLowerCase("en"));
 
     const signature = [
+      customer.budgetRange.join("-"),
       customer.patienceSeconds,
       customer.walkingSpeedTilesPerSecond,
       customer.priceSensitivity,
@@ -444,16 +489,32 @@ export const validateContent = (
       customer.queueSensitivity,
       customer.distanceSensitivity,
       customer.noveltyPreference,
+      [...customer.dishPreferenceTags].sort().join(","),
       customer.seatPreference,
       customer.groupSizeRange.join("-"),
       customer.visitSchedule.startHour,
       customer.visitSchedule.endHour,
+      customer.visitSchedule.peakMultiplier,
+      customer.unlockRequirement.level,
+      customer.unlockRequirement.reputation,
+      [...customer.unlockRequirement.prerequisiteIds].sort().join(","),
     ].join("|");
     check(
       !behaviorSignatures.has(signature),
       `${customer.id} is not behaviorally distinct.`,
     );
     behaviorSignatures.add(signature);
+
+    const visualSignature = [
+      customer.visualRules.outfitSilhouette,
+      customer.visualRules.garmentPattern,
+      customer.visualRules.carryProp,
+    ].join("|");
+    check(
+      !visualSignatures.has(visualSignature),
+      `${customer.id} reuses another customer visual treatment.`,
+    );
+    visualSignatures.add(visualSignature);
   }
 
   if (issues.length > 0) throw new ContentValidationError(issues);

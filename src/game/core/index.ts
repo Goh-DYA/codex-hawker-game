@@ -10,5 +10,6 @@ export * from "./progression";
 export * from "./validation";
 export * from "./state";
 export * from "./commands";
+export * from "./satisfaction";
 export * from "./simulation";
 export * from "./persistence";

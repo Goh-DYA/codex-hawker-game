@@ -1,10 +1,10 @@
-import type { AccessPoint, QueueDirection, VisitRatingComponents } from "@/src/game/core";
+import type { AccessPoint, GridPoint, QueueDirection, VisitRatingComponents } from "@/src/game/core";
 import type { SatisfactionTip } from "./satisfactionInsight";
 import type { QueueFlowState } from "./queueInsight";
 
 export type QualityMode = "standard" | "lower-end";
 export type GameSpeed = 0 | 1 | 2 | 4 | 10;
-export type BuildTool = "select" | "place" | "move" | "remove" | "queue" | "access";
+export type BuildTool = "select" | "place" | "move" | "remove" | "queue" | "access" | "route";
 
 export interface RuntimeObjective {
   readonly id: string;
@@ -84,6 +84,7 @@ export interface RuntimeSnapshot {
   milestoneTracks: readonly RuntimeMilestoneTrack[];
   stallMastery: readonly RuntimeStallMastery[];
   accessPoints: readonly AccessPoint[];
+  routeGuidePoints: readonly GridPoint[];
   selectedAccessPointId?: string;
   expansionCount: number;
   nextExpansionCost: number;
@@ -122,6 +123,7 @@ export interface RuntimeController {
   setSpeed(speed: GameSpeed): void;
   setQuality(quality: QualityMode): void;
   setReducedMotion(enabled: boolean): void;
+  setHighContrast(enabled: boolean): void;
   setDebugOverlay(enabled: boolean): void;
   zoomBy(delta: number): void;
   centreCamera(): void;
@@ -138,6 +140,7 @@ export interface RuntimeController {
   addAccessPoint(kind: AccessPoint["kind"]): void;
   selectAccessPoint(accessPointId?: string): void;
   removeSelectedAccessPoint(): boolean;
+  clearGuestRoute(): boolean;
   upgradeStall(definitionId: string): boolean;
 }
 

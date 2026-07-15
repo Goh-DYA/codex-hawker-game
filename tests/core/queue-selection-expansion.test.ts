@@ -533,6 +533,7 @@ describe("coherent expansion boundaries and exits", () => {
       movementProgress: 0,
       stateElapsedMs: 0,
       visitElapsedMs: 0,
+      walkingDistanceTiles: 0,
       patienceRemainingMs: archetype.patienceMs,
       satisfaction: 3,
       hasTray: false,

@@ -7,9 +7,10 @@ Hawker Simulator is a complete, free, local-first browser management game candid
 ### Playable launch scope
 
 - Build and operate an original Singapore-inspired Community Courtyard using a top-down grid.
-- Place, move, rotate, remove/sell, undo, and unlock 80 meaningfully distinct stalls, seating, facilities, signs, greenery, lighting, cooling, tray/waste, floor, and utility definitions.
-- Operate 8 fictional stalls and configure 30 dishes through per-stall menu slots.
-- Serve 8 customer archetypes through arrival, stall choice, queue, ordering, collection, reserved seating, dining, tray return, exit, and despawn.
+- Place, move, rotate, remove/sell, undo, and unlock 80 meaningfully distinct seating, facility, sign, greenery, lighting, cooling, tray/waste, floor, and utility definitions.
+- Operate 12 fictional stalls and configure 46 dishes through per-stall menu slots.
+- Serve 12 customer archetypes through arrival, stall choice, queue, ordering, collection, reserved seating, dining, tray return, exit, and despawn.
+- Paint saved preferred walking lanes that shift guest routes while retaining obstacle-safe fallback paths.
 - Read live queue, cleanliness, seating, ambience, cash, reputation, level, objective, and diagnostic feedback.
 - Expand the hall and progress through deterministic economy, XP, reputation, and unlock rules.
 
@@ -28,10 +29,10 @@ Hawker Simulator is a complete, free, local-first browser management game candid
 
 ### Automated evidence
 
-- Content validation proves 8 stalls, 30 dishes, 80 placeables, 8 archetypes, and 252 English localization entries.
+- Content validation requires and checks 12 stalls, 46 dishes, 80 placeables, 12 archetypes, and 300 English localization entries.
 - Deterministic simulation, grid/pathfinding, build/economy/progression, persistence/migration/recovery, target reconciliation, soak, and an 80-agent Node benchmark have automated tests.
 - Production-render checks assert the release shell, security headers, PWA update protocol, and absence of starter-facing copy.
-- See `TEST_REPORT.md` and `PERFORMANCE_REPORT.md` for the final automated results, artifact hash, and remaining browser-only measurements.
+- See `TEST_REPORT.md` and `PERFORMANCE_REPORT.md` for the current supported-runtime automated results, the historical payload baseline, and remaining browser-only measurements.
 
 ### Not yet approved
 

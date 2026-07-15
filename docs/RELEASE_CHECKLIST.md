@@ -1,14 +1,14 @@
 # Release Checklist
 
-Status: Release candidate built; **NO-GO pending exact-production browser/offline QA and human reviews**
+Status: Expanded source automated release gate passed; **NO-GO pending exact-production browser/offline QA and human reviews**
 Rule: check an item only with evidence in `TEST_REPORT.md`, `PERFORMANCE_REPORT.md`, or the named review record. An implementation checkbox is not a browser or compliance claim.
 
 ## Product and content
 
-- [x] Exact launch data validates: 8 operational stalls, 30 assigned dishes, 80 meaningful placeables, 8 customer archetypes, and 252 English localization entries.
+- [x] Expanded launch-data contract requires exactly 12 operational stalls, 46 assigned dishes, 80 meaningful placeables, 12 customer archetypes, and 300 English localization entries.
 - [x] Catalogue categories, reciprocal references, unique IDs, localization, unlock bounds/prerequisites, and non-placeholder copy have automated checks.
 - [x] One coherent Community Courtyard theme uses original code-native illustrated visuals and fictional stall identities.
-- [x] Automated visual-recipe coverage accounts for 80 distinct placeables, 8 stall identities, 30 dish/vessel recipes, 8 archetype appearances, and all 11 customer states, including reduced-motion signatures.
+- [x] Automated visual-contract coverage accounts for 80 distinct placeables, unique primary references for 12 stall identities and 46 dishes, 46 dish/vessel recipes, 12 archetype appearances, and all 11 customer states, including reduced-motion signatures.
 - [x] Player-facing build catalogue, stall/menu manager, objectives/insights, tutorial, progression, settings, and save tools are integrated.
 - [x] Asset provenance and third-party dependency notices are present; no real brand or certification mark is intentionally used.
 - [ ] Complete build/open/inspect/customer/progression loop is manually passed on the exact production artifact in a real browser.
@@ -41,7 +41,8 @@ Rule: check an item only with evidence in `TEST_REPORT.md`, `PERFORMANCE_REPORT.
 
 ## Browser and UI
 
-- [x] Targeted development-browser screenshots cover starter, live service, queue routing/editing, and repeated expansion states; paths, post-capture audit fixes, and limitations are recorded in `GRAPHICS_VERIFICATION.md`.
+- [x] Pre-expansion targeted development-browser screenshots cover starter, live service, queue routing/editing, and repeated expansion states; paths, post-capture changes, and limitations are recorded in `GRAPHICS_VERIFICATION.md`.
+- [ ] Every one of the 12 stall identities and 46 dish presentations is inspected in the exact production artifact, with culturally informed findings recorded.
 - [ ] Current stable desktop Chrome exact version and OS are recorded.
 - [ ] Edge and Firefox exact versions and limitations are recorded.
 - [ ] 1280 × 720 and 1024 × 640 layouts pass.
@@ -62,11 +63,12 @@ Rule: check an item only with evidence in `TEST_REPORT.md`, `PERFORMANCE_REPORT.
 ## Performance
 
 - [x] Repeatable Node benchmark exercises 80 active agents for 1,200 fixed steps and passed the final simulation budget.
-- [x] Latest current-source 80-agent benchmark result is recorded in `PERFORMANCE_REPORT.md`.
-- [x] Replacement production artifact raw/gzip sizes, service-worker build ID, and deterministic content-manifest hash are recorded.
+- [x] Expanded-source `benchmark-80-agents` result is recorded in `PERFORMANCE_REPORT.md` from the supported Node.js `v24.14.0` run.
+- [ ] Current production artifact raw/gzip sizes and deterministic content-manifest hash are recorded; service-worker build ID `c5ed3679ba56` is recorded.
 - [ ] Production payload and time-to-interactive budgets are measured in a real browser.
 - [ ] Standard 60 FPS and lower-end 30 FPS targets pass at documented supported caps.
 - [ ] Browser simulation/render/path/save/audio/memory budgets pass.
+- [ ] Full-frame redraw and per-frame text recreation are profiled and meet the browser frame-time/allocation budgets, or are optimized until they do.
 - [ ] Two-hour browser soak shows no unbounded memory/agent/reservation growth.
 - [ ] Hardware, browser, viewport, seed, and raw traces/results are retained.
 
@@ -86,10 +88,10 @@ Rule: check an item only with evidence in `TEST_REPORT.md`, `PERFORMANCE_REPORT.
 
 ## Build and operations
 
-- [x] Final release checks pass typecheck, lint, all 12 Vitest files / 64 tests, Sites and Vercel production builds, and rendered-output/offline-shell assertions.
-- [x] Final all-dependencies and production-only npm audits both report 0 vulnerabilities.
-- [x] Replacement service-worker build ID, artifact path/hash, and payload sizes are recorded.
-- [x] Validated implementation commit and private Sites publication URL are recorded in `PROJECT_STATUS.md` and `TEST_REPORT.md`.
+- [x] Expanded-source release checks pass on bundled Node.js `v24.14.0`: typecheck, lint, 24 Vitest files / 131 tests, five-environment Sites/Vinext build, native Vercel build, and 2/2 rendered-output/offline-shell assertions.
+- [x] Previously recorded all-dependencies and production-only npm audits both report 0 vulnerabilities; they were not rerun in this validation update.
+- [x] Expanded-source service-worker build ID `c5ed3679ba56` is recorded.
+- [ ] Expanded validated-source commit, artifact path/hash/payload sizes, and publication URL are recorded; the existing private Sites record predates the expansion.
 - [ ] Vercel project setup, first Preview, staged-production smoke, protected approval, promotion, and rollback rehearsal are recorded with exact deployment URLs.
 - [ ] Browser critical path and offline/update tests pass on that exact artifact.
 - [ ] Private deployment smoke, rollback, and save-forward compatibility are rehearsed.
@@ -98,4 +100,4 @@ Rule: check an item only with evidence in `TEST_REPORT.md`, `PERFORMANCE_REPORT.
 
 ## Current decision
 
-**NO-GO.** The release-candidate implementation, automated release gate, frozen artifact, and targeted development-browser visual evidence are substantial, but production approval is withheld until the exact-artifact browser/offline gates and required human cultural, accessibility, security, and qualified legal/privacy reviews are complete.
+**NO-GO.** The expanded implementation and supported-runtime automated release gate pass, but production approval is withheld until the current commit/artifact record, exact-artifact browser/offline and performance gates, and required human cultural, accessibility, security, and qualified legal/privacy reviews are complete.
