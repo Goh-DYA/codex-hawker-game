@@ -19,6 +19,8 @@ Status: Active; architecture decisions have detailed ADRs under docs/adr
 | D-013 | Vitest for pure logic/content/save/simulation tests plus real browser QA | Fast deterministic coverage while retaining target-browser evidence | Accepted |
 | D-014 | Accessibility target is WCAG 2.2 AA where applicable, not a present conformance claim | Concrete design bar with honest canvas/human-audit limits | Accepted |
 | D-015 | Package version does not determine release state | Prevent premature 1.0 claims; checklist and signed evidence decide release | Accepted |
+| D-016 | Expand the roster to 12 fictional stalls / 46 dishes while retaining 80 meaningful placeables / eight behavior archetypes | Broaden menu and visual variety without redefining the established build catalogue or customer-model scope | Accepted |
+| D-017 | Expand the customer model to 12 behavior archetypes and 300 English localization entries, superseding the customer-roster portions of D-010 and D-016 | Add four distinct visit-goal personas while preserving the 12-stall / 46-dish / 80-placeable scope and keeping ethnicity, disability, and accessibility needs separate from consumer personality | Accepted |
 
 ## Decision changes
 

@@ -1,9 +1,11 @@
 import { applySale, getUnlockedDefinitionIds } from "./economy";
 import {
   getBlockedTileKeys,
+  getTile,
   getObjectQueueAnchor,
   getObjectTrayReturnPoint,
   getSeatLocations,
+  isInBounds,
   isTileWalkable,
   pointKey,
   samePoint,
@@ -11,13 +13,15 @@ import {
 } from "./grid";
 import { findPath } from "./pathfinding";
 import { getCustomerQueueCell, planStallQueueLayouts } from "./queueing";
-import { choose, nextFloat } from "./rng";
+import { nextFloat } from "./rng";
 import { compareIds } from "./ordering";
 import { cloneCustomer } from "./state";
+import { walkingSatisfactionScore } from "./satisfaction";
 import {
   awardStallMastery,
   effectiveStallDefinition,
   operatingDay,
+  operatingMinuteOfDay,
   updateProgressionSystems,
 } from "./progression";
 import {
@@ -46,6 +50,7 @@ interface Draft {
   customers: Record<string, Customer>;
   queues: Record<string, readonly string[]>;
   readonly queueCellsByStall: Readonly<Record<string, readonly GridPoint[]>>;
+  readonly preferredRouteKeys: ReadonlySet<string>;
   seatReservations: Record<string, string>;
   economy: GameState["economy"];
   progression: GameState["progression"];
@@ -91,8 +96,12 @@ function createDraft(state: GameState, tick: number): Draft {
       state.map,
       state.objects,
       effectiveCatalog,
-      state.accessPoints.map((point) => point.position),
+      [
+        ...state.accessPoints.map((point) => point.position),
+        ...state.routeGuidePoints,
+      ],
     ),
+    preferredRouteKeys: new Set(state.routeGuidePoints.map(pointKey)),
     seatReservations: { ...state.seatReservations },
     economy: { ...state.economy },
     progression: {
@@ -163,6 +172,7 @@ function blockedTiles(draft: Draft): ReadonlySet<string> {
 function requestPath(draft: Draft, start: GridPoint, end: GridPoint): readonly GridPoint[] | null {
   const result = findPath(draft.source.map, start, end, {
     blocked: blockedTiles(draft),
+    preferred: draft.preferredRouteKeys,
     allowEndBlocked: true,
   });
   draft.metrics = {
@@ -217,11 +227,20 @@ function moveToward(draft: Draft, customer: Customer, destination: GridPoint, de
     archetype.walkingSpeed * (1 + utility.movementSpeed) * (deltaMs / 1_000);
   let position = next.position;
   let pathIndex = next.pathIndex;
+  let completedSteps = 0;
   while (progress >= 1 && pathIndex < next.path.length) {
     const step = next.path[pathIndex] as GridPoint;
     if (!isTileWalkable(draft.source.map, step, blocked, destination)) {
       return {
-        customer: { ...next, position, path: [], pathIndex: 0, movementProgress: 0, stuckMs: next.stuckMs + deltaMs },
+        customer: {
+          ...next,
+          position,
+          path: [],
+          pathIndex: 0,
+          movementProgress: 0,
+          walkingDistanceTiles: next.walkingDistanceTiles + completedSteps,
+          stuckMs: next.stuckMs + deltaMs,
+        },
         arrived: false,
         failed: next.stuckMs + deltaMs >= draft.source.config.stuckRecoveryMs,
       };
@@ -229,6 +248,7 @@ function moveToward(draft: Draft, customer: Customer, destination: GridPoint, de
     position = { ...step };
     pathIndex += 1;
     progress -= 1;
+    completedSteps += 1;
   }
   const arrived = samePoint(position, destination);
   return {
@@ -237,6 +257,7 @@ function moveToward(draft: Draft, customer: Customer, destination: GridPoint, de
       position,
       pathIndex,
       movementProgress: arrived ? 0 : progress,
+      walkingDistanceTiles: next.walkingDistanceTiles + completedSteps,
       stuckMs: 0,
     },
     arrived,
@@ -271,7 +292,13 @@ function chooseExit(draft: Draft, customer: Customer) {
   const exits = draft.source.accessPoints.filter((point) => point.kind === "exit");
   const blocked = blockedTiles(draft);
   return exits
-    .map((exit) => ({ exit, path: findPath(draft.source.map, customer.position, exit.position, { blocked }).path }))
+    .map((exit) => ({
+      exit,
+      path: findPath(draft.source.map, customer.position, exit.position, {
+        blocked,
+        preferred: draft.preferredRouteKeys,
+      }).path,
+    }))
     .filter((candidate): candidate is { exit: (typeof exits)[number]; path: readonly GridPoint[] } => Boolean(candidate.path))
     .sort((a, b) => a.path.length - b.path.length || compareIds(a.exit.id, b.exit.id))[0]?.exit ?? exits[0];
 }
@@ -284,7 +311,7 @@ function settleVisitRating(draft: Draft, source: Customer, abandoned: boolean, r
     foodQuality: supplied.foodQuality ?? (source.served ? 70 : 0),
     wait: supplied.wait ?? Math.max(0, Math.min(100, (source.patienceRemainingMs / Math.max(1, archetype.patienceMs)) * 100)),
     value: supplied.value ?? (source.served ? 70 : 20),
-    walking: supplied.walking ?? Math.max(35, 100 - (source.visitElapsedMs / draft.source.config.maxVisitMs) * 65),
+    walking: supplied.walking ?? walkingSatisfactionScore(source.walkingDistanceTiles),
     comfort: supplied.comfort ?? (source.served ? 65 : 20),
     cleanliness: supplied.cleanliness ?? 70,
     ambience: supplied.ambience ?? 65,
@@ -301,6 +328,7 @@ function settleVisitRating(draft: Draft, source: Customer, abandoned: boolean, r
   score = Math.round(Math.max(0, Math.min(100, score)));
   const rating = {
     customerId: source.id,
+    walkingMetricVersion: 2 as const,
     score,
     served: source.served,
     abandoned,
@@ -323,10 +351,9 @@ function settleVisitRating(draft: Draft, source: Customer, abandoned: boolean, r
   return { ...source, satisfaction: score / 20, ratingSettled: true };
 }
 
-function beginExit(draft: Draft, source: Customer, abandoned: boolean, reason = abandoned ? "abandoned" : "served"): Customer {
+function beginExit(draft: Draft, source: Customer, abandoned: boolean): Customer {
   let customer = releaseSeat(draft, source);
   removeFromAllQueues(draft, customer.id);
-  customer = settleVisitRating(draft, customer, abandoned, reason);
   const targetExit = chooseExit(draft, customer);
   customer = transition(draft, customer, "walking-to-exit");
   customer = {
@@ -348,11 +375,65 @@ function openStalls(draft: Draft): readonly StallRuntime[] {
     .filter((stall): stall is StallRuntime => Boolean(stall));
 }
 
+const OFF_SCHEDULE_PERSONA_WEIGHT = 0.2;
+
+export function customerArchetypeSpawnWeight(
+  archetype: CustomerArchetype,
+  level: number,
+  reputation: number,
+  elapsedMs: number,
+  unlockedDefinitionIds: readonly string[] = [],
+): number {
+  if (
+    level < (archetype.unlockLevel ?? 1) ||
+    reputation < (archetype.unlockReputation ?? 0) ||
+    (archetype.unlockPrerequisiteIds ?? []).some(
+      (id) => !unlockedDefinitionIds.includes(id),
+    )
+  ) {
+    return 0;
+  }
+  if (!archetype.visitSchedule) return 1;
+
+  const hour = operatingMinuteOfDay(elapsedMs) / 60;
+  const isScheduled =
+    hour >= archetype.visitSchedule.startHour &&
+    hour < archetype.visitSchedule.endHour;
+  return isScheduled
+    ? archetype.visitSchedule.peakMultiplier
+    : OFF_SCHEDULE_PERSONA_WEIGHT;
+}
+
 function spawnCustomer(draft: Draft): void {
   const archetypes = Object.values(draft.source.catalog.archetypes).sort((a, b) => compareIds(a.id, b.id));
   if (archetypes.length === 0 || openStalls(draft).length === 0) return;
-  const selected = choose(draft.rngState, archetypes);
-  draft.rngState = selected.state;
+  const weightedArchetypes = archetypes.map((archetype) => ({
+    archetype,
+    weight: customerArchetypeSpawnWeight(
+      archetype,
+      draft.progression.level,
+      draft.progression.reputation,
+      draft.source.elapsedMs,
+      draft.progression.unlockedDefinitionIds,
+    ),
+  }));
+  const totalWeight = weightedArchetypes.reduce(
+    (total, candidate) => total + candidate.weight,
+    0,
+  );
+  if (totalWeight <= 0) return;
+
+  const roll = nextFloat(draft.rngState);
+  draft.rngState = roll.state;
+  let remainingWeight = roll.value * totalWeight;
+  let selected = weightedArchetypes.find((candidate) => candidate.weight > 0);
+  for (const candidate of weightedArchetypes) {
+    if (candidate.weight <= 0) continue;
+    selected = candidate;
+    remainingWeight -= candidate.weight;
+    if (remainingWeight < 0) break;
+  }
+  if (!selected) return;
   const id = `customer-${draft.nextCustomerSequence}`;
   const entrances = draft.source.accessPoints.filter((point) => point.kind === "entrance");
   const entrance = [...entrances].sort((a, b) => {
@@ -364,7 +445,7 @@ function spawnCustomer(draft: Draft): void {
   draft.nextCustomerSequence += 1;
   draft.customers[id] = {
     id,
-    archetypeId: selected.value.id,
+    archetypeId: selected.archetype.id,
     status: "choosing-stall",
     position: { ...entrance.position },
     path: [],
@@ -372,7 +453,8 @@ function spawnCustomer(draft: Draft): void {
     movementProgress: 0,
     stateElapsedMs: 0,
     visitElapsedMs: 0,
-    patienceRemainingMs: selected.value.patienceMs,
+    walkingDistanceTiles: 0,
+    patienceRemainingMs: selected.archetype.patienceMs,
     satisfaction: 3,
     sourceEntranceId: entrance.id,
     hasTray: false,
@@ -389,6 +471,11 @@ function affordableDishes(draft: Draft, stall: StallRuntime, customer: Customer)
   return (stall.definition.stall?.dishIds ?? [])
     .map((id) => draft.source.catalog.dishes[id])
     .filter((dish): dish is DishDefinition => Boolean(dish && dish.price + customer.spent <= archetype.budget));
+}
+
+export function boundedDishDemandAppeal(dish: DishDefinition) {
+  const demand = Math.max(0, Math.min(1, dish.baseDemand ?? 0.5));
+  return (demand - 0.5) * 0.8;
 }
 
 function chooseStall(draft: Draft, source: Customer): Customer {
@@ -410,6 +497,7 @@ function chooseStall(draft: Draft, source: Customer): Customer {
         const preferenceMatches = (dish.preferenceTags ?? []).filter((tag) => preferredTags.has(tag)).length;
         return (
           dish.quality * archetype.qualitySensitivity +
+          boundedDishDemandAppeal(dish) +
           preferenceMatches * 2.25 -
           dish.price * archetype.priceSensitivity
         );
@@ -446,7 +534,12 @@ function chooseDish(draft: Draft, stall: StallRuntime, customer: Customer): Dish
     const matches = (dish.preferenceTags ?? []).filter((tag) => preferred.has(tag)).length;
     const random = nextFloat(draft.rngState);
     draft.rngState = random.state;
-    const score = dish.quality * archetype.qualitySensitivity + matches * 2 - dish.price * archetype.priceSensitivity + random.value * 0.001;
+    const score =
+      dish.quality * archetype.qualitySensitivity +
+      boundedDishDemandAppeal(dish) +
+      matches * 2 -
+      dish.price * archetype.priceSensitivity +
+      random.value * 0.001;
     if (!best || score > best.score || (score === best.score && dish.id < best.dish.id)) best = { dish, score };
   }
   return best?.dish;
@@ -758,6 +851,12 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
       if (!targetExit) return undefined;
       const movement = moveToward(draft, customer, targetExit.position, deltaMs);
       if (!movement.arrived && !movement.failed) return movement.customer;
+      customer = settleVisitRating(
+        draft,
+        movement.customer,
+        !movement.customer.served,
+        movement.customer.served ? "served" : "abandoned",
+      );
       removeFromAllQueues(draft, customer.id);
       releaseSeat(draft, customer);
       draft.metrics = {
@@ -873,8 +972,31 @@ export function assertSimulationInvariants(state: GameState): void {
     state.map,
     state.objects,
     invariantCatalog,
-    state.accessPoints.map((point) => point.position),
+    [
+      ...state.accessPoints.map((point) => point.position),
+      ...state.routeGuidePoints,
+    ],
   );
+  const blocked = getBlockedTileKeys(state.objects, state.catalog);
+  const routeKeys = new Set<string>();
+  for (const point of state.routeGuidePoints) {
+    if (!Number.isSafeInteger(point.x) || !Number.isSafeInteger(point.y)) {
+      throw new Error("Preferred route points must use integer coordinates");
+    }
+    if (
+      !isInBounds(state.map, point) ||
+      point.x === 0 ||
+      point.y === 0 ||
+      point.x === state.map.width - 1 ||
+      point.y === state.map.height - 1 ||
+      getTile(state.map, point) !== "floor" ||
+      blocked.has(pointKey(point))
+    ) {
+      throw new Error(`Preferred route point ${pointKey(point)} is invalid`);
+    }
+    if (routeKeys.has(pointKey(point))) throw new Error(`Preferred route point ${pointKey(point)} is repeated`);
+    routeKeys.add(pointKey(point));
+  }
   for (const [stallId, queue] of Object.entries(state.queues)) {
     const stall = state.objects[stallId];
     const definition = stall ? invariantCatalog.placeables[stall.definitionId] : undefined;
@@ -909,6 +1031,9 @@ export function assertSimulationInvariants(state: GameState): void {
     if (!Number.isFinite(customer.position.x) || !Number.isFinite(customer.position.y)) {
       throw new Error(`Customer ${customer.id} has an invalid position`);
     }
+    if (!Number.isFinite(customer.walkingDistanceTiles) || customer.walkingDistanceTiles < 0) {
+      throw new Error(`Customer ${customer.id} has an invalid walking distance`);
+    }
   }
   for (const [name, value] of Object.entries(state.economy)) {
     if (!Number.isFinite(value) || value < 0) throw new Error(`Economy value ${name} is invalid`);
@@ -916,7 +1041,19 @@ export function assertSimulationInvariants(state: GameState): void {
   for (const [name, value] of Object.entries(state.metrics)) {
     if (typeof value === "number" && (!Number.isSafeInteger(value) || value < 0)) throw new Error(`Metric ${name} is invalid`);
   }
-  if (state.metrics.visitRatings.length > 50 || state.metrics.visitRatings.some((rating) => !Number.isFinite(rating.score) || rating.score < 0 || rating.score > 100)) {
+  if (
+    state.metrics.visitRatings.length > 50 ||
+    state.metrics.visitRatings.some(
+      (rating) =>
+        rating.walkingMetricVersion !== 2 ||
+        !Number.isFinite(rating.score) ||
+        rating.score < 0 ||
+        rating.score > 100 ||
+        Object.values(rating.components).some(
+          (component) => !Number.isFinite(component) || component < 0 || component > 100,
+        ),
+    )
+  ) {
     throw new Error("Visit ratings are invalid");
   }
   if (state.metrics.spawnedCustomers !== state.metrics.despawnedCustomers + customerIds.size) {

@@ -2,10 +2,12 @@ import { applyPurchase, applyRefund, calculateExpansionCost, calculateRefund, ca
 import {
   expandGridMap,
   getBlockedTileKeys,
+  getTile,
   getSeatLocations,
   isInBounds,
   normalizeBoundaryOpenings,
   normalizeRotation,
+  pointKey,
   projectExpandedBoundaryPoint,
   validatePlacement,
   withTile,
@@ -60,6 +62,7 @@ function isBuildCommand(command: GameCommand): command is BuildCommand {
     command.type === "expand-map" ||
     command.type === "configure-queue" ||
     command.type === "set-stall-queue-direction" ||
+    command.type === "configure-guest-route" ||
     command.type === "add-access-point" ||
     command.type === "move-access-point" ||
     command.type === "remove-access-point"
@@ -93,6 +96,13 @@ function navigationError(state: GameState, objects: Readonly<Record<string, Plac
 }
 
 const accessPositions = (state: Pick<GameState, "accessPoints">) => state.accessPoints.map((point) => point.position);
+
+const navigationReservedPoints = (
+  state: Pick<GameState, "accessPoints" | "routeGuidePoints">,
+) => [
+  ...accessPositions(state),
+  ...state.routeGuidePoints,
+];
 
 function withAccessAliases(state: GameState, map: GridMap, accessPoints: readonly AccessPoint[]): GameState {
   const entrance = accessPoints.find((point) => point.kind === "entrance")?.position;
@@ -226,7 +236,7 @@ function reconcileWorldGeometryChange(
     state.map,
     objects,
     state.catalog,
-    accessPositions(state),
+    navigationReservedPoints(state),
   );
   const queues = { ...reconciled.queues };
   const customers = { ...reconciled.customers };
@@ -271,6 +281,7 @@ function restoreUndoSnapshot(state: GameState, entry: GameState["undoStack"][num
     ...state,
     map: snapshot.map,
     accessPoints: snapshot.accessPoints,
+    routeGuidePoints: snapshot.routeGuidePoints,
     entrance: snapshot.entrance,
     exit: snapshot.exit,
     objects: snapshot.objects,
@@ -301,6 +312,7 @@ function restoreUndoSnapshot(state: GameState, entry: GameState["undoStack"][num
     ...state,
     map: snapshot.map,
     accessPoints: snapshot.accessPoints,
+    routeGuidePoints: snapshot.routeGuidePoints,
     entrance: snapshot.entrance,
     exit: snapshot.exit,
     objects: snapshot.objects,
@@ -440,6 +452,53 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
     return accept(next, [commandEvent(state, true, command.type)]);
   }
 
+  if (command.type === "configure-guest-route") {
+    if (!Array.isArray(command.points)) return reject(state, "Preferred route points must be an array");
+    const pointsByKey = new Map<string, { x: number; y: number }>();
+    const blocked = getBlockedTileKeys(state.objects, state.catalog);
+    const existingGuideKeys = new Set(state.routeGuidePoints.map(pointKey));
+    const queueCells = new Set(
+      Object.values(planStallQueueLayouts(
+        state.map,
+        state.objects,
+        state.catalog,
+        navigationReservedPoints(state),
+      )).flat().map(pointKey),
+    );
+    for (const point of command.points) {
+      if (!Number.isSafeInteger(point.x) || !Number.isSafeInteger(point.y)) {
+        return reject(state, "Preferred route points must use integer coordinates");
+      }
+      if (!isInBounds(state.map, point) || getTile(state.map, point) !== "floor") {
+        return reject(state, `Preferred route tile ${pointKey(point)} must be a floor tile inside the map`);
+      }
+      if (isBoundaryPoint(state.map, point)) {
+        return reject(state, `Preferred route tile ${pointKey(point)} must be inside the hawker centre`);
+      }
+      if (blocked.has(pointKey(point))) {
+        return reject(state, `Preferred route tile ${pointKey(point)} is blocked by an object`);
+      }
+      if (!existingGuideKeys.has(pointKey(point)) && queueCells.has(pointKey(point))) {
+        return reject(state, `Preferred route tile ${pointKey(point)} is occupied by a stall queue`);
+      }
+      pointsByKey.set(pointKey(point), { ...point });
+    }
+    const routeGuidePoints = [...pointsByKey.values()].sort((a, b) => a.y - b.y || a.x - b.x);
+    if (
+      routeGuidePoints.length === state.routeGuidePoints.length &&
+      routeGuidePoints.every((point, index) => pointKey(point) === pointKey(state.routeGuidePoints[index]!))
+    ) {
+      return accept(state, [commandEvent(state, true, "Preferred guest route is unchanged")]);
+    }
+    const world = { ...state, routeGuidePoints };
+    const reconciled = reconcileWorldGeometryChange(world, state.objects);
+    const next = withUndo({ ...world, ...reconciled }, command, before);
+    const message = routeGuidePoints.length === 0
+      ? "Cleared the preferred guest route"
+      : `Updated the preferred guest route (${routeGuidePoints.length} tiles)`;
+    return accept(next, [commandEvent(state, true, message)]);
+  }
+
   if (command.type === "place-object") {
     if (!isValidSimulationId(command.objectId)) return reject(state, "Object id must be a non-empty safe ID");
     if (state.objects[command.objectId]) return reject(state, `Object id already exists: ${command.objectId}`);
@@ -461,7 +520,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       open: definition.kind === "stall",
     };
     const validation = validatePlacement(state.map, state.objects, state.catalog, object, {
-      reservedPoints: accessPositions(state),
+      reservedPoints: navigationReservedPoints(state),
     });
     if (!validation.valid) return reject(state, validation.reasons.join("; "));
     const objects = { ...state.objects, [object.id]: object };
@@ -532,7 +591,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       state.catalog,
       updated,
       updated.queuePath,
-      accessPositions(state),
+      navigationReservedPoints(state),
     );
     if (!validation.valid) return reject(state, validation.reasons.join("; "));
     const objects = { ...state.objects, [existing.id]: updated };
@@ -541,7 +600,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       objects,
       state.catalog,
       updated,
-      accessPositions(state),
+      navigationReservedPoints(state),
     );
     if (queueCells.length === 0) return reject(state, "The configured queue conflicts with another stall or portal");
     const reconciled = reconcileWorldGeometryChange(state, objects);
@@ -563,7 +622,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       objects,
       state.catalog,
       updated,
-      accessPositions(state),
+      navigationReservedPoints(state),
     );
     if (queueCells.length === 0) return reject(state, "The queue anchor is not traversable in that layout");
     const reconciled = reconcileWorldGeometryChange(state, objects);
@@ -619,7 +678,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
   }
   const validation = validatePlacement(state.map, state.objects, state.catalog, updated, {
     ignoreObjectId: existing.id,
-    reservedPoints: accessPositions(state),
+    reservedPoints: navigationReservedPoints(state),
   });
   if (!validation.valid) return reject(state, validation.reasons.join("; "));
   if (updated.queuePath) {
@@ -629,7 +688,7 @@ export function dispatchCommand(state: GameState, command: GameCommand): Command
       state.catalog,
       updated,
       updated.queuePath,
-      accessPositions(state),
+      navigationReservedPoints(state),
     );
     if (!queueValidation.valid) return reject(state, queueValidation.reasons.join("; "));
   }

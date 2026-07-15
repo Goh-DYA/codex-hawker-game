@@ -1,9 +1,9 @@
 # Launch Content Catalogue
 
-Status: Typed roster runtime-integrated and automatically validated; human cultural review pending
+Status: Expanded typed roster runtime-integrated and validated on the supported runtime; human cultural review pending
 Counting rule: unique ID plus meaningful functional, footprint, interaction, unlock, or constructed-visual difference. Palette-only recolours do not count.
 
-## Eight fictional stalls and 30 dishes
+## Twelve fictional stalls and 46 dishes
 
 All stall identities are original. Real dish names are descriptive cultural references, not brands. Dietary tags are preference aids only and never safety, allergen, vegetarian, or halal certification claims. The table mirrors the current typed content roster; runtime IDs and tests are authoritative.
 
@@ -13,12 +13,16 @@ All stall identities are original. Real dish names are descriptive cultural refe
 | 2 | Coconut & Lime | Malay-inspired rice, noodle, and soup counter | Nasi lemak; mee rebus; soto ayam; lontong sayur | Level 1 |
 | 3 | Kopi Canopy | Compact drinks and dessert counter | Kopi; fresh sugarcane juice; ice kacang | Level 2 |
 | 4 | Cinder Wok | Popular, slower batch-cooked wok dishes | Char kway teow; Hokkien prawn mee; fried carrot cake; oyster omelette | Level 3 |
-| 5 | Tiffin Lantern | Indian-Muslim-inspired griddle, noodle, and rice counter | Roti prata set; mee goreng mamak; chicken murtabak; chicken nasi briyani | Level 5 |
-| 6 | Tamarind Leaf | South Indian vegetable-forward griddle and tiffin counter | Masala thosai; idli sambar; vadai set; lemon rice set | Level 7 |
-| 7 | Straits Hearth | Peranakan-inspired premium braises and noodles | Nyonya laksa; ayam buah keluak; chap chye with rice; babi pongteh | Level 9 |
-| 8 | Harbour Ember | Premium seafood grill and soup counter | Sambal stingray; sliced fish soup; black pepper crab | Level 12 |
+| 5 | Mee Pok Junction | Teochew noodle and clear-soup counter | Bak chor mee; fishball mee pok; lor mee; Teochew fish dumpling soup | Level 4 |
+| 6 | Tiffin Lantern | Indian-Muslim-inspired griddle, noodle, and rice counter | Roti prata set; mee goreng mamak; chicken murtabak; chicken nasi briyani | Level 5 |
+| 7 | Sweet Monsoon | Compact local dessert and drinks counter | Chendol; tau huay; teh tarik; pulut hitam | Level 5 |
+| 8 | Satay Meridian | Malay-inspired charcoal grill for skewers, chicken, and seafood | Chicken satay set; barbecued chicken wings; beef satay set; sambal grilled squid | Level 6 |
+| 9 | Tamarind Leaf | South Indian vegetable-forward griddle and tiffin counter | Masala thosai; idli sambar; vadai set; lemon rice set | Level 7 |
+| 10 | Bamboo Basket | Cantonese dim sum and steamed small-plate counter | Har gow; siew mai; char siew bao; lotus leaf rice | Level 8 |
+| 11 | Straits Hearth | Peranakan-inspired premium braises and noodles | Nyonya laksa; ayam buah keluak; chap chye with rice; babi pongteh | Level 9 |
+| 12 | Harbour Ember | Premium seafood grill and soup counter | Sambal stingray; sliced fish soup; black pepper crab | Level 12 |
 
-Dish count is 30: 4 + 4 + 3 + 4 + 4 + 4 + 4 + 3.
+Dish count is 46: 4 + 4 + 3 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 3.
 
 ### Dish production matrix
 
@@ -39,14 +43,30 @@ Dish count is 30: 4 + 4 + 3 + 4 + 4 + 4 + 4 + 3.
 | Hokkien prawn mee | 10 | mixed noodles, prawns, plate and lime |
 | Fried carrot cake | 7 | radish-cake cubes and egg, plate |
 | Oyster omelette | 11 | egg, starch crispness, oysters, plate |
+| Bak chor mee | 8 | tossed flat noodles, minced pork and mushroom garnish, bowl |
+| Fishball mee pok | 7 | flat noodles, fishballs, fish cake, bowl |
+| Lor mee | 9 | thick noodles, dark glossy gravy, egg, bowl |
+| Teochew fish dumpling soup | 9 | pale dumplings and fishballs in clear broth, bowl |
 | Roti prata set | 6 | layered flatbread and curry cup |
 | Mee goreng mamak | 8 | red-brown noodles, plate |
 | Chicken murtabak | 11 | cut filled flatbread and curry cup |
 | Chicken nasi briyani | 12 | spiced rice, chicken, plate |
+| Chendol | 6 | shaved ice, green pandan jelly, red beans, coconut milk, dark syrup, bowl |
+| Tau huay | 4 | silken ivory soy curds and ginger syrup, bowl |
+| Teh tarik | 4 | caramel-coloured milk tea with a foam cap, cup |
+| Pulut hitam | 6 | dark purple rice porridge and coconut cream ribbon, bowl |
+| Chicken satay set | 10 | grilled chicken skewers, peanut sauce, cucumber, pressed rice, platter |
+| Barbecued chicken wings | 9 | bronze glazed wings, cucumber, chilli dip, platter |
+| Beef satay set | 12 | grilled beef skewers, peanut sauce, pressed rice, platter |
+| Sambal grilled squid | 15 | scored squid, red sambal, onion and cucumber, leaf-lined plate |
 | Masala thosai | 8 | rolled crisp crepe and metal cups |
 | Idli sambar | 6 | idli rounds, sambar, metal plate |
 | Vadai set | 6 | savory fritters and chutney/sambar cup |
 | Lemon rice set | 7 | yellow rice, accompaniments, plate |
+| Har gow | 8 | translucent pleated prawn dumplings, bamboo basket/platter |
+| Siew mai | 8 | open yellow dumplings with orange garnish, bamboo basket/platter |
+| Char siew bao | 7 | white steamed buns with visible red-brown filling, bamboo basket/platter |
+| Lotus leaf rice | 10 | opened leaf parcel with glutinous rice and fillings, leaf-lined plate |
 | Nyonya laksa | 11 | orange coconut gravy, noodles, bowl/spoon |
 | Ayam buah keluak | 14 | dark braise, chicken, rice service |
 | Chap chye with rice | 9 | braised mixed vegetables and rice |
@@ -55,11 +75,11 @@ Dish count is 30: 4 + 4 + 3 + 4 + 4 + 4 + 4 + 3.
 | Sliced fish soup | 10 | clear soup and fish slices, bowl |
 | Black pepper crab | 24 | crab silhouette, dark pepper sauce, platter |
 
-Descriptions, ingredient cues, spellings, vessels, stall grouping, and cross-cultural attribution require Singapore cultural review before release. Indian-Muslim framing must not imply unreviewed halal certification; Tamarind Leaf’s “vegetarian” framing and all ingredient/dietary tags require recipe review. Babi pongteh, ayam buah keluak, seafood species, and religious/dietary implications are high-sensitivity items.
+Descriptions, ingredient cues, spellings, vessels, stall grouping, and cross-cultural attribution require Singapore cultural review before release. Indian-Muslim and Malay-inspired framing must not imply unreviewed halal certification; Tamarind Leaf’s “vegetarian” framing and all ingredient/dietary tags require recipe review. Pork and seafood ingredients, dim sum terminology, babi pongteh, ayam buah keluak, seafood species, and religious/dietary implications are high-sensitivity items.
 
-## Eight customer archetypes
+## Twelve customer archetypes
 
-Archetypes describe visit goals, not ethnicity. Visual components are independently randomized within clipping-safe rules.
+Archetypes describe visit goals, not ethnicity. Skin tone and clothing colour are independently randomized per customer within clipping-safe rules.
 
 | Archetype | Role | Typical preference / pressure |
 |---|---|---|
@@ -68,11 +88,17 @@ Archetypes describe visit goals, not ethnicity. Visual components are independen
 | Student Saver | Value seeker | affordable dishes and flexible seating |
 | Family Table | Group seating load | adjacent seats and comfort |
 | Curious Food Explorer | Variety seeker | novelty and menu breadth |
-| Senior Comfort Seeker | Comfort/readability check | accessible, bright, comfortable seating |
+| Comfort-Seeking Regular | Comfort/readability check | short routes, bright surroundings, and comfortable seating |
 | Evening Social Diner | Longer group visit | group table and ambience |
 | Quality Treat Seeker | Premium demand | food quality over price |
+| Afternoon Treat Stopper | Afternoon sweet-drink demand | dessert/drink matches, value, and fast-moving queues |
+| Plant-Forward Planner | Vegetable-forward dish demand | tagged choices, quality, novelty, and value |
+| Quiet Break Regular | Patient off-peak demand | familiar light dishes and tolerance for a modest queue |
+| Night-Shift Recharger | Pre-shift closing-time demand | warm meals and direct routes during the 17:00–19:00 window |
 
-Accessibility needs are generated separately from archetype so disability is not treated as a consumer personality. Accessible seating/path constraints may occur across all groups.
+Accessibility needs remain separate from archetype so disability is not treated as a consumer personality. Future accessible seating and path constraints must be available across all groups rather than inferred from a persona.
+
+The active simulation consumes each persona's budget, patience, walking speed, stall-choice sensitivities, novelty, dish tags, progression gate, and visit schedule. Authored seat preference, group range, satisfaction modifiers, spend multiplier, and tray-return chance remain future balance hooks and are not advertised as current mechanics.
 
 ## Eighty placeables
 
@@ -199,4 +225,4 @@ Sign copy and symbols require legibility, translation/cultural, and accessible-w
 
 ## Validation requirements
 
-Automated tests must prove unique IDs, exact category and total counts, complete English keys, valid rotations/footprints, interaction points outside blocking collisions, known asset/audio references, reachable required interactions, valid unlock graph, and no palette-only duplicate counted as content.
+Automated tests must prove the exact 12 / 46 / 80 / 12 roster and 300 English keys, unique IDs and primary stall/food visual references, a playable dish when each stall unlocks, exact placeable category counts, valid rotations/footprints, interaction points outside blocking collisions, known asset/audio references, reachable required interactions, a valid unlock graph, and no palette-only duplicate counted as content.

@@ -84,6 +84,7 @@ export type DietaryTag =
   | "contains-pork"
   | "contains-seafood"
   | "contains-dairy"
+  | "contains-peanuts"
   | "plant-based-recipe"
   | "spicy";
 
@@ -201,8 +202,20 @@ export interface CustomerArchetypeDefinition {
   readonly dishPreferenceTags: readonly string[];
   readonly groupSizeRange: readonly [number, number];
   readonly visualRules: {
-    readonly bodyFrames: readonly string[];
-    readonly clothingPalettes: readonly string[];
+    readonly outfitSilhouette:
+      | "compact"
+      | "relaxed"
+      | "structured"
+      | "layered"
+      | "sporty"
+      | "classic";
+    readonly garmentPattern:
+      | "plain"
+      | "banded"
+      | "panelled"
+      | "sashed"
+      | "piped"
+      | "pocketed";
     readonly accessoryChance: number;
     readonly carryProp: "none" | "tote" | "briefcase" | "backpack" | "walking-aid";
   };

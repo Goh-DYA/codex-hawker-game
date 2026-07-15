@@ -18,7 +18,7 @@ A normal session supports five-minute check-ins and longer optimization sessions
 
 ## Modes and controls
 
-Play mode runs the centre. Build mode pauses arrivals, exposes footprints and interaction cells, and supports place, rotate, move, store, sell, cancel, and undo. Inspect mode opens a stall, customer, seat, or facility card. Overlay controls show walkability, congestion, queues, reservations, cleanliness, and customer intent.
+Play mode runs the centre. Build mode pauses arrivals, exposes footprints and interaction cells, and supports place, rotate, move, store, sell, cancel, and undo. The Route editor pauses play and lets the player toggle preferred walking-lane tiles with the pointer or keyboard. Inspect mode opens a stall, customer, seat, or facility card. Overlay controls show walkability, congestion, queues, reservations, cleanliness, and customer intent.
 
 Required controls:
 
@@ -32,7 +32,7 @@ Required controls:
 
 The map uses an orthographic top-down square grid. A placeable is valid only when its rotated footprint is in the unlocked area, does not overlap blocking cells, preserves at least one entrance-to-stall and entrance-to-exit path, and leaves required interaction points reachable. Placement previews communicate valid, occupied, locked, and unreachable states with shape plus color.
 
-Build commands are atomic and reversible. Moving a live target releases or redirects reservations before committing. Undo covers recent place, move, rotate, store, sell, and expansion actions where the economy state can be restored safely.
+Build commands are atomic and reversible. Moving a live target releases or redirects reservations before committing. Preferred route guides bias path cost rather than becoming mandatory waypoints, so guests can still reach a valid target when a painted lane is incomplete. Guides reserve their floor tiles from blocking furniture and queues, invalidate cached paths safely, persist with the layout, and support multi-step undo.
 
 ## Customer lifecycle
 
@@ -56,7 +56,7 @@ Stall score combines preference match, price, expected wait, quality, novelty, a
 
 Satisfaction is a bounded weighted score from value, wait, food quality, walking burden, comfort, cleanliness, and ambience. A departure records a primary reason such as served, queue too long, unaffordable, no reachable seat, stall unavailable, path blocked, or centre closed. The HUD summarizes these reasons and offers corrective hints.
 
-Critical information always has text or icon/shape feedback. Customer bubbles are short-lived summaries, not the only diagnostic channel.
+Critical information always has text or icon/shape feedback. Customer bubbles are persistent status summaries, and the Settings icon guide provides a text equivalent.
 
 ## Progression and failure policy
 

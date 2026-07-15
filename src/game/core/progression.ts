@@ -8,10 +8,16 @@ import type {
 } from "./types";
 
 export const OPERATING_DAY_MS = 8 * 60 * 1_000;
+const OPERATING_START_MINUTE = 10 * 60 + 30;
 const MASTERY_RANK_DIVISOR = 100;
 
 export function operatingDay(elapsedMs: number): number {
   return 1 + Math.floor(Math.max(0, elapsedMs) / OPERATING_DAY_MS);
+}
+
+export function operatingMinuteOfDay(elapsedMs: number): number {
+  const operatingElapsedMs = Math.max(0, elapsedMs) % OPERATING_DAY_MS;
+  return OPERATING_START_MINUTE + Math.floor(operatingElapsedMs / 1_000);
 }
 
 export function averageVisitRating(state: Pick<GameState, "metrics">): number | undefined {

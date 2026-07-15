@@ -4,20 +4,26 @@ Status: Release-candidate verification list; not a customer-facing production is
 
 ## Remaining release blockers
 
-1. **Exact-production browser QA is incomplete.** A targeted development-browser visual pass and screenshots exist, and the final production artifact passes build/SSR/HTTP smoke, but current stable Chrome critical-path evidence, console/network review, viewports/zoom, save/reload, resize/suspension/WebGL-loss behavior, and measured browser performance must be repeated on that artifact. Edge/Firefox smoke results are also absent.
+1. **Exact-production browser QA is incomplete.** The expanded 12-stall / 46-dish source passes the supported Node.js `v24.14.0` release gate and both production builds, but the retained development-browser screenshots predate the renderer expansion. Current stable Chrome critical-path evidence, console/network review, viewports/zoom, save/reload, resize/suspension/WebGL-loss behavior, and measured browser performance must be recorded on the current artifact. Edge/Firefox smoke results are also absent.
 2. **Real offline/PWA behavior is unverified on the replacement artifact.** First-load cache population, offline reload, browser restart, offline saving, waiting-worker update, mixed-version avoidance, and rollback must be exercised on the final origin.
 3. **Human Singapore cultural review is pending.** Internal research and safeguards do not substitute for Singapore-informed review.
 4. **Human accessibility and assistive-technology review is pending.** Keyboard, screen-reader, zoom/reflow, contrast, reduced-motion, focus, and audio-equivalence behavior needs human verification in the exact browser build.
 5. **Independent security and qualified legal/privacy review are pending.** Internal controls, tests, notices, and zero-vulnerability dependency-audit results are evidence inputs, not an approval or compliance claim.
 
+## Open gameplay balance issues
+
+- **The 120-second visit cap can interrupt already-served guests.** In a deterministic 360-second starter-layout run, 33 served guests reached the cap while eating or walking to a tray return. Their route-efficiency ratings now remain valid because only walked distance contributes, but meal completion and tray-return timing need a separate balance pass against the authored preparation and eating durations.
+- **Some authored persona fields remain future hooks.** Budgets, patience, walking speed, stall-choice sensitivities, novelty, dish preferences, progression gates, and visit schedules are active. Seat preference, group range, satisfaction modifiers, spend multiplier, and tray-return chance are validated content metadata but do not yet alter the simulation.
+
 ## Implemented but awaiting exact-production evidence
 
-- All 80 placeables, 8 stalls, 30 dishes, 8 archetypes, and 11 customer states have code-native visual contracts; food is rendered while carried and eaten, and reduced-motion poses are deterministic. Automated recipe coverage is exhaustive, while final human visual/cultural review remains open.
+- All 80 placeables, 12 stalls, 46 dishes, 12 archetypes, and 11 customer states have code-native visual contracts; stall and food definitions have unique primary visual references, food is rendered while carried and eaten, and reduced-motion poses are deterministic. Automated contract coverage does not replace final human visual/cultural review, which remains open.
 - Per-stall queue counts, automatic direction, editable bends, obstacle-safe reserved queue cells, and customer movement through the resulting cells are implemented and covered by core tests. Long-running browser crowd behavior and extreme player-authored layouts still require soak/playtest evidence.
 - Expansion migrates the former right/bottom perimeter outward, projects entrance/exit points to the new boundary, refreshes exiting paths, and restores endpoints on undo. Core regressions and development-browser expansion screenshots pass; exact-production save/reload and repeated-expansion play remain open.
 - Signage/facilities now apply visible, documented effects such as wayfinding, patience, movement, turnover, cleanliness, ambience, satisfaction, and tray-return support. Balance tuning across a complete progression playthrough is not yet accepted.
 - IndexedDB, service-worker, accessibility, audio-degradation, and security-header implementations retain automated coverage, but final browser/fault-injection evidence must target the replacement artifact.
-- The current Node benchmark passes with 80 active agents, but it cannot establish Phaser FPS, TTI, memory stability, or a supported browser customer cap.
+- The current Node benchmark passes with 80 active agents over 1,200 fixed steps, but it cannot establish Phaser FPS, TTI, memory stability, or a supported browser customer cap.
+- The renderer still uses full-frame redraw and recreates text during frame rendering. This browser CPU/allocation path is outside the Node benchmark and requires profiling and, if budgets are missed, optimization before performance approval.
 
 ## Previously listed concerns closed by implementation or current automated evidence
 

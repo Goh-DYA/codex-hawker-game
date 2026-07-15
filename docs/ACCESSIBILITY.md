@@ -21,16 +21,21 @@ The canvas is not the only information source. React provides:
 - a named game region and concise control instructions;
 - an inspect panel for selected tile/object/customer;
 - text reason summaries for queue, seat, path, and satisfaction problems;
+- a keyboard-accessible Settings legend that pairs every customer status bubble and patience ring with visible text;
 - a live-region setting with Off / Important / Detailed verbosity;
 - buttons for pan, zoom, rotate, place, cancel, undo, pause, and overlays;
+- a Route editor with pointer toggles, arrow-key cursor movement, Enter to add/remove a guide, Escape to finish, and persistent text instructions;
 - a grid cursor with row/column announcement for keyboard placement.
 
 Rapid simulation events are aggregated; announcements must not flood screen readers.
+
+Layered stall facades, food displays, and vendor characters are supplemental canvas presentation. Active-menu choices, stall names, open/closed state, queues, and service controls must remain available as text and native DOM controls; vendor motion must never be the only indication that a stall is operating.
 
 ## Vision and cognition
 
 - Normal text target contrast is at least 4.5:1; large text and essential graphics at least 3:1.
 - State uses icon, label/pattern, and color together.
+- Stall identities and displayed food use silhouette, vessel, ingredient, equipment, and facade cues in addition to palette; high contrast must preserve the separation between vendor, counter, props, shutter, and background.
 - UI text scale supports 100%, 125%, 150%, and 200% without clipped essential controls.
 - Reference viewport: 1280 × 720; minimum target: 1024 × 640. Browser zoom at 80%, 100%, 125%, 150%, and 200% is manually checked.
 - Tooltips are duplicated by persistent help or accessible names.
@@ -41,7 +46,8 @@ Rapid simulation events are aggregated; announcements must not flood screen read
 ## Motion, flashing, and camera
 
 - Reduced motion follows prefers-reduced-motion initially and has an in-game override.
-- It disables camera easing, idle bobbing, particles, pulsing highlights, screen shake, and large reactions; state timing remains unchanged.
+- It disables camera easing, idle bobbing, particles, pulsing highlights, screen shake, large reactions, and stall-vendor body/arm/utensil/prop motion; each vendor remains visible in a stable static work pose and state timing remains unchanged.
+- Closing a stall uses a static opaque shutter rather than motion alone to communicate closure and fully masks the decorative vendor/work scene.
 - Camera zoom is bounded and never automatically snaps during placement.
 - No content flashes more than three times per second.
 
@@ -66,6 +72,8 @@ Rapid simulation events are aggregated; announcements must not flood screen read
 - 200% browser zoom and each in-game text scale.
 - Reduced motion at OS and in-game levels.
 - Contrast analyzer and forced-colors/high-contrast inspection.
+- All 12 stall facades at full and reduced motion, including an in-place toggle while open and paused; verify the vendor freezes immediately without disappearing or conveying unique state through motion.
+- Normal/high-contrast comparison of compact and large stalls with active food displays and closed shutters; verify distinct shapes, readable layering, and text-equivalent menu/open state.
 - Color-vision simulation for placement, satisfaction, and overlays.
 - Pointer target and drag-alternative review.
 

@@ -32,6 +32,8 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 ### Navigation and reservations
 
 - Four-way A-star shortest/valid path, deterministic tie-breaking, no-path result.
+- Preferred-route weighting changes a practical path deterministically without creating a hard waypoint; distant/incomplete guides retain safe fallback routing.
+- Route-guide validation, canonicalization, live-path invalidation, placement/queue reservation, persistence, clearing, and multi-step undo.
 - Map revision invalidates cache and active affected paths.
 - Queue slot reservation/order/advance/release; no duplicate owners.
 - Seat selection, group capacity, reservation release, and abandoned visit cleanup.
@@ -57,10 +59,18 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 
 - Zod parse and safe error for malformed definitions.
 - Unique IDs/keys and valid cross-references.
-- Exact 8 stalls, 30 dishes, 80 placeables, 8 archetypes.
-- Every dish assigned, every required English key present, no unlock cycles.
-- Footprint/interaction/depth anchors valid and every referenced visual/audio/animation known.
+- Exact 12 stalls, 46 dishes, 80 placeables, 12 archetypes, and 300 English localization entries.
+- Every dish assigned, every stall has a menu item available at its unlock, every required English key present, no unlock cycles.
+- Footprint/interaction/depth anchors valid, every referenced visual/audio/animation known, and every stall/dish primary visual reference unique.
 - Catalogue duplicate policy check.
+
+### Stall graphics and animation
+
+- All 12 stall visual recipes are deterministic and materially distinct in facade layers, equipment, counter treatment, food/drink display, and vendor treatment rather than palette alone.
+- Every displayed food or drink prop resolves to a dish in that stall's active menu; enabling or disabling a dish updates the display deterministically and never leaks another stall's menu item.
+- Vendor animation recipes consume each stall's authored idle, preparation/cooking, and serving references; full-motion poses vary by tick while reduced-motion poses have zero body, arm, utensil, prop, and steam offsets and remain tick-invariant.
+- Closed stalls render an opaque shutter state that hides the vendor and service props; open/closed changes do not alter simulation state beyond the existing operational command.
+- Stall drawing geometry remains inside both compact and large rotated footprints and preserves the vendor-behind-counter, props-in-front, shutter-on-top layer order.
 
 ### Persistence
 
@@ -84,17 +94,29 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 1. Clear site data; load the production build and start a new game.
 2. Complete or deliberately skip/replay the tutorial.
 3. Keyboard-place a table, seats, tray return, and stall; verify invalid placement feedback.
-4. Configure a menu and open the centre.
-5. Observe one customer complete order, seat, eat, tray/clear, and exit.
-6. Confirm cash/XP/reputation change and inspect the reason breakdown.
-7. Move an active target and verify recovery.
-8. Save, reload, and compare persistent map/progression/economy state.
-9. Change text scale, reduced motion, audio, and quality mode; reload.
-10. Install/cache once, go offline, reload, continue, save, and reload again.
-11. Trigger update flow with a second build; preserve save.
-12. Reset with cancel first, then confirm; verify only game-owned data is cleared.
+4. Paint a preferred guest lane with pointer and keyboard controls; verify predicted-path shift, clear, undo, save/reload, and Escape speed restoration.
+5. Configure a menu and open the centre.
+6. Observe one customer complete order, seat, eat, tray/clear, and exit.
+7. Confirm cash/XP/reputation change and inspect the reason breakdown.
+8. Move an active target and verify recovery.
+9. Save, reload, and compare persistent map/progression/economy state.
+10. Change text scale, reduced motion, audio, and quality mode; reload.
+11. Install/cache once, go offline, reload, continue, save, and reload again.
+12. Trigger update flow with a second build; preserve save.
+13. Reset with cancel first, then confirm; verify only game-owned data is cleared.
 
 Run at 1280 × 720 and 1024 × 640, plus zoom levels in ACCESSIBILITY.md.
+
+### Stall graphics browser matrix
+
+1. Place all 12 stall identities in a deterministic gallery and capture each open facade at useful game zoom. Verify roof, fascia, sign, wall, window, counter, equipment, trim, props, and vendor form a readable layered scene and no two stalls are distinguishable by palette alone.
+2. For every stall, compare the visible display with its active menu, disable at least one displayed dish, enable another valid dish, and verify the food/drink props update without showing an unavailable or cross-stall item.
+3. Close and reopen the centre. Verify every closed shutter completely masks the vendor and work props, every reopened scene returns, and labels/queue overlays remain readable in both states.
+4. Cover compact 3 x 2 and large 5 x 3 stalls, including representative 0-, 90-, 180-, and 270-degree placements. Check clipping, counter-facing placement, service-point clarity, vendor containment, and prop overlap.
+5. At full motion, observe deterministic idle, preparation/cooking, and serving actions long enough to see each cycle. Pause and resume without a phase jump that clips the vendor through the counter or equipment.
+6. Enable reduced motion through both the OS preference and in-game setting while open and while paused. Verify vendor body, arm, utensil, prop, and steam offsets freeze immediately in a stable pose, with no gameplay timing or textual state change.
+7. Compare normal and high contrast at 100% and 200% zoom. Verify stall silhouettes, food vessels, vendors, counters, shutters, names, and open/closed state remain distinguishable without colour alone.
+8. Repeat the all-stall scene in lower quality at 1024 x 640 and standard quality at 1280 x 720, then run it with a representative 80-guest crowd. Record console output, frame-time, allocation, memory trend, clipping, flicker, and any missing vendor or menu prop; do not infer renderer performance from the headless simulation benchmark.
 
 ## Soak and adversarial simulations
 

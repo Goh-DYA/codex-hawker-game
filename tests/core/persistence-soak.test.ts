@@ -56,6 +56,42 @@ describe("versioned persistence", () => {
     expect(migrated.progression).toMatchObject({ xp: 450, level: 3, reputation: 4 });
   });
 
+  it("neutralizes legacy elapsed-time walking ratings when loading V3 saves", () => {
+    const save = persistentStateFromGame(makeGame());
+    const legacy = {
+      ...save,
+      metrics: {
+        ...save.metrics,
+        visitRatings: [
+          {
+            customerId: "legacy-guest",
+            score: 60,
+            served: true,
+            abandoned: false,
+            reason: "served",
+            day: 1,
+            components: {
+              foodQuality: 140,
+              wait: 70,
+              value: 70,
+              walking: 30,
+              comfort: 70,
+              cleanliness: 70,
+              ambience: 70,
+            },
+          },
+        ],
+      },
+    };
+
+    const loaded = deserializeGameState(legacy, TEST_CATALOG);
+    expect(loaded.metrics.visitRatings[0]).toMatchObject({
+      walkingMetricVersion: 2,
+      score: 64,
+      components: { foodQuality: 100, walking: 70 },
+    });
+  });
+
   it("requires an explicit alias or refund when saved content has been removed", () => {
     const current = makeGame();
     const save = persistentStateFromGame(current);

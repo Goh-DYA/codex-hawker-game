@@ -63,6 +63,10 @@ function finite(value: unknown, path: string, minimum = Number.NEGATIVE_INFINITY
   return value;
 }
 
+function boundedPercentage(value: unknown, path: string): number {
+  return Math.min(100, finite(value, path, 0));
+}
+
 function safeInteger(
   value: unknown,
   path: string,
@@ -239,18 +243,28 @@ function parseVisitRatings(value: unknown): readonly VisitRating[] {
   return value.slice(-50).map((entry, index) => {
     if (!isRecord(entry) || !isRecord(entry.components)) throw new PersistenceError(`metrics.visitRatings[${index}] must be an object`);
     const componentsRecord = entry.components;
-    const components = Object.fromEntries(
+    const parsedComponents = Object.fromEntries(
       ["foodQuality", "wait", "value", "walking", "comfort", "cleanliness", "ambience"].map((key) => [
         key,
-        finite(componentsRecord[key], `metrics.visitRatings[${index}].components.${key}`, 0),
+        boundedPercentage(componentsRecord[key], `metrics.visitRatings[${index}].components.${key}`),
       ]),
     ) as unknown as VisitRating["components"];
+    const usesDistanceMetric = entry.walkingMetricVersion === 2;
+    const legacyWalking = parsedComponents.walking;
+    const components = usesDistanceMetric
+      ? parsedComponents
+      : { ...parsedComponents, walking: Math.max(70, legacyWalking) };
     if (typeof entry.served !== "boolean" || typeof entry.abandoned !== "boolean") {
       throw new PersistenceError(`metrics.visitRatings[${index}] outcome flags must be boolean`);
     }
+    const legacyScore = boundedPercentage(entry.score, `metrics.visitRatings[${index}].score`);
+    const score = usesDistanceMetric
+      ? legacyScore
+      : Math.round(Math.max(0, Math.min(100, legacyScore + (components.walking - legacyWalking) * 0.1)));
     return {
       customerId: stringValue(entry.customerId, `metrics.visitRatings[${index}].customerId`),
-      score: finite(entry.score, `metrics.visitRatings[${index}].score`, 0),
+      walkingMetricVersion: 2,
+      score,
       served: entry.served,
       abandoned: entry.abandoned,
       reason: stringValue(entry.reason, `metrics.visitRatings[${index}].reason`),
@@ -272,6 +286,15 @@ function parseV3(value: Record<string, unknown>): PersistentGameStateV3 {
   const exit = accessPoints.find((point) => point.kind === "exit")?.position;
   if (!entrance || !exit) throw new PersistenceError("At least one entrance and one exit are required");
   const common = parseV2({ ...value, schemaVersion: 2, entrance, exit });
+  let routeGuidePoints: readonly { x: number; y: number }[] = [];
+  if (value.routeGuidePoints !== undefined) {
+    if (!Array.isArray(value.routeGuidePoints)) {
+      throw new PersistenceError("routeGuidePoints must be an array");
+    }
+    routeGuidePoints = value.routeGuidePoints.map((point, index) =>
+      parsePoint(point, `routeGuidePoints[${index}]`),
+    );
+  }
   const progressionRecord = isRecord(value.progression) ? value.progression : {};
   const claimed = progressionRecord.claimedMilestoneIds;
   if (claimed !== undefined && (!Array.isArray(claimed) || claimed.some((id) => typeof id !== "string"))) {
@@ -283,6 +306,7 @@ function parseV3(value: Record<string, unknown>): PersistentGameStateV3 {
     savedAtTick: common.savedAtTick,
     map: common.map,
     accessPoints,
+    routeGuidePoints,
     qualityMode: common.qualityMode,
     objects: common.objects,
     economy: common.economy,
@@ -331,6 +355,7 @@ export function migratePersistentState(value: unknown): PersistentGameStateV3 {
         { id: "entrance-1", kind: "entrance", position: old.entrance },
         { id: "exit-1", kind: "exit", position: old.exit },
       ],
+      routeGuidePoints: [],
       qualityMode: old.qualityMode,
       objects: old.objects,
       economy: old.economy,
@@ -386,6 +411,7 @@ export function persistentStateFromGame(state: GameState): PersistentGameStateV3
       tiles: [...state.map.tiles],
     },
     accessPoints: state.accessPoints.map((point) => ({ ...point, position: { ...point.position } })),
+    routeGuidePoints: state.routeGuidePoints.map((point) => ({ ...point })),
     qualityMode: state.qualityMode,
     objects: Object.values(state.objects)
       .sort((a, b) => compareIds(a.id, b.id))
@@ -472,7 +498,10 @@ function normalizeObjects(
       warnings.push(`Moved ${object.id}'s queue head to its updated service point`);
     }
     const validation = validatePlacement(save.map, accepted, catalog, object, {
-      reservedPoints: save.accessPoints.map((point) => point.position),
+      reservedPoints: [
+        ...save.accessPoints.map((point) => point.position),
+        ...save.routeGuidePoints,
+      ],
     });
     if (!validation.valid) {
       throw new PersistenceError(`Saved object ${object.id} has invalid placement: ${validation.reasons.join("; ")}`);
@@ -547,6 +576,7 @@ export function deserializeGameStateWithReport(
     base = createNewGame({
       map: normalizedMap,
       accessPoints: save.accessPoints,
+      routeGuidePoints: save.routeGuidePoints,
       catalog,
       seed: save.rngState,
       startingCurrency: recoveredEconomy.currency,

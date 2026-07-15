@@ -33,7 +33,7 @@ gross sale − food cost − any explicit refund + objective bonus
 
 Upkeep is charged in visible, capped operating intervals only while open. Cash never becomes negative from upkeep; an unpaid interval pauses the affected optional bonus and creates a readable warning.
 
-Satisfaction is 0–100 and combines food quality 30%, wait 20%, value 15%, walking/congestion 10%, seating comfort 10%, cleanliness 10%, and ambience 5%. Missing-seat or unserved departures use dedicated penalties rather than fabricated food scores.
+Satisfaction is 0–100 and combines food quality 30%, wait 20%, value 15%, route efficiency 10%, seating comfort 10%, cleanliness 10%, and ambience 5%. Route efficiency uses the full distance walked from entrance to exit: the first 20 tiles carry no penalty, an 80-tile journey scores 50, and journeys of 116 tiles or more floor at 20. Missing-seat or unserved departures use dedicated penalties rather than fabricated food scores.
 
 Experience per completed visit is a small base plus satisfaction and novelty bonuses. Reputation uses a rolling sample so one bad visit is informative but not catastrophic. Exact rounding is centralized and covered by unit tests.
 
@@ -42,8 +42,8 @@ Experience per completed visit is a small base plus satisfaction and novelty bon
 | Phase | Levels | Player learning | Representative unlocks |
 |---|---:|---|---|
 | Starter | 1–3 | Build, service, tray return, first bottleneck | Sunrise Roost, Coconut & Lime, Kopi Canopy, Cinder Wok |
-| Variety | 4–7 | Menu mix, group seating, queue design | Tiffin Lantern, Tamarind Leaf, first expansion |
-| Optimization | 8–12 | Peak flow, ambience, upgrades | Straits Hearth, Harbour Ember, advanced facilities |
+| Variety | 4–7 | Menu mix, group seating, queue design | Mee Pok Junction, Tiffin Lantern, Sweet Monsoon, Satay Meridian, Tamarind Leaf, first expansion |
+| Optimization | 8–12 | Peak flow, ambience, upgrades | Bamboo Basket, Straits Hearth, Harbour Ember, advanced facilities |
 | Mastery | 13–20 | Dense layouts and self-directed goals | premium families, final expansions, feature decorations |
 
 Every required launch stall and catalogue item is earnable by level 20 without premium payment. Unlocks reveal no more than a manageable group at a time.
@@ -68,7 +68,7 @@ Before release, seeded simulation plus human playtests must demonstrate:
 - A novice can reach level 3 without grinding or an unrecoverable placement.
 - At least three materially different viable layout/menu strategies exist.
 - No catalogue item creates infinite cash, reputation, or reservation loops.
-- All 80 items and eight stalls are affordable within a reasonable complete playthrough.
+- All 80 items and 12 stalls are affordable within a reasonable complete playthrough.
 - The final expansion is aspirational but does not require idle real-world time.
 
 No economy stability claim is made yet.

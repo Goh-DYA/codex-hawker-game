@@ -30,9 +30,9 @@ const FACTOR_GUIDANCE: Readonly<Record<SatisfactionFactor, {
     action: "Add a lower-cost menu option and choose dishes whose prices better suit visitor budgets.",
   },
   walking: {
-    label: "Walking and flow",
+    label: "Route efficiency",
     weight: 0.1,
-    action: "Clear direct routes between entrances, stalls, seats, tray returns and exits.",
+    action: "Clear direct routes between entrances, stalls, seats, tray returns and exits to keep journeys short.",
   },
   comfort: {
     label: "Comfort",

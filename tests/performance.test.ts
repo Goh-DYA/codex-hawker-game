@@ -41,6 +41,7 @@ describe("repeatable 80-agent simulation benchmark", () => {
         movementProgress: 0,
         stateElapsedMs: 0,
         visitElapsedMs: 0,
+        walkingDistanceTiles: 0,
         targetStallId: undefined,
         orderedDishId: undefined,
         reservedSeatKey: undefined,

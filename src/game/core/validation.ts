@@ -187,6 +187,66 @@ function validateCatalogInternal(catalog: SimulationCatalog): readonly Validatio
     if (archetype.noveltyPreference !== undefined) {
       positiveNumber(archetype.noveltyPreference, `${path}.noveltyPreference`, issues, true);
     }
+    if (archetype.unlockLevel !== undefined) {
+      positiveNumber(archetype.unlockLevel, `${path}.unlockLevel`, issues);
+      if (!Number.isInteger(archetype.unlockLevel)) {
+        issues.push({ path: `${path}.unlockLevel`, message: "must be an integer" });
+      }
+    }
+    if (archetype.unlockReputation !== undefined) {
+      if (
+        !Number.isFinite(archetype.unlockReputation) ||
+        archetype.unlockReputation < 0 ||
+        archetype.unlockReputation > 5
+      ) {
+        issues.push({
+          path: `${path}.unlockReputation`,
+          message: "must be between zero and five",
+        });
+      }
+    }
+    if (archetype.unlockPrerequisiteIds !== undefined) {
+      if (
+        new Set(archetype.unlockPrerequisiteIds).size !==
+        archetype.unlockPrerequisiteIds.length
+      ) {
+        issues.push({
+          path: `${path}.unlockPrerequisiteIds`,
+          message: "must not contain duplicates",
+        });
+      }
+      for (const prerequisiteId of archetype.unlockPrerequisiteIds) {
+        if (!isValidSimulationId(prerequisiteId)) {
+          issues.push({
+            path: `${path}.unlockPrerequisiteIds`,
+            message: "must contain only non-empty safe IDs",
+          });
+        }
+      }
+    }
+    if (archetype.visitSchedule !== undefined) {
+      const schedule = archetype.visitSchedule;
+      if (
+        !Number.isInteger(schedule.startHour) ||
+        schedule.startHour < 0 ||
+        schedule.startHour > 23
+      ) {
+        issues.push({ path: `${path}.visitSchedule.startHour`, message: "must be an hour from 0 to 23" });
+      }
+      if (
+        !Number.isInteger(schedule.endHour) ||
+        schedule.endHour < 1 ||
+        schedule.endHour > 24 ||
+        schedule.endHour <= schedule.startHour
+      ) {
+        issues.push({ path: `${path}.visitSchedule.endHour`, message: "must be later than startHour and at most 24" });
+      }
+      positiveNumber(
+        schedule.peakMultiplier,
+        `${path}.visitSchedule.peakMultiplier`,
+        issues,
+      );
+    }
   }
   if (Object.keys(catalog.archetypes ?? {}).length === 0) {
     issues.push({ path: "archetypes", message: "must contain at least one archetype" });

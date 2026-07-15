@@ -1,5 +1,5 @@
 import { getUnlockedDefinitionIds } from "./economy";
-import { getTile, pointKey, validatePlacement } from "./grid";
+import { getBlockedTileKeys, getTile, pointKey, validatePlacement } from "./grid";
 import { isReachable, validateWorldNavigationAccess } from "./pathfinding";
 import { validateConfiguredQueuePath } from "./queueing";
 import { hashSeed } from "./rng";
@@ -10,6 +10,7 @@ import type {
   GameSnapshot,
   GameState,
   GridMap,
+  GridPoint,
   NewGameOptions,
   PlacedObject,
   SimulationConfig,
@@ -95,6 +96,32 @@ function initialAccessPoints(options: NewGameOptions): readonly AccessPoint[] {
   ];
 }
 
+function initialRouteGuidePoints(options: NewGameOptions): readonly GridPoint[] {
+  const points = options.routeGuidePoints ?? [];
+  const seen = new Set<string>();
+  const normalized = points.map((point, index) => {
+    if (!Number.isSafeInteger(point.x) || !Number.isSafeInteger(point.y)) {
+      throw new RangeError(`Route guide point ${index + 1} must use integer coordinates`);
+    }
+    if (
+      point.x <= 0 ||
+      point.y <= 0 ||
+      point.x >= options.map.width - 1 ||
+      point.y >= options.map.height - 1
+    ) {
+      throw new RangeError(`Route guide point ${pointKey(point)} must be inside the map boundary`);
+    }
+    if (getTile(options.map, point) !== "floor") {
+      throw new RangeError(`Route guide point ${pointKey(point)} must be on a floor tile`);
+    }
+    const key = pointKey(point);
+    if (seen.has(key)) throw new RangeError(`Route guide point ${key} is repeated`);
+    seen.add(key);
+    return { ...point };
+  });
+  return normalized.sort((left, right) => left.y - right.y || left.x - right.x);
+}
+
 export function createNewGame(options: NewGameOptions): GameState {
   assertValidCatalog(options.catalog);
   assertValidMap(options.map);
@@ -116,7 +143,11 @@ export function createNewGame(options: NewGameOptions): GameState {
   }
   const entrance = entrances[0]!.position;
   const exit = exits[0]!.position;
-  const reservedPoints = accessPoints.map((point) => point.position);
+  const routeGuidePoints = initialRouteGuidePoints(options);
+  const reservedPoints = [
+    ...accessPoints.map((point) => point.position),
+    ...routeGuidePoints,
+  ];
   if (!Number.isFinite(options.startingCurrency ?? 1_000) || (options.startingCurrency ?? 1_000) < 0) {
     throw new RangeError("Starting currency must be non-negative");
   }
@@ -131,6 +162,11 @@ export function createNewGame(options: NewGameOptions): GameState {
     });
     if (!validation.valid) throw new RangeError(`Invalid initial object ${object.id}: ${validation.reasons.join("; ")}`);
     objects[object.id] = object;
+  }
+  const blocked = getBlockedTileKeys(objects, options.catalog);
+  const blockedGuide = routeGuidePoints.find((point) => blocked.has(pointKey(point)));
+  if (blockedGuide) {
+    throw new RangeError(`Route guide point ${pointKey(blockedGuide)} is blocked by an initial object`);
   }
   for (const object of Object.values(objects)) {
     if (object.queuePath === undefined) continue;
@@ -154,6 +190,7 @@ export function createNewGame(options: NewGameOptions): GameState {
     schemaVersion: 3,
     map: cloneMap(options.map),
     accessPoints,
+    routeGuidePoints,
     entrance: { ...entrance },
     exit: { ...exit },
     catalog: options.catalog,
@@ -234,6 +271,7 @@ export function captureUndoSnapshot(state: GameState): UndoSnapshot {
   return {
     map: cloneMap(state.map),
     accessPoints: state.accessPoints.map((point) => ({ ...point, position: { ...point.position } })),
+    routeGuidePoints: state.routeGuidePoints.map((point) => ({ ...point })),
     entrance: { ...state.entrance },
     exit: { ...state.exit },
     objects: Object.fromEntries(Object.entries(state.objects).map(([id, object]) => [id, clonePlacedObject(object)])),
@@ -252,6 +290,7 @@ export function createSnapshot(state: GameState): GameSnapshot {
     elapsedMs: state.elapsedMs,
     map: cloneMap(state.map),
     accessPoints: state.accessPoints.map((point) => ({ ...point, position: { ...point.position } })),
+    routeGuidePoints: state.routeGuidePoints.map((point) => ({ ...point })),
     qualityMode: state.qualityMode,
     entrance: { ...state.entrance },
     exit: { ...state.exit },
