@@ -5,6 +5,7 @@ import type {
   SimulationEvent,
   StallDefinition,
   StallMasteryState,
+  NutritionObjectiveCriterion,
 } from "./types";
 
 export const OPERATING_DAY_MS = 8 * 60 * 1_000;
@@ -93,6 +94,83 @@ function objective(
   return { id: `day-${day}-${slot}-${values.kind}`, day, progress: 0, completed: false, ...values };
 }
 
+function nutritionObjectiveCriterion(
+  state: GameState,
+  day: number,
+): NutritionObjectiveCriterion {
+  if (state.progression.level < 2) return "profiled-servings";
+  const preferred: NutritionObjectiveCriterion = [
+    "profiled-servings",
+    "intent-matches",
+    "variant-servings",
+  ][(day - 1) % 3] as NutritionObjectiveCriterion;
+  const profiles = Object.values(state.objects).flatMap((object) => {
+    const stall = state.catalog.placeables[object.definitionId]?.stall;
+    if (!object.open || !stall) return [];
+    const rank = state.progression.stallMastery[object.definitionId]?.rank ?? 1;
+    const dishIds = stall.allDishIds ?? stall.dishIds;
+    return dishIds.flatMap((dishId) => {
+      const dish = state.catalog.dishes[dishId];
+      if (
+        !dish ||
+        state.progression.level < (dish.unlockLevel ?? 1) ||
+        state.progression.reputation < (dish.unlockReputation ?? 0)
+      ) return [];
+      return dish.nutritionVariants
+        ?.filter((variant) => variant.unlockRank <= rank)
+        .map((variant) => ({ dish, variant })) ?? [];
+    });
+  });
+  if (preferred === "intent-matches") {
+    const hasIntentFit = profiles.some(
+      ({ variant }) =>
+        variant.profile?.status === "released" &&
+        Object.values(variant.profile.intentFits).some((fit) => typeof fit === "number"),
+    );
+    return hasIntentFit ? preferred : "profiled-servings";
+  }
+  if (preferred === "variant-servings") {
+    const hasAlternative = profiles.some(
+      ({ dish, variant }) =>
+        variant.profile?.status === "released" &&
+        variant.id !== dish.defaultNutritionVariantId,
+    );
+    return hasAlternative ? preferred : "profiled-servings";
+  }
+  return preferred;
+}
+
+function nutritionObjective(state: GameState, day: number, scale: number): DailyObjective {
+  const criterion = nutritionObjectiveCriterion(state, day);
+  const values = criterion === "intent-matches"
+    ? {
+        title: "Read the request",
+        description: `Match ${Math.min(6, 2 + Math.floor(scale / 3))} nutrition intents today.`,
+        target: Math.min(6, 2 + Math.floor(scale / 3)),
+        startValue: state.metrics.nutrition.intentMatches,
+      }
+    : criterion === "variant-servings"
+      ? {
+          title: "Try another recipe",
+          description: `Serve ${Math.min(10, 3 + Math.floor(scale / 2))} reviewed non-default variants today.`,
+          target: Math.min(10, 3 + Math.floor(scale / 2)),
+          startValue: state.metrics.nutrition.nonDefaultVariantServings,
+        }
+      : {
+          title: "Read the plate",
+          description: `Serve ${Math.min(12, 4 + scale)} meals with reviewed nutrition data today.`,
+          target: Math.min(12, 4 + scale),
+          startValue: state.metrics.nutrition.profiledServings,
+        };
+  return objective(day, 3, {
+    kind: "nutrition",
+    nutritionCriterion: criterion,
+    ...values,
+    rewardCash: 80 + scale * 20,
+    rewardXp: 25 + scale * 5,
+  });
+}
+
 export function createDailyObjectives(state: GameState, day = operatingDay(state.elapsedMs)): readonly DailyObjective[] {
   const scale = Math.max(1, state.progression.level);
   const rewardCash = 80 + scale * 20;
@@ -135,29 +213,7 @@ export function createDailyObjectives(state: GameState, day = operatingDay(state
         rewardCash,
         rewardXp,
       });
-  const hasTrayReturn = Object.values(state.objects).some(
-    (object) => state.catalog.placeables[object.definitionId]?.kind === "tray-return",
-  );
-  const variety = hasTrayReturn && day % 2 === 0
-    ? objective(day, 3, {
-        kind: "facility",
-        title: "Return-ready",
-        description: `Complete ${3 + Math.floor(scale / 2)} tray returns.`,
-        target: 3 + Math.floor(scale / 2),
-        startValue: state.metrics.trayReturns,
-        rewardCash,
-        rewardXp,
-      })
-    : objective(day, 3, {
-        kind: "variety",
-        title: "Something for everyone",
-        description: `Operate ${Math.min(8, Math.max(2, distinctOpenStallTypes(state) + 1))} stall types.`,
-        target: Math.min(8, Math.max(2, distinctOpenStallTypes(state) + 1)),
-        startValue: 0,
-        rewardCash,
-        rewardXp,
-      });
-  return [service, quality, variety];
+  return [service, quality, nutritionObjective(state, day, scale)];
 }
 
 function objectiveProgress(state: GameState, item: DailyObjective): number {
@@ -173,6 +229,15 @@ function objectiveProgress(state: GameState, item: DailyObjective): number {
     case "flow": return queueFlowScore(state);
     case "variety": return distinctOpenStallTypes(state);
     case "facility": return state.metrics.trayReturns - item.startValue;
+    case "nutrition": {
+      if (item.nutritionCriterion === "intent-matches") {
+        return state.metrics.nutrition.intentMatches - item.startValue;
+      }
+      if (item.nutritionCriterion === "variant-servings") {
+        return state.metrics.nutrition.nonDefaultVariantServings - item.startValue;
+      }
+      return state.metrics.nutrition.profiledServings - item.startValue;
+    }
   }
 }
 

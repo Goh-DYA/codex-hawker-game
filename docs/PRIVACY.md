@@ -1,9 +1,9 @@
-# Hawker Simulator Privacy Notice
+# Hawker Balance Privacy Notice
 
 Draft date: 2026-07-12
 Status: Pre-release draft; qualified legal review pending
 
-Hawker Simulator is designed to work without an account. The planned 1.0 release does not include advertising, analytics, behavioral tracking, payments, chat, social features, or cloud saves.
+Hawker Balance is designed to work without an account. The planned 1.0 release does not include advertising, analytics, behavioral tracking, payments, chat, social features, or cloud saves.
 
 ## Information stored on your device
 

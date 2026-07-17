@@ -4,8 +4,11 @@ import {
   DISHES,
   ECONOMY,
   ENGLISH_LOCALIZATION,
+  NUTRITION_CONTENT,
   PLACEABLES,
   STALLS,
+  getNutritionProfile,
+  getNutritionVariantFamily,
   type PlaceableCategory,
 } from "@/src/content";
 import {
@@ -39,6 +42,10 @@ import {
   type GameSnapshot,
   type GameState,
   type GridPoint,
+  type NutritionIntent,
+  type NutritionMetric,
+  type NutritionProfile as CoreNutritionProfile,
+  type NutritionValue as CoreNutritionValue,
   type PlaceableDefinition as CorePlaceableDefinition,
   type PlacedObject,
   type QueueDirection,
@@ -52,6 +59,7 @@ import type {
   RuntimeController,
   RuntimeEvent,
   RuntimeOptions,
+  RuntimeNutritionProfileSummary,
   RuntimeSnapshot,
 } from "./types";
 import { utilityEffectsForPlaceable } from "./contentUtility";
@@ -70,6 +78,7 @@ import {
   vendorAnimationPoseForStall,
   visualRecipeForCustomer,
   visualRecipeForDish,
+  visualRecipeForDishVariant,
   visualRecipeForPlaceable,
   visualRecipeForStallVendor,
   type PlaceableVisualRecipe,
@@ -180,14 +189,147 @@ function coreKind(category: PlaceableCategory): CorePlaceableDefinition["kind"] 
   return "facility";
 }
 
+type CustomerMovementState = Pick<
+  Customer,
+  "id" | "position" | "path" | "pathIndex" | "movementProgress"
+>;
+
+function renderedCustomerPosition(
+  customer: CustomerMovementState,
+  reducedMotion: boolean,
+) {
+  const next = customer.path[customer.pathIndex];
+  if (!next || reducedMotion) return customer.position;
+  const progress = Math.max(0, Math.min(1, customer.movementProgress));
+  return {
+    x: customer.position.x + (next.x - customer.position.x) * progress,
+    y: customer.position.y + (next.y - customer.position.y) * progress,
+  };
+}
+
+/** Resolves the customer occupying the grid tile where their avatar is rendered. */
+export function customerAtRenderedGridPoint<T extends CustomerMovementState>(
+  customers: readonly T[],
+  point: GridPoint,
+  reducedMotion = false,
+): T | undefined {
+  return customers
+    .filter((customer) => {
+      const position = renderedCustomerPosition(customer, reducedMotion);
+      return (
+        Math.floor(position.x + 0.5) === point.x &&
+        Math.floor(position.y + 0.5) === point.y
+      );
+    })
+    .sort((left, right) => left.id.localeCompare(right.id))[0];
+}
+
+/** Returns a visual key only for a reviewed member of a real variant family. */
+export function nutritionVisualKeyForVariant(
+  dishId: string | undefined,
+  variantId: string | undefined,
+): string | undefined {
+  if (!dishId || !variantId) return undefined;
+  return getNutritionVariantFamily(dishId)?.variants.find(
+    (variant) => variant.id === variantId,
+  )?.visualKey;
+}
+
+function coreNutritionProfile(
+  source: ReturnType<typeof getNutritionProfile>,
+): CoreNutritionProfile | undefined {
+  if (!source) return undefined;
+  return {
+    id: source.id,
+    dishId: source.dishId,
+    status: source.status,
+    serving: source.serving ? { ...source.serving } : undefined,
+    nutrients: Object.fromEntries(
+      Object.entries(source.nutrients).map(([metric, value]) => [metric, { ...value }]),
+    ) as Readonly<Record<NutritionMetric, CoreNutritionValue>>,
+    intentFits: { ...source.intentFits } as Partial<Record<NutritionIntent, number>>,
+    nutritionClass: source.nutritionClass,
+  };
+}
+
+function runtimeNutritionProfile(
+  profile: CoreNutritionProfile | undefined,
+): RuntimeNutritionProfileSummary | undefined {
+  if (!profile) return undefined;
+  return {
+    status: profile.status,
+    servingLabel: profile.serving?.label,
+    energyKcal: profile.nutrients.energyKcal,
+    proteinG: profile.nutrients.proteinG,
+    dietaryFibreG: profile.nutrients.dietaryFibreG,
+    sodiumMg: profile.nutrients.sodiumMg,
+    totalSugarG: profile.nutrients.totalSugarG,
+    intentFits: { ...profile.intentFits },
+  };
+}
+
+export function customerDecisionReasons(
+  customer: Pick<
+    Customer,
+    "archetypeId" | "nutritionIntentId" | "orderedDishId" | "orderedNutritionProfile"
+  >,
+  catalog: SimulationCatalog,
+): readonly string[] {
+  const dish = customer.orderedDishId
+    ? catalog.dishes[customer.orderedDishId]
+    : undefined;
+  const archetype = catalog.archetypes[customer.archetypeId];
+  if (!dish || !archetype) return [];
+
+  const reasons: string[] = [];
+  const preferred = new Set(archetype.preferenceTags ?? []);
+  if ((dish.preferenceTags ?? []).some((tag) => preferred.has(tag))) {
+    reasons.push("Familiar flavour preference");
+  }
+
+  if (customer.nutritionIntentId) {
+    const fit = customer.orderedNutritionProfile?.intentFits[customer.nutritionIntentId];
+    if (typeof fit === "number" && Number.isFinite(fit)) {
+      reasons.push(fit >= 0.67 ? "Visit intent fit" : "Nutrition trade-off");
+    }
+  }
+
+  if (dish.price <= archetype.budget) reasons.push("Price within visit budget");
+  if (dish.quality * archetype.qualitySensitivity > 0) reasons.push("Menu quality");
+  return [...new Set(reasons)].slice(0, 2);
+}
+
 function buildCatalog(): {
   catalog: SimulationCatalog;
   visuals: Readonly<Record<string, VisualDefinition>>;
 } {
   const dishes: SimulationCatalog["dishes"] = Object.fromEntries(
-    DISHES.map((dish) => [
-      dish.id,
-      {
+    DISHES.map((dish) => {
+      const family = getNutritionVariantFamily(dish.id);
+      const baseProfile = coreNutritionProfile(getNutritionProfile(dish.id));
+      const nutritionVariants = family
+        ? family.variants.map((variant) => ({
+            id: variant.id,
+            label: variant.name,
+            unlockRank: variant.unlockRank,
+            profileId: variant.profileId,
+            visualKey: variant.visualKey,
+            profile: coreNutritionProfile(getNutritionProfile(dish.id, variant.id)),
+          }))
+        : baseProfile
+          ? [{
+              id: baseProfile.id,
+              label: "Listed serving",
+              unlockRank: 1,
+              profileId: baseProfile.id,
+              visualKey: "default",
+              profile: baseProfile,
+            }]
+          : undefined;
+      const defaultNutritionVariantId = family?.defaultVariantId ?? baseProfile?.id;
+      return [
+        dish.id,
+        {
         id: dish.id,
         price: dish.price,
         preparationMs: dish.preparationTimeMs,
@@ -195,8 +337,14 @@ function buildCatalog(): {
         quality: dish.quality,
         baseDemand: dish.baseDemand,
         preferenceTags: dish.preferenceTags,
+        unlockLevel: dish.unlockRequirement.level,
+        unlockReputation: dish.unlockRequirement.reputation / 20,
+        nutritionVariants,
+        defaultNutritionVariantId,
+        activeNutritionVariantId: defaultNutritionVariantId,
       },
-    ]),
+      ];
+    }),
   );
 
   const placeables: Record<string, CorePlaceableDefinition> = {};
@@ -247,6 +395,7 @@ function buildCatalog(): {
       queueAnchor: stall.queueAnchor,
       stall: {
         dishIds: stall.dishIds,
+        allDishIds: stall.dishIds,
         orderMs: stall.serviceTimeMs,
         preparationCapacity: stall.preparationCapacity,
         queueCapacity: 7,
@@ -431,10 +580,91 @@ function formatSimulationEvent(event: SimulationEvent): RuntimeEvent | undefined
   return undefined;
 }
 
-interface RuntimePersistentState {
-  readonly runtimeSchemaVersion: 1;
+export interface RuntimePersistentState {
+  readonly runtimeSchemaVersion: 2;
   readonly core: unknown;
   readonly stallMenus: Readonly<Record<string, readonly string[]>>;
+  readonly nutritionDataVersion: string;
+  readonly activeDishVariants: Readonly<Record<string, string>>;
+}
+
+export function defaultDishVariants(): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    NUTRITION_CONTENT.variantFamilies.map((family) => [
+      family.dishId,
+      family.defaultVariantId,
+    ]),
+  );
+}
+
+function withDishVariants(
+  base: SimulationCatalog,
+  activeDishVariants: Readonly<Record<string, string>>,
+): SimulationCatalog {
+  return {
+    ...base,
+    dishes: Object.fromEntries(Object.entries(base.dishes).map(([dishId, dish]) => {
+      const family = getNutritionVariantFamily(dishId);
+      const activeNutritionVariantId = family
+        ? activeDishVariants[dishId] ?? family.defaultVariantId
+        : dish.defaultNutritionVariantId;
+      return [dishId, { ...dish, activeNutritionVariantId }];
+    })),
+  };
+}
+
+export function resolveDishVariants(
+  value: unknown,
+  state: Pick<GameState, "progression">,
+): {
+  readonly selections: Readonly<Record<string, string>>;
+  readonly recovered: boolean;
+} {
+  const isVariantMap = value !== null && typeof value === "object" && !Array.isArray(value);
+  const source = isVariantMap
+    ? value as Readonly<Record<string, unknown>>
+    : {};
+  const familyIds = new Set(
+    NUTRITION_CONTENT.variantFamilies.map((family) => family.dishId),
+  );
+  let recovered =
+    (value !== undefined && !isVariantMap) ||
+    Object.keys(source).some((dishId) => !familyIds.has(dishId)) ||
+    (value !== undefined && [...familyIds].some((dishId) => !Object.hasOwn(source, dishId)));
+  const selections = Object.fromEntries(NUTRITION_CONTENT.variantFamilies.map((family) => {
+    const stallRanks = STALLS
+      .filter((stall) => stall.dishIds.includes(family.dishId))
+      .map((stall) => state.progression.stallMastery[stall.id]?.rank ?? 1);
+    const rank = Math.max(1, ...stallRanks);
+    const requested = source[family.dishId];
+    const variant = typeof requested === "string"
+      ? family.variants.find((candidate) => candidate.id === requested)
+      : undefined;
+    if (requested !== undefined && (!variant || variant.unlockRank > rank)) recovered = true;
+    return [
+      family.dishId,
+      variant && variant.unlockRank <= rank ? variant.id : family.defaultVariantId,
+    ];
+  }));
+  return { selections, recovered };
+}
+
+export function resolvePersistedDishVariants(
+  value: unknown,
+  nutritionDataVersion: string | undefined,
+  state: Pick<GameState, "progression">,
+): {
+  readonly selections: Readonly<Record<string, string>>;
+  readonly recovered: boolean;
+} {
+  const outdated =
+    value !== undefined &&
+    nutritionDataVersion !== NUTRITION_CONTENT.dataVersion;
+  const resolved = resolveDishVariants(outdated ? undefined : value, state);
+  return {
+    selections: resolved.selections,
+    recovered: outdated || resolved.recovered,
+  };
 }
 
 function withStallMenus(
@@ -460,19 +690,30 @@ function withStallMenus(
   };
 }
 
-function decodeRuntimeSave(value: unknown): {
+export function decodeRuntimeSave(value: unknown): {
   core: unknown;
+  runtimeSchemaVersion?: 1 | 2;
   menus?: Readonly<Record<string, readonly string[]>>;
+  variants?: unknown;
+  nutritionDataVersion?: string;
 } {
   if (
     value &&
     typeof value === "object" &&
-    (value as { runtimeSchemaVersion?: unknown }).runtimeSchemaVersion === 1
+    ((value as { runtimeSchemaVersion?: unknown }).runtimeSchemaVersion === 1 ||
+      (value as { runtimeSchemaVersion?: unknown }).runtimeSchemaVersion === 2)
   ) {
-    const runtime = value as Partial<RuntimePersistentState>;
+    const runtime = value as Partial<RuntimePersistentState> & {
+      readonly runtimeSchemaVersion?: 1 | 2;
+    };
     return {
       core: runtime.core,
+      runtimeSchemaVersion: runtime.runtimeSchemaVersion,
       menus: normalizeStallMenuSelection(runtime.stallMenus),
+      variants: runtime.activeDishVariants,
+      nutritionDataVersion: typeof runtime.nutritionDataVersion === "string"
+        ? runtime.nutritionDataVersion
+        : undefined,
     };
   }
   return { core: value };
@@ -515,13 +756,18 @@ export async function createHawkerRuntime(
   options: RuntimeOptions,
 ): Promise<RuntimeController> {
   const PhaserRuntime = (await import("phaser")).default;
-  const { catalog: baseCatalog, visuals } = buildCatalog();
+  const { catalog: authoredCatalog, visuals } = buildCatalog();
   let stallMenus = defaultStallMenusForProgression({
     level: 1,
     reputation: ECONOMY.startingReputation,
   });
-  let catalog = withStallMenus(baseCatalog, stallMenus);
+  let activeDishVariants = defaultDishVariants();
+  let catalog = withStallMenus(
+    withDishVariants(authoredCatalog, activeDishVariants),
+    stallMenus,
+  );
   let state: GameState;
+  let recoveredNutritionSelection = false;
   try {
     const candidates = options.initialStates ?? [];
     let loaded: GameState | undefined;
@@ -530,13 +776,29 @@ export async function createHawkerRuntime(
       try {
         const decoded = decodeRuntimeSave(candidates[index]);
         const loadedCore = reconcileRuntimeUnlocks(
-          assertRuntimeMap(deserializeGameState(decoded.core, baseCatalog)),
+          assertRuntimeMap(deserializeGameState(decoded.core, authoredCatalog)),
         );
         stallMenus = resolveStallMenus(decoded.menus ?? {}, {
           ...stallMenuProgression(loadedCore),
           slotBonuses: stallMenuSlotBonuses(loadedCore),
         });
-        catalog = withStallMenus(baseCatalog, stallMenus);
+        const resolvedVariants = resolvePersistedDishVariants(
+          decoded.variants,
+          decoded.nutritionDataVersion,
+          loadedCore,
+        );
+        const incompleteRuntimeV2 =
+          decoded.runtimeSchemaVersion === 2 &&
+          (decoded.variants === undefined || decoded.nutritionDataVersion === undefined);
+        activeDishVariants = resolvedVariants.selections;
+        recoveredNutritionSelection =
+          recoveredNutritionSelection ||
+          resolvedVariants.recovered ||
+          incompleteRuntimeV2;
+        catalog = withStallMenus(
+          withDishVariants(authoredCatalog, activeDishVariants),
+          stallMenus,
+        );
         loaded = { ...loadedCore, catalog };
         if (index > 0) {
           options.onEvent({
@@ -553,8 +815,12 @@ export async function createHawkerRuntime(
     if (loaded) {
       state = loaded;
     } else {
-      state = freshState(baseCatalog);
-      catalog = withStallMenus(baseCatalog, stallMenus);
+      state = freshState(authoredCatalog);
+      activeDishVariants = defaultDishVariants();
+      catalog = withStallMenus(
+        withDishVariants(authoredCatalog, activeDishVariants),
+        stallMenus,
+      );
       state = { ...state, catalog };
     }
   } catch (error) {
@@ -566,9 +832,20 @@ export async function createHawkerRuntime(
       level: 1,
       reputation: ECONOMY.startingReputation,
     });
-    catalog = withStallMenus(baseCatalog, stallMenus);
-    state = freshState(baseCatalog);
+    activeDishVariants = defaultDishVariants();
+    catalog = withStallMenus(
+      withDishVariants(authoredCatalog, activeDishVariants),
+      stallMenus,
+    );
+    state = freshState(authoredCatalog);
     state = { ...state, catalog };
+  }
+
+  if (recoveredNutritionSelection) {
+    options.onEvent({
+      kind: "warning",
+      message: "One or more saved recipe choices were reset to reviewed defaults.",
+    });
   }
 
   if (
@@ -590,15 +867,18 @@ export async function createHawkerRuntime(
   }
 
   const persistentPayload = (): RuntimePersistentState => ({
-    runtimeSchemaVersion: 1,
+    runtimeSchemaVersion: 2,
     core: persistentStateFromGame(state),
     stallMenus,
+    nutritionDataVersion: NUTRITION_CONTENT.dataVersion,
+    activeDishVariants,
   });
 
   const runtime = { game: undefined as Phaser.Game | undefined };
   let activeScene: HawkerScene | undefined;
   let selectedBuildId: string | undefined;
   let selectedObjectId: string | undefined;
+  let selectedCustomerId: string | undefined;
   let pendingMoveId: string | undefined;
   let queueEditingStallId: string | undefined;
   let queueDraft: readonly GridPoint[] = [];
@@ -632,7 +912,10 @@ export async function createHawkerRuntime(
     });
     if (stallMenusMatch(stallMenus, nextMenus)) return false;
     stallMenus = nextMenus;
-    catalog = withStallMenus(baseCatalog, stallMenus);
+    catalog = withStallMenus(
+      withDishVariants(authoredCatalog, activeDishVariants),
+      stallMenus,
+    );
     state = { ...state, catalog };
     return true;
   }
@@ -777,13 +1060,87 @@ export async function createHawkerRuntime(
       return { id: track.id, title: track.title, tier, progress: track.progress, target: track.values[Math.min(3, tier)]! };
     });
     const remainingObjectiveMinutes = Math.ceil((OPERATING_DAY_MS - (snapshot.elapsedMs % OPERATING_DAY_MS)) / 1_000);
+    const day = 1 + Math.floor(snapshot.elapsedMs / OPERATING_DAY_MS);
+    const nutritionFamilies = NUTRITION_CONTENT.variantFamilies.map((family) => {
+      const rank = Math.max(
+        1,
+        ...STALLS
+          .filter((stall) => stall.dishIds.includes(family.dishId))
+          .map((stall) => snapshot.progression.stallMastery[stall.id]?.rank ?? 1),
+      );
+      const dish = catalog.dishes[family.dishId];
+      const activeVariantId = activeDishVariants[family.dishId] ?? family.defaultVariantId;
+      return {
+        dishId: family.dishId,
+        defaultVariantId: family.defaultVariantId,
+        activeVariantId,
+        variants: family.variants.map((variant) => {
+          const coreVariant = dish?.nutritionVariants?.find(
+            (candidate) => candidate.id === variant.id,
+          );
+          return {
+            id: variant.id,
+            label: variant.name,
+            unlockRank: variant.unlockRank,
+            profileId: variant.profileId,
+            visualKey: variant.visualKey,
+            unlocked: variant.unlockRank <= rank,
+            selected: variant.id === activeVariantId,
+            profile: runtimeNutritionProfile(coreVariant?.profile),
+          };
+        }),
+      };
+    });
+    const emptyToday = {
+      day,
+      servedMeals: 0,
+      profiledServings: 0,
+      intentRequests: 0,
+      intentMatches: 0,
+      intentMisses: 0,
+      intentUnknowns: 0,
+      byIntent: Object.fromEntries(
+        Object.keys(snapshot.metrics.nutrition.byIntent).map((intent) => [
+          intent,
+          { requests: 0, matches: 0, misses: 0, unknowns: 0 },
+        ]),
+      ) as typeof snapshot.metrics.nutrition.byIntent,
+      nutrientTotals: {} as Readonly<Record<NutritionMetric, number>>,
+      nutrientKnownCounts: {} as Readonly<Record<NutritionMetric, number>>,
+      dishServings: {} as Readonly<Record<string, number>>,
+    };
+    const nutritionToday = snapshot.metrics.nutrition.today.day === day
+      ? snapshot.metrics.nutrition.today
+      : emptyToday;
+    const compactMetrics = [
+      "energyKcal",
+      "proteinG",
+      "dietaryFibreG",
+      "sodiumMg",
+    ] as const;
+    const nutritionAverages = Object.fromEntries(compactMetrics.flatMap((metric) => {
+      const count = nutritionToday.nutrientKnownCounts[metric] ?? 0;
+      return count > 0 ? [[metric, nutritionToday.nutrientTotals[metric] / count]] : [];
+    }));
+    const mostServedDishId = Object.entries(nutritionToday.dishServings)
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0];
+    const leadingUnmetIntent = Object.entries(nutritionToday.byIntent)
+      .map(([intent, metrics]) => [
+        intent as NutritionIntent,
+        metrics.misses + metrics.unknowns,
+      ] as const)
+      .filter((entry) => entry[1] > 0)
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0];
+    const selectedCustomer = selectedCustomerId
+      ? snapshot.customers.find((customer) => customer.id === selectedCustomerId)
+      : undefined;
     return {
       cash: snapshot.economy.currency,
       reputation: snapshot.progression.reputation * 20,
       level: snapshot.progression.level,
       experience: snapshot.progression.xp,
       nextLevelExperience,
-      day: 1 + Math.floor(snapshot.elapsedMs / (8 * 60 * 1_000)),
+      day,
       timeLabel: timeLabel(snapshot.elapsedMs),
       isOpen: isCentreOpen(),
       speed,
@@ -820,6 +1177,39 @@ export async function createHawkerRuntime(
         : undefined,
       unlockedContentIds: snapshot.progression.unlockedDefinitionIds,
       stallMenus,
+      activeDishVariants,
+      nutritionFamilies,
+      nutritionPulse: {
+        servedMeals: nutritionToday.servedMeals,
+        profiledMeals: nutritionToday.profiledServings,
+        intentRequests: nutritionToday.intentRequests,
+        intentMatches: nutritionToday.intentMatches,
+        intentMisses: nutritionToday.intentMisses,
+        intentUnknowns: nutritionToday.intentUnknowns,
+        averages: nutritionAverages,
+        knownCounts: {
+          energyKcal: nutritionToday.nutrientKnownCounts.energyKcal ?? 0,
+          proteinG: nutritionToday.nutrientKnownCounts.proteinG ?? 0,
+          dietaryFibreG: nutritionToday.nutrientKnownCounts.dietaryFibreG ?? 0,
+          sodiumMg: nutritionToday.nutrientKnownCounts.sodiumMg ?? 0,
+        },
+        mostServedDishId,
+        leadingUnmetIntent,
+      },
+      selectedCustomerId: selectedCustomer?.id,
+      selectedCustomerNutrition: selectedCustomer
+        ? {
+            customerId: selectedCustomer.id,
+            archetypeId: selectedCustomer.archetypeId,
+            status: selectedCustomer.status,
+            decisionReasons: customerDecisionReasons(selectedCustomer, catalog),
+            intentId: selectedCustomer.nutritionIntentId,
+            dishId: selectedCustomer.orderedDishId,
+            variantId: selectedCustomer.orderedNutritionVariantId,
+            requestResult: selectedCustomer.nutritionRequestResult,
+            profile: runtimeNutritionProfile(selectedCustomer.orderedNutritionProfile),
+          }
+        : undefined,
       placedStalls,
       canUndo: snapshot.canUndo,
       objectiveProgress: Math.min(5, snapshot.economy.completedVisits),
@@ -880,6 +1270,14 @@ export async function createHawkerRuntime(
           (occupied) => occupied.x === point.x && occupied.y === point.y,
         ),
       );
+  }
+
+  function customerAt(point: GridPoint): Customer | undefined {
+    return customerAtRenderedGridPoint(
+      Object.values(state.customers),
+      point,
+      reducedMotion,
+    );
   }
 
   function placementCandidate(point: GridPoint): PlacedObject | undefined {
@@ -1027,7 +1425,9 @@ export async function createHawkerRuntime(
       return;
     }
 
-    selectedObjectId = objectAt(point)?.id;
+    const customer = customerAt(point);
+    selectedCustomerId = customer?.id;
+    selectedObjectId = customer ? undefined : objectAt(point)?.id;
     emitHud(true);
     activeScene?.render(true);
   }
@@ -1113,7 +1513,14 @@ export async function createHawkerRuntime(
         else if (key === "arrowright") hoverTile = { ...hoverTile, x: Math.min(state.map.width - 1, hoverTile.x + 1) };
         else if (key === "enter") handleTile(hoverTile);
         else if (key === "r") rotateSelection();
-        else if (key === "escape") setBuildTool("select");
+        else if (key === "escape") {
+          if (selectedCustomerId) {
+            selectedCustomerId = undefined;
+            emitHud(true);
+          } else {
+            setBuildTool("select");
+          }
+        }
         else if (key === "u") runCommand({ type: "undo" });
         else if (key === " ") setSpeed(speed === 0 ? 1 : 0);
         else if (key === "+" || key === "=") zoomBy(0.1);
@@ -1159,6 +1566,13 @@ export async function createHawkerRuntime(
         const result = advanceSimulation(state, frameDelta * speed);
         const beforeUnlockCount = state.progression.unlockedDefinitionIds.length;
         state = reconcileRuntimeUnlocks(result.state);
+        if (selectedCustomerId && !state.customers[selectedCustomerId]) {
+          selectedCustomerId = undefined;
+          options.onEvent({
+            kind: "info",
+            message: "The selected guest finished their visit.",
+          });
+        }
         const menusChanged = synchronizeStallMenus();
         lastSimulationMs = performance.now() - startedAt;
         for (const event of result.events) {
@@ -1412,6 +1826,7 @@ export async function createHawkerRuntime(
   ): {
     readonly activity: "idle" | "order" | "prepare";
     readonly preparingDishId?: string;
+    readonly preparingVariantId?: string;
   } {
     const preparing = snapshot.customers.find(
       (customer) =>
@@ -1420,7 +1835,11 @@ export async function createHawkerRuntime(
         customer.orderedDishId,
     );
     if (preparing) {
-      return { activity: "prepare", preparingDishId: preparing.orderedDishId };
+      return {
+        activity: "prepare",
+        preparingDishId: preparing.orderedDishId,
+        preparingVariantId: preparing.orderedNutritionVariantId,
+      };
     }
     const ordering = snapshot.customers.some(
       (customer) => customer.targetStallId === objectId && customer.status === "ordering",
@@ -2243,7 +2662,18 @@ export async function createHawkerRuntime(
         const dishY = counterY - 2 - (index % 2) * 1.5;
         graphics.fillStyle(0x18332d, 0.13);
         graphics.fillEllipse(dishX + 1, counterY + 4, 28 * servingScale, 8 * servingScale);
-        drawDishServing(graphics, dishId, dishX, dishY, servingScale);
+        const variantId = dishId === serviceVisual.preparingDishId
+          ? serviceVisual.preparingVariantId
+          : activeDishVariants[dishId];
+        drawDishServing(
+          graphics,
+          dishId,
+          dishX,
+          dishY,
+          servingScale,
+          0,
+          nutritionVisualKeyForVariant(dishId, variantId),
+        );
       }
     }
 
@@ -3799,6 +4229,290 @@ export async function createHawkerRuntime(
     }
   }
 
+  function drawNutritionVariantCue(
+    graphics: Phaser.GameObjects.Graphics,
+    visualKey: string,
+    family: NonNullable<ReturnType<typeof visualRecipeForDishVariant>["variantVisualFamily"]>,
+    x: number,
+    y: number,
+    scale: number,
+  ) {
+    const outline = 0x17352e;
+    const lineWidth = Math.max(0.9, 1.15 * scale);
+    const has = (...parts: readonly string[]) => parts.some((part) => visualKey.includes(part));
+    graphics.lineStyle(lineWidth, outline, 0.9);
+
+    if (family === "drink") {
+      const sugarCount = has("no-sugar", "kosong") ? 0 : has("one-sugar") ? 1 : 2;
+      if (has("black-")) {
+        graphics.fillStyle(0x4b2d22, 0.86);
+        graphics.fillEllipse(x, y - 5 * scale, 9 * scale, 3 * scale);
+      }
+      if (has("evaporated")) {
+        graphics.lineStyle(lineWidth, 0xf3e2c5, 0.96);
+        graphics.beginPath();
+        graphics.arc(x - 1.3 * scale, y - 5 * scale, 3.4 * scale, 0.2, Math.PI * 1.55);
+        graphics.strokePath();
+        graphics.beginPath();
+        graphics.arc(x + 2.4 * scale, y - 5 * scale, 2.2 * scale, Math.PI * 0.25, Math.PI * 1.8);
+        graphics.strokePath();
+      } else if (has("milk")) {
+        graphics.lineStyle(lineWidth, 0xf3e2c5, 0.96);
+        graphics.beginPath();
+        graphics.arc(x, y - 5 * scale, 3.4 * scale, 0.2, Math.PI * 1.55);
+        graphics.strokePath();
+      }
+      if (has("pulled-foam")) {
+        graphics.fillStyle(0xfff0d0, 1);
+        graphics.fillEllipse(x, y - 7 * scale, 10 * scale, 3.5 * scale);
+        graphics.fillCircle(x - 3 * scale, y - 8 * scale, 1.2 * scale);
+        graphics.fillCircle(x + 2 * scale, y - 8.5 * scale, 1.4 * scale);
+      }
+      graphics.fillStyle(0xfffbef, 1);
+      for (let cube = 0; cube < sugarCount; cube += 1) {
+        const cubeX = x + (cube - (sugarCount - 1) / 2) * 4.3 * scale;
+        graphics.fillRect(cubeX - 1.5 * scale, y + 2 * scale, 3 * scale, 3 * scale);
+        graphics.strokeRect(cubeX - 1.5 * scale, y + 2 * scale, 3 * scale, 3 * scale);
+      }
+      return;
+    }
+
+    if (family === "nasi-lemak") {
+      if (has("rice-only")) {
+        graphics.lineStyle(lineWidth, outline, 0.9);
+        graphics.strokeCircle(x - 4 * scale, y, 7 * scale);
+      } else if (has("egg-ikan")) {
+        graphics.fillStyle(0xf7edcf, 1);
+        graphics.fillCircle(x + 4 * scale, y - 4 * scale, 4 * scale);
+        graphics.fillStyle(0xe2a92e, 1);
+        graphics.fillCircle(x + 4 * scale, y - 4 * scale, 1.8 * scale);
+        graphics.fillStyle(0x76513b, 1);
+        for (let dot = 0; dot < 4; dot += 1) {
+          graphics.fillCircle(x + (dot - 1.5) * 2.2 * scale, y + 4 * scale, scale);
+        }
+      } else if (has("fish")) {
+        graphics.fillStyle(0xc98a54, 1);
+        graphics.fillEllipse(x + 5 * scale, y, 11 * scale, 5 * scale);
+        graphics.fillTriangle(x + 9 * scale, y, x + 13 * scale, y - 3 * scale, x + 13 * scale, y + 3 * scale);
+      } else {
+        if (has("wing")) {
+          graphics.fillStyle(0xb96c3d, 1);
+          graphics.fillEllipse(x + 5 * scale, y + 2 * scale, 8 * scale, 5 * scale);
+          graphics.fillCircle(x + 9 * scale, y + 3 * scale, 2 * scale);
+        }
+        if (has("cutlet")) {
+          graphics.fillStyle(0x955231, 1);
+          graphics.fillRoundedRect(x - 1 * scale, y - 6 * scale, 12 * scale, 5 * scale, scale);
+          graphics.lineStyle(lineWidth, 0xe1ae66, 1);
+          graphics.lineBetween(x, y - 4 * scale, x + 9 * scale, y - 4 * scale);
+        }
+      }
+      return;
+    }
+
+    if (family === "carrot-cake") {
+      if (has("black-sauce")) {
+        graphics.fillStyle(0x5c3a2c, 0.92);
+        for (let cube = 0; cube < 4; cube += 1) {
+          graphics.fillRoundedRect(
+            x - 7 * scale + (cube % 2) * 7 * scale,
+            y - 5 * scale + Math.floor(cube / 2) * 6 * scale,
+            6 * scale,
+            5 * scale,
+            scale,
+          );
+        }
+      } else {
+        graphics.fillStyle(0xf5edcf, 1);
+        graphics.fillEllipse(x + 2 * scale, y - 2 * scale, 13 * scale, 9 * scale);
+        graphics.fillStyle(0xe0a936, 1);
+        graphics.fillCircle(x + 2 * scale, y - 2 * scale, 2.2 * scale);
+      }
+      return;
+    }
+
+    if (family === "prata") {
+      const pieceCount = has("two-curry") ? 2 : 1;
+      graphics.fillStyle(0xdca94d, 1);
+      for (let piece = 0; piece < pieceCount; piece += 1) {
+        graphics.fillRoundedRect(
+          x - 8 * scale + piece * 7 * scale,
+          y - 4 * scale + piece * 3 * scale,
+          11 * scale,
+          8 * scale,
+          1.5 * scale,
+        );
+      }
+      if (has("egg")) {
+        graphics.fillStyle(0xf6e9c4, 1);
+        graphics.fillCircle(x, y - scale, 3.6 * scale);
+        graphics.fillStyle(0xdda331, 1);
+        graphics.fillCircle(x, y - scale, 1.6 * scale);
+      }
+      if (has("onion")) {
+        graphics.fillStyle(0xaa7899, 1);
+        graphics.fillCircle(x - 5 * scale, y + 3 * scale, scale);
+        graphics.fillCircle(x + 5 * scale, y - 3 * scale, scale);
+      }
+      if (has("cheese")) {
+        graphics.fillStyle(0xf1c84f, 1);
+        graphics.fillRoundedRect(x - 7 * scale, y + 3 * scale, 14 * scale, 2.2 * scale, scale);
+      }
+      return;
+    }
+
+    if (family === "fish-soup") {
+      if (has("milky")) {
+        graphics.fillStyle(0xeadfc5, 0.92);
+        graphics.fillEllipse(x, y, 18 * scale, 9 * scale);
+      }
+      if (has("beehoon")) {
+        graphics.lineStyle(lineWidth, 0xe2c679, 1);
+        for (let strand = -2; strand <= 2; strand += 1) {
+          graphics.lineBetween(x - 7 * scale, y + strand * scale, x + 7 * scale, y - strand * 0.7 * scale);
+        }
+      } else {
+        graphics.fillStyle(0xf0e2ce, 1);
+        for (let slice = -1; slice <= 1; slice += 1) {
+          graphics.fillEllipse(x + slice * 5 * scale, y + (slice % 2) * 2 * scale, 7 * scale, 3 * scale);
+        }
+      }
+      return;
+    }
+
+    if (family === "bak-chor") {
+      if (has("broth")) {
+        graphics.fillStyle(0xb99762, 0.88);
+        graphics.fillEllipse(x, y, 19 * scale, 10 * scale);
+        graphics.lineStyle(lineWidth, 0xf0d58c, 0.9);
+        graphics.lineBetween(x - 6 * scale, y - 2 * scale, x + 6 * scale, y + 2 * scale);
+      } else {
+        graphics.lineStyle(lineWidth, 0x70402f, 1);
+        for (let strand = -2; strand <= 2; strand += 1) {
+          graphics.lineBetween(x - 7 * scale, y + strand * scale, x + 7 * scale, y - strand * scale);
+        }
+      }
+      return;
+    }
+
+    if (family === "murtabak") {
+      graphics.fillStyle(0xba7a3e, 1);
+      for (let piece = 0; piece < 4; piece += 1) {
+        graphics.fillRoundedRect(
+          x - 8 * scale + (piece % 2) * 8 * scale,
+          y - 6 * scale + Math.floor(piece / 2) * 7 * scale,
+          7 * scale,
+          6 * scale,
+          scale,
+        );
+      }
+      const filling = has("vegetable") ? 0x4f8b51 : has("mutton") ? 0x694034 : 0xb7653e;
+      graphics.fillStyle(filling, 1);
+      if (has("vegetable")) {
+        graphics.fillRoundedRect(x - 6 * scale, y - 3 * scale, 3 * scale, 5 * scale, scale);
+        graphics.fillTriangle(
+          x,
+          y + 3 * scale,
+          x + 3 * scale,
+          y - 3 * scale,
+          x + 6 * scale,
+          y + 3 * scale,
+        );
+      } else if (has("mutton")) {
+        for (let piece = -1; piece <= 1; piece += 1) {
+          const pieceX = x + piece * 5 * scale;
+          graphics.fillTriangle(
+            pieceX,
+            y - 3 * scale,
+            pieceX + 3 * scale,
+            y,
+            pieceX,
+            y + 3 * scale,
+          );
+          graphics.fillTriangle(
+            pieceX,
+            y - 3 * scale,
+            pieceX - 3 * scale,
+            y,
+            pieceX,
+            y + 3 * scale,
+          );
+        }
+      } else {
+        graphics.fillCircle(x - 3 * scale, y - 2 * scale, 1.5 * scale);
+        graphics.fillCircle(x + 4 * scale, y + 2 * scale, 1.5 * scale);
+      }
+      if (has("mushroom-cheese")) {
+        graphics.fillStyle(0x76543d, 1);
+        graphics.fillEllipse(x - 5 * scale, y - 3 * scale, 4 * scale, 2.5 * scale);
+        graphics.fillRect(x - 5.5 * scale, y - 2 * scale, scale, 3 * scale);
+        graphics.fillStyle(0xf0c84d, 1);
+        graphics.fillRoundedRect(x - 7 * scale, y + 5 * scale, 14 * scale, 2 * scale, scale);
+      }
+      return;
+    }
+
+    if (family === "briyani") {
+      const protein = has("vegetable") ? 0x57915a : has("mutton") ? 0x6e4032 : has("fish-prawn") ? 0xd9785c : 0x9b5238;
+      graphics.fillStyle(protein, 1);
+      if (has("vegetable")) {
+        graphics.fillCircle(x + 5 * scale, y - 3 * scale, 2.4 * scale);
+        graphics.fillRoundedRect(x + 1 * scale, y + 1 * scale, 5 * scale, 4 * scale, scale);
+      } else if (has("fish-prawn")) {
+        graphics.fillEllipse(x + 5 * scale, y - scale, 9 * scale, 4 * scale);
+        graphics.lineStyle(lineWidth, protein, 1);
+        graphics.lineBetween(x + 8 * scale, y - 2 * scale, x + 12 * scale, y - 6 * scale);
+      } else if (has("mutton")) {
+        for (let piece = 0; piece < 3; piece += 1) {
+          graphics.fillRoundedRect(
+            x + (piece - 1) * 4.5 * scale,
+            y - (piece % 2) * 3 * scale,
+            4 * scale,
+            4 * scale,
+            0.8 * scale,
+          );
+        }
+      } else {
+        graphics.fillEllipse(x + 5 * scale, y - 2 * scale, 9 * scale, 6 * scale);
+        graphics.fillCircle(x + 9 * scale, y + scale, 2.2 * scale);
+      }
+      return;
+    }
+
+    if (family === "thosai") {
+      graphics.fillStyle(0xd69a3d, 1);
+      if (has("plain-roll")) {
+        graphics.fillRoundedRect(x - 10 * scale, y - 3 * scale, 20 * scale, 6 * scale, 3 * scale);
+      } else {
+        graphics.fillTriangle(x - 10 * scale, y + 5 * scale, x + 10 * scale, y + 4 * scale, x + 6 * scale, y - 5 * scale);
+      }
+      if (has("egg-centre")) {
+        graphics.fillStyle(0xf6e9c4, 1);
+        graphics.fillCircle(x, y, 4 * scale);
+        graphics.fillStyle(0xdda331, 1);
+        graphics.fillCircle(x, y, 1.7 * scale);
+      }
+      if (has("ghee-gloss")) {
+        graphics.lineStyle(Math.max(1, 2 * scale), 0xffe69a, 0.95);
+        graphics.lineBetween(x - 7 * scale, y - 2 * scale, x + 7 * scale, y + scale);
+      }
+      return;
+    }
+
+    const cueCount = 1 + (stableVisualHash(visualKey) % 3);
+    for (let index = 0; index < cueCount; index += 1) {
+      const cueX = x + (index - (cueCount - 1) / 2) * 5 * scale;
+      graphics.strokeTriangle(
+        cueX - 2.5 * scale,
+        y - 3 * scale,
+        cueX + 2.5 * scale,
+        y - 3 * scale,
+        cueX,
+        y + 2 * scale,
+      );
+    }
+  }
+
   function drawDishServing(
     graphics: Phaser.GameObjects.Graphics,
     dishId: string | undefined,
@@ -3806,10 +4520,13 @@ export async function createHawkerRuntime(
     y: number,
     scale: number,
     eatenFraction = 0,
+    variantVisualKey?: string,
   ) {
     const dish = dishId ? DISH_BY_ID.get(dishId) : undefined;
     if (!dish) return;
-    const recipe = DISH_VISUAL_BY_ID.get(dish.id) ?? visualRecipeForDish(dish);
+    const recipe = variantVisualKey
+      ? visualRecipeForDishVariant(dish, variantVisualKey)
+      : DISH_VISUAL_BY_ID.get(dish.id) ?? visualRecipeForDish(dish);
     const remaining = Math.max(0.22, 1 - eatenFraction);
     const vessel = recipe.presentation.vessel;
 
@@ -3878,6 +4595,17 @@ export async function createHawkerRuntime(
     const isDrinkVessel =
       vessel === "kopitiam-cup-and-saucer" || vessel === "tall-drinking-glass";
     drawDishMotif(graphics, dish.id, recipe, x, y - (isDrinkVessel ? 0 : scale), scale, remaining);
+
+    if (recipe.variantVisualKey && recipe.variantVisualFamily) {
+      drawNutritionVariantCue(
+        graphics,
+        recipe.variantVisualKey,
+        recipe.variantVisualFamily,
+        x,
+        y - (isDrinkVessel ? 0 : scale),
+        scale,
+      );
+    }
 
     if (recipe.steam !== "none" && !reducedMotion && eatenFraction < 0.82) {
       const wisps = recipe.steam === "full" ? 3 : 1;
@@ -4037,7 +4765,7 @@ export async function createHawkerRuntime(
       const customerSeed = stableVisualHash(customer.id);
       const appearance = customerAppearanceForId(customer.id);
       const pose = animationPoseForCustomer(customer.status, snapshot.tick, customerSeed, reducedMotion);
-      const position = interpolatedCustomerPosition(customer);
+      const position = renderedCustomerPosition(customer, reducedMotion);
       const next = customer.path[customer.pathIndex];
       const directionX = next ? Math.sign(next.x - customer.position.x) : 0;
       const directionY = next ? Math.sign(next.y - customer.position.y) : 1;
@@ -4047,6 +4775,12 @@ export async function createHawkerRuntime(
       const bodyWidth = outfit.width;
       const bodyHeight = outfit.height;
 
+      if (customer.id === selectedCustomerId) {
+        graphics.lineStyle(4, highContrast ? 0xffffff : 0x2d6ea8, 1);
+        graphics.strokeCircle(x, y + 1, 24);
+        graphics.lineStyle(2, highContrast ? 0x17352e : 0xfff7e5, 1);
+        graphics.strokeCircle(x, y + 1, 19);
+      }
       graphics.fillStyle(0x17352e, 0.16);
       graphics.fillEllipse(x, y + 13, bodyWidth + 9, 9);
       if (pose.stride !== 0) {
@@ -4094,7 +4828,20 @@ export async function createHawkerRuntime(
         graphics.fillStyle(appearance.skin, 1);
         graphics.fillCircle(x - 14, y + 9, 2.6);
         graphics.fillCircle(x + 14, y + 9, 2.6);
-        if (pose.carriesFood) drawDishServing(graphics, customer.orderedDishId, x, y + 6, 0.66);
+        if (pose.carriesFood) {
+          drawDishServing(
+            graphics,
+            customer.orderedDishId,
+            x,
+            y + 6,
+            0.66,
+            0,
+            nutritionVisualKeyForVariant(
+              customer.orderedDishId,
+              customer.orderedNutritionVariantId,
+            ),
+          );
+        }
       }
 
       if (pose.showsMeal) {
@@ -4112,7 +4859,18 @@ export async function createHawkerRuntime(
         graphics.fillRoundedRect(anchor.x - 17, anchor.y - 11, 34, 22, 4);
         graphics.fillStyle(0xd8b772, 1);
         graphics.fillRoundedRect(anchor.x - 14, anchor.y - 8, 28, 16, 3);
-        drawDishServing(graphics, customer.orderedDishId, anchor.x, anchor.y, 0.82, eatenFraction);
+        drawDishServing(
+          graphics,
+          customer.orderedDishId,
+          anchor.x,
+          anchor.y,
+          0.82,
+          eatenFraction,
+          nutritionVisualKeyForVariant(
+            customer.orderedDishId,
+            customer.orderedNutritionVariantId,
+          ),
+        );
         graphics.lineStyle(2.5, appearance.skin, 1);
         graphics.lineBetween(x + 5, y + 2, anchor.x + pose.armSwing * 0.35, anchor.y - 2);
         graphics.lineStyle(1.5, 0x5f5142, 1);
@@ -4139,16 +4897,6 @@ export async function createHawkerRuntime(
         }
       }
     }
-  }
-
-  function interpolatedCustomerPosition(customer: Customer) {
-    const next = customer.path[customer.pathIndex];
-    if (!next || reducedMotion) return customer.position;
-    const progress = Math.max(0, Math.min(1, customer.movementProgress));
-    return {
-      x: customer.position.x + (next.x - customer.position.x) * progress,
-      y: customer.position.y + (next.y - customer.position.y) * progress,
-    };
   }
 
   function drawOverlay(
@@ -4445,14 +5193,33 @@ export async function createHawkerRuntime(
     importState(value) {
       const decoded = decodeRuntimeSave(value);
       const imported = reconcileRuntimeUnlocks(
-        assertRuntimeMap(deserializeGameState(decoded.core, baseCatalog)),
+        assertRuntimeMap(deserializeGameState(decoded.core, authoredCatalog)),
       );
       stallMenus = resolveStallMenus(decoded.menus ?? {}, {
         ...stallMenuProgression(imported),
         slotBonuses: stallMenuSlotBonuses(imported),
       });
-      catalog = withStallMenus(baseCatalog, stallMenus);
+      const resolvedVariants = resolvePersistedDishVariants(
+        decoded.variants,
+        decoded.nutritionDataVersion,
+        imported,
+      );
+      const incompleteRuntimeV2 =
+        decoded.runtimeSchemaVersion === 2 &&
+        (decoded.variants === undefined || decoded.nutritionDataVersion === undefined);
+      activeDishVariants = resolvedVariants.selections;
+      catalog = withStallMenus(
+        withDishVariants(authoredCatalog, activeDishVariants),
+        stallMenus,
+      );
       state = { ...imported, catalog };
+      selectedCustomerId = undefined;
+      if (resolvedVariants.recovered || incompleteRuntimeV2) {
+        options.onEvent({
+          kind: "warning",
+          message: "One or more imported recipe choices were reset to reviewed defaults.",
+        });
+      }
       recomputeObjectSequence();
       lastPersistentRevenue = state.economy.lifetimeRevenue;
       activeScene?.syncWorldBounds(true);
@@ -4464,12 +5231,17 @@ export async function createHawkerRuntime(
         level: 1,
         reputation: ECONOMY.startingReputation,
       });
-      catalog = withStallMenus(baseCatalog, stallMenus);
-      state = freshState(baseCatalog);
+      activeDishVariants = defaultDishVariants();
+      catalog = withStallMenus(
+        withDishVariants(authoredCatalog, activeDishVariants),
+        stallMenus,
+      );
+      state = freshState(authoredCatalog);
       state = { ...state, catalog };
       recomputeObjectSequence();
       selectedBuildId = undefined;
       selectedObjectId = undefined;
+      selectedCustomerId = undefined;
       selectedAccessPointId = undefined;
       pendingAccessKind = undefined;
       buildTool = "select";
@@ -4599,7 +5371,10 @@ export async function createHawkerRuntime(
         ? [...current, dishId]
         : current.filter((candidate) => candidate !== dishId);
       stallMenus = { ...stallMenus, [stallId]: next };
-      catalog = withStallMenus(baseCatalog, stallMenus);
+      catalog = withStallMenus(
+        withDishVariants(authoredCatalog, activeDishVariants),
+        stallMenus,
+      );
       state = { ...state, catalog };
       options.onPersistentChange(persistentPayload());
       emitHud(true);
@@ -4608,6 +5383,46 @@ export async function createHawkerRuntime(
         message: `${localized(definition.nameKey)} menu updated.`,
       });
       return true;
+    },
+    setDishVariant(dishId, variantId) {
+      const family = getNutritionVariantFamily(dishId);
+      const variant = family?.variants.find((candidate) => candidate.id === variantId);
+      if (!family || !variant) return false;
+      const rank = Math.max(
+        1,
+        ...STALLS
+          .filter((stall) => stall.dishIds.includes(dishId))
+          .map((stall) => state.progression.stallMastery[stall.id]?.rank ?? 1),
+      );
+      if (variant.unlockRank > rank) {
+        options.onEvent({
+          kind: "warning",
+          message: `Reach stall mastery rank ${variant.unlockRank} to serve that version.`,
+        });
+        return false;
+      }
+      if (activeDishVariants[dishId] === variantId) return true;
+      activeDishVariants = { ...activeDishVariants, [dishId]: variantId };
+      catalog = withStallMenus(
+        withDishVariants(authoredCatalog, activeDishVariants),
+        stallMenus,
+      );
+      state = { ...state, catalog };
+      options.onPersistentChange(persistentPayload());
+      emitHud(true);
+      activeScene?.render(true);
+      options.onEvent({
+        kind: "info",
+        message: `${variant.name} will be used for future orders.`,
+      });
+      return true;
+    },
+    selectCustomer(customerId) {
+      selectedCustomerId = customerId && state.customers[customerId]
+        ? customerId
+        : undefined;
+      emitHud(true);
+      activeScene?.render(true);
     },
     addAccessPoint(kind) {
       setBuildTool("access");

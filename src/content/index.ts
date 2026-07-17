@@ -4,6 +4,13 @@ export { DISHES, DISH_ENGLISH } from "./dishes";
 export { ECONOMY } from "./economy";
 export { ENGLISH_LOCALIZATION } from "./localization";
 export {
+  NUTRITION_CONTENT,
+  getNutritionIntent,
+  getNutritionProfile,
+  getNutritionVariant,
+  getNutritionVariantFamily,
+} from "./nutrition";
+export {
   PLACEABLES,
   PLACEABLE_CATEGORY_MINIMUMS,
   PLACEABLE_ENGLISH,

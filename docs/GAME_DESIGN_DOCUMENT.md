@@ -7,11 +7,11 @@ Related: PRODUCT_BRIEF.md, CONTENT_CATALOGUE.md, ECONOMY_AND_PROGRESSION.md
 
 The player grows a compact community dining room into a busy, distinctive hawker centre:
 
-1. Inspect demand, queues, seating, cleanliness, and route overlays.
+1. Inspect demand, queues, seating, cleanliness, nutrition requests, and route overlays.
 2. Build or rearrange stalls, tables, facilities, and decorations on a square grid.
-3. Configure each stall’s active menu within its slot limit.
+3. Configure each stall’s active menu and reviewed recipe variant within its unlocks.
 4. Open the centre and watch customers complete visits.
-5. Read reactions and diagnostics; earn cash, experience, and reputation.
+5. Read service reactions, nutrition trade-offs, and diagnostics; earn cash, experience, and reputation.
 6. Buy upgrades, unlock content, expand the floor, and iterate.
 
 A normal session supports five-minute check-ins and longer optimization sessions. Pausing and build mode stop consequential simulation changes.
@@ -42,7 +42,7 @@ Arrive → Browse → Choose stall → Walk to queue → Queue → Order → Wai
 
 At every state, a missing or invalid target triggers bounded recovery: replan, choose an alternative, or leave with a clear reason. Reservations have owners and release on completion, cancellation, target movement, timeout, or despawn. Stuck detection retries a limited number of paths before a safe exit fallback.
 
-Stall score combines preference match, price, expected wait, quality, novelty, and walking distance. Seat score combines path distance, group capacity, comfort preference, cleanliness, and congestion. Player-facing reason chips expose the strongest positive and negative terms; exact hidden arithmetic is not required for casual play.
+Stall score combines preference match, price, expected wait, quality, novelty, walking distance, and a bounded fit for an optional fictional nutrition intent. Nutrition intent is independent of persona and demographics and never changes satisfaction, price, quality, preparation time, cash, experience, or reputation. Seat score combines path distance, group capacity, comfort preference, cleanliness, and congestion. Player-facing reason chips expose the strongest positive and negative terms; exact hidden arithmetic is not required for casual play.
 
 ## Queues, service, and seating
 
@@ -56,6 +56,8 @@ Stall score combines preference match, price, expected wait, quality, novelty, a
 
 Satisfaction is a bounded weighted score from value, wait, food quality, walking burden, comfort, cleanliness, and ambience. A departure records a primary reason such as served, queue too long, unaffordable, no reachable seat, stall unavailable, path blocked, or centre closed. The HUD summarizes these reasons and offers corrective hints.
 
+Nutrition is reported in a parallel daily Pulse. It tracks profiled servings, fictional request outcomes, and nutrient averages with separate known-value denominators. It has no composite health grade. Daily guidance is contextual only; matching uses relative comparisons among reviewed in-game servings.
+
 Critical information always has text or icon/shape feedback. Customer bubbles are persistent status summaries, and the Settings icon guide provides a text equivalent.
 
 ## Progression and failure policy
@@ -66,7 +68,7 @@ The player cannot enter a hard fail state: starter essentials are protected from
 
 ## Tutorial
 
-The first-session tutorial teaches camera, place a table and seats, place a stall, inspect reachability, open, follow one customer, read one bottleneck, save, and reopen build mode. Each step has Skip and Replay. Tutorial state is persisted separately from core progression.
+The first-session tutorial teaches camera, place a table and seats, place a stall, inspect reachability, open, follow one customer, read one bottleneck, save, and reopen build mode. A separately persisted nutrition tour teaches Menu Planning and customer inspection without replaying the legacy tutorial. Each tour has Skip and Replay.
 
 ## Difficulty and quality modes
 

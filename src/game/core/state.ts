@@ -5,6 +5,11 @@ import { validateConfiguredQueuePath } from "./queueing";
 import { hashSeed } from "./rng";
 import { compareIds } from "./ordering";
 import { createDailyObjectives } from "./progression";
+import {
+  cloneNutritionMetrics,
+  cloneNutritionProfile,
+  createEmptyNutritionMetrics,
+} from "./nutrition";
 import type {
   Customer,
   GameSnapshot,
@@ -79,6 +84,7 @@ const EMPTY_METRICS: SimulationMetrics = {
   recoveredTargets: 0,
   trayReturns: 0,
   visitRatings: [],
+  nutrition: createEmptyNutritionMetrics(),
 };
 
 function initialAccessPoints(options: NewGameOptions): readonly AccessPoint[] {
@@ -187,7 +193,7 @@ export function createNewGame(options: NewGameOptions): GameState {
 
   const initialLevel = 1;
   const state: GameState = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     map: cloneMap(options.map),
     accessPoints,
     routeGuidePoints,
@@ -234,7 +240,7 @@ export function createNewGame(options: NewGameOptions): GameState {
     elapsedMs: 0,
     arrivalPerformancePressure: 0,
     undoStack: [],
-    metrics: { ...EMPTY_METRICS },
+    metrics: { ...EMPTY_METRICS, nutrition: createEmptyNutritionMetrics() },
     events: [],
   };
   return {
@@ -264,6 +270,7 @@ export function cloneCustomer(customer: Customer): Customer {
     ...customer,
     position: { ...customer.position },
     path: customer.path.map((point) => ({ ...point })),
+    orderedNutritionProfile: cloneNutritionProfile(customer.orderedNutritionProfile),
   };
 }
 
@@ -285,7 +292,7 @@ export function createSnapshot(state: GameState): GameSnapshot {
   const objects = Object.values(state.objects).map(clonePlacedObject).sort((a, b) => compareIds(a.id, b.id));
   const customers = Object.values(state.customers).map(cloneCustomer).sort((a, b) => compareIds(a.id, b.id));
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     tick: state.tick,
     elapsedMs: state.elapsedMs,
     map: cloneMap(state.map),
@@ -306,7 +313,14 @@ export function createSnapshot(state: GameState): GameSnapshot {
       claimedMilestoneIds: [...state.progression.claimedMilestoneIds],
       stallMastery: Object.fromEntries(Object.entries(state.progression.stallMastery).map(([id, mastery]) => [id, { ...mastery }])),
     },
-    metrics: { ...state.metrics, visitRatings: state.metrics.visitRatings.map((rating) => ({ ...rating, components: { ...rating.components } })) },
+    metrics: {
+      ...state.metrics,
+      visitRatings: state.metrics.visitRatings.map((rating) => ({
+        ...rating,
+        components: { ...rating.components },
+      })),
+      nutrition: cloneNutritionMetrics(state.metrics.nutrition),
+    },
     canUndo: state.undoStack.length > 0,
     events: state.events.map((event) => ({ ...event })),
   };

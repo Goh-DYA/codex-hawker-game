@@ -248,6 +248,137 @@ export interface EconomyDefinition {
   readonly levelXpThresholds: readonly number[];
 }
 
+export type NutritionMetric =
+  | "energyKcal"
+  | "proteinG"
+  | "totalFatG"
+  | "saturatedFatG"
+  | "transFatG"
+  | "carbohydrateG"
+  | "totalSugarG"
+  | "dietaryFibreG"
+  | "sodiumMg"
+  | "calciumMg"
+  | "ironMg"
+  | "waterG";
+
+export type NutritionUnavailableReason =
+  | "not-reported"
+  | "invalid-source"
+  | "unmapped";
+
+export type NutritionValue =
+  | { readonly status: "known"; readonly value: number }
+  | { readonly status: "trace" }
+  | {
+      readonly status: "unavailable";
+      readonly reason: NutritionUnavailableReason;
+    };
+
+export type NutritionNutrients = Readonly<
+  Record<NutritionMetric, NutritionValue>
+>;
+
+export type NutritionProfileStatus =
+  | "released"
+  | "unavailable"
+  | "quarantined";
+
+export type NutritionClass = "meal" | "drink";
+
+export type NutritionIntentId =
+  | "lighter-energy"
+  | "protein-forward"
+  | "fibre-forward"
+  | "sodium-aware"
+  | "lower-total-sugar-drink";
+
+export interface NutritionServing {
+  readonly amount: number;
+  readonly unit: "g" | "ml";
+  readonly label: string;
+}
+
+export interface NutritionProvenance {
+  readonly snapshotId: string;
+  readonly sourceFile: string;
+  readonly sourceFileSha256: string;
+  readonly sourceRowNumber: number;
+  readonly sourceFoodName: string;
+  readonly sourceRowSha256: string;
+  readonly sourceDataType: string;
+  readonly mappingKind: "exact" | "curated-synonym" | "scaled-exact";
+  readonly multiplier: number;
+  readonly reviewNote: string;
+}
+
+export interface NutritionProfile {
+  readonly id: string;
+  readonly dishId: ContentId;
+  readonly variantId?: string;
+  readonly status: NutritionProfileStatus;
+  readonly nutritionClass: NutritionClass;
+  readonly serving?: NutritionServing;
+  readonly nutrients: NutritionNutrients;
+  readonly intentFits: Readonly<Partial<Record<NutritionIntentId, number>>>;
+  readonly provenance?: NutritionProvenance;
+  readonly unavailableReason?: NutritionUnavailableReason;
+  readonly reviewNote: string;
+  readonly quarantineReasons?: readonly string[];
+}
+
+export interface NutritionVariant {
+  readonly id: string;
+  readonly name: string;
+  readonly profileId: string;
+  readonly unlockRank: 1 | 2 | 4 | 7;
+  readonly visualKey: string;
+}
+
+export interface NutritionVariantFamily {
+  readonly dishId: ContentId;
+  readonly defaultVariantId: string;
+  readonly variants: readonly NutritionVariant[];
+}
+
+export interface NutritionIntentDefinition {
+  readonly id: NutritionIntentId;
+  readonly name: string;
+  readonly description: string;
+  readonly metric: NutritionMetric;
+  readonly direction: "lower" | "higher";
+  readonly nutritionClass: NutritionClass;
+}
+
+export interface NutritionSourceSnapshot {
+  readonly id: string;
+  readonly fileName: string;
+  readonly sha256: string;
+  readonly rowCount: number;
+}
+
+export interface NutritionGuideline {
+  readonly id: string;
+  readonly nutrient: string;
+  readonly lowerLimit: string;
+  readonly upperLimit: string;
+  readonly remarks: string;
+  readonly source: string;
+  readonly comparison: "context-only" | "not-comparable";
+  readonly notComparableReason?: string;
+}
+
+export interface NutritionContent {
+  readonly schemaVersion: 1;
+  readonly dataVersion: string;
+  readonly sourceSnapshots: readonly NutritionSourceSnapshot[];
+  readonly profiles: readonly NutritionProfile[];
+  readonly variantFamilies: readonly NutritionVariantFamily[];
+  readonly intents: readonly NutritionIntentDefinition[];
+  readonly guidelines: readonly NutritionGuideline[];
+  readonly disclosure: string;
+}
+
 export interface LaunchContent {
   readonly version: string;
   readonly economy: EconomyDefinition;
@@ -255,6 +386,7 @@ export interface LaunchContent {
   readonly dishes: readonly DishDefinition[];
   readonly placeables: readonly PlaceableDefinition[];
   readonly customerArchetypes: readonly CustomerArchetypeDefinition[];
+  readonly nutrition: NutritionContent;
   readonly localization: Readonly<Record<string, string>>;
 }
 

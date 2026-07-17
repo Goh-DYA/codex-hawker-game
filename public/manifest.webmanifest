@@ -1,7 +1,7 @@
 {
-  "name": "Hawker Simulator",
-  "short_name": "Hawker Sim",
-  "description": "Build a welcoming Singapore-inspired hawker centre and watch it come alive.",
+  "name": "Hawker Balance",
+  "short_name": "Hawker Balance",
+  "description": "Run a Singapore-inspired hawker centre while comparing menu and nutrition trade-offs.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

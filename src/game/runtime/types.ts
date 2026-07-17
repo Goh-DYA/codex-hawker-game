@@ -1,4 +1,13 @@
-import type { AccessPoint, GridPoint, QueueDirection, VisitRatingComponents } from "@/src/game/core";
+import type {
+  AccessPoint,
+  GridPoint,
+  NutritionIntent,
+  NutritionProfileStatus,
+  NutritionRequestResult,
+  NutritionValue,
+  QueueDirection,
+  VisitRatingComponents,
+} from "@/src/game/core";
 import type { SatisfactionTip } from "./satisfactionInsight";
 import type { QueueFlowState } from "./queueInsight";
 
@@ -15,6 +24,71 @@ export interface RuntimeObjective {
   readonly rewardCash: number;
   readonly rewardXp: number;
   readonly completed: boolean;
+}
+
+export interface RuntimeNutritionProfileSummary {
+  readonly status: NutritionProfileStatus;
+  readonly servingLabel?: string;
+  readonly energyKcal?: NutritionValue;
+  readonly proteinG?: NutritionValue;
+  readonly dietaryFibreG?: NutritionValue;
+  readonly sodiumMg?: NutritionValue;
+  readonly totalSugarG?: NutritionValue;
+  readonly intentFits?: Partial<Readonly<Record<NutritionIntent, number>>>;
+}
+
+export interface RuntimeNutritionVariantSummary {
+  readonly id: string;
+  readonly label: string;
+  readonly unlockRank: number;
+  readonly profileId: string;
+  readonly visualKey: string;
+  readonly unlocked: boolean;
+  readonly selected: boolean;
+  readonly profile?: RuntimeNutritionProfileSummary;
+}
+
+export interface RuntimeNutritionFamilySummary {
+  readonly dishId: string;
+  readonly defaultVariantId: string;
+  readonly activeVariantId: string;
+  readonly variants: readonly RuntimeNutritionVariantSummary[];
+}
+
+export interface RuntimeNutritionPulse {
+  readonly servedMeals: number;
+  readonly profiledMeals: number;
+  readonly intentRequests: number;
+  readonly intentMatches: number;
+  readonly intentMisses: number;
+  readonly intentUnknowns: number;
+  readonly averages: Readonly<{
+    energyKcal?: number;
+    proteinG?: number;
+    dietaryFibreG?: number;
+    sodiumMg?: number;
+  }>;
+  readonly knownCounts: Readonly<{
+    energyKcal: number;
+    proteinG: number;
+    dietaryFibreG: number;
+    sodiumMg: number;
+  }>;
+  readonly mostServedDishId?: string;
+  readonly leadingUnmetIntent?: NutritionIntent;
+}
+
+export interface RuntimeCustomerNutritionSummary {
+  readonly customerId: string;
+  readonly archetypeId: string;
+  readonly status: string;
+  /** At most two neutral, evidence-based factors from the selected dish. */
+  readonly decisionReasons: readonly string[];
+  readonly intentId?: NutritionIntent;
+  readonly dishId?: string;
+  readonly variantId?: string;
+  readonly requestResult?: NutritionRequestResult;
+  readonly profile?: RuntimeNutritionProfileSummary;
 }
 
 export interface RuntimeStallMastery {
@@ -74,6 +148,11 @@ export interface RuntimeSnapshot {
   selectedObjectDefinitionId?: string;
   unlockedContentIds: readonly string[];
   stallMenus: Readonly<Record<string, readonly string[]>>;
+  activeDishVariants: Readonly<Record<string, string>>;
+  nutritionFamilies: readonly RuntimeNutritionFamilySummary[];
+  nutritionPulse: RuntimeNutritionPulse;
+  selectedCustomerId?: string;
+  selectedCustomerNutrition?: RuntimeCustomerNutritionSummary;
   placedStalls: readonly RuntimeStallSummary[];
   canUndo: boolean;
   objectiveProgress: number;
@@ -137,6 +216,8 @@ export interface RuntimeController {
   setQueueDirection(objectId: string, direction: QueueDirection): boolean;
   finishQueueEdit(): void;
   setDishEnabled(stallId: string, dishId: string, enabled: boolean): boolean;
+  setDishVariant(dishId: string, variantId: string): boolean;
+  selectCustomer(customerId?: string): void;
   addAccessPoint(kind: AccessPoint["kind"]): void;
   selectAccessPoint(accessPointId?: string): void;
   removeSelectedAccessPoint(): boolean;

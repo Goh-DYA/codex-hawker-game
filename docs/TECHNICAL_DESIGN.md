@@ -21,7 +21,7 @@ React owns semantic UI, routing, settings, modals, focus, announcements, and the
 
 ## Domain layout
 
-- src/content: schemas, launch definitions, localization, reference validation.
+- src/content: schemas, launch definitions, localization, deterministic nutrition snapshot, and reference validation.
 - src/game/world and building: coordinates, footprints, placement commands, undo.
 - src/game/navigation: walkability grid, A-star, path invalidation and cache.
 - src/game/customers, queues, seating, stalls: explicit state machines and reservations.
@@ -47,6 +47,7 @@ Persistent state:
 - Player: cash, experience, reputation, level, settings-safe preferences.
 - Map: unlocked cells and placed object instances with stable instance IDs.
 - Progression: unlocks, objectives, tutorial state, stall upgrades, active menus.
+- Nutrition: active reviewed variants plus aggregate and bounded recent-serving metrics; order-time profiles are snapshotted for historical stability.
 
 Runtime-only state:
 
@@ -56,7 +57,7 @@ Commands validate before mutation and commit all related changes atomically. Eve
 
 ## Content contracts
 
-Content definitions include stable IDs, localization keys, footprints, rotations, interaction points, depth anchors, visual/audio references, economy values, and unlock requirements. Development startup and tests perform Zod parsing, cross-reference checks, uniqueness checks, reachability assumptions, localization completeness, and exact launch counts. A malformed production definition fails to a readable safe screen, never a partially loaded simulation.
+Content definitions include stable IDs, localization keys, footprints, rotations, interaction points, depth anchors, visual/audio references, economy values, unlock requirements, and explicit nutrition profile/variant status. Nutrition source rows are joined only by authored exact mappings during a deterministic build-time import; raw CSV parsing and fuzzy matching never run in the browser. Development startup and tests perform Zod parsing, cross-reference checks, uniqueness checks, nutrition plausibility checks, localization completeness, and exact launch counts. A malformed production definition fails to a readable safe screen, never a partially loaded simulation.
 
 ## Persistence
 

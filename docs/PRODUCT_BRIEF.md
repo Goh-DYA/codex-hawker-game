@@ -1,4 +1,4 @@
-# Hawker Simulator — Product Brief
+# Hawker Balance — Product Brief
 
 Status: Release-candidate product baseline
 Last updated: 2026-07-12
@@ -6,7 +6,7 @@ Release readiness: NO-GO pending real-browser/offline QA and required human revi
 
 ## Product statement
 
-Hawker Simulator is an original, welcoming, single-player management game about arranging and operating a fictional Singapore-inspired hawker centre. Players build on a square grid, choose stalls and menus, observe customers move through a readable queue–order–seat–eat–return-tray lifecycle, and improve layout, service, cleanliness, variety, and ambience.
+Hawker Balance is an original, welcoming, single-player management and nutrition-education game about arranging and operating a fictional Singapore-inspired hawker centre. Players build on a square grid, choose stalls, menus, and reviewed recipe variants, observe customers move through a readable queue–order–seat–eat–return-tray lifecycle, and improve service while learning to compare nutrient trade-offs.
 
 The game is for casual and simulation players aged 13+, launches free, requires no account, and keeps its core loop playable offline after the first successful load. There are no purchases, advertisements, loot boxes, energy systems, real-time waits, or pay-to-win systems in the launch scope.
 
@@ -18,6 +18,7 @@ The game is for casual and simulation players aged 13+, launches free, requires 
 4. Low-friction play: undo, recoverable economy, short feedback loops, and no irreversible traps.
 5. Living atmosphere: purposeful movement, queues, eating, reactions, light motion, and restrained audio.
 6. Respectful specificity: recognizable communal dining and food practices without copying real businesses or flattening cultures.
+7. Practical nutrition literacy: compare listed servings and respond to fictional visit intents without health grades, demographic assumptions, or medical advice.
 
 ## Launch scope
 
@@ -26,6 +27,7 @@ The game is for casual and simulation players aged 13+, launches free, requires 
 - One coherent map theme, orthographic top-down square-grid construction, pan, and zoom.
 - Place, move, rotate, store, sell, remove, and undo placeable objects and stalls.
 - Twelve fictional stalls, 46 playable dishes, 80 meaningfully distinct placeables, and twelve behavior archetypes.
+- Explicit nutrition-data status for all 46 dishes, 28 reviewed base profiles, and ten reviewed recipe-variant families.
 - Customer spawning, choice, pathfinding, queueing, ordering, preparation abstraction, seat reservation, eating, reactions, tray return where applicable, and departure.
 - Cash, experience, reputation, unlocks, upgrades, objectives, and map expansion.
 - Tutorial, settings, accessibility options, audio controls, local saves, and offline application shell.
@@ -35,7 +37,7 @@ Content-counting rule: a catalogue entry counts only when it has a unique ID and
 
 ## Explicit non-goals for 1.0
 
-Accounts, cloud saves, multiplayer, chat, leaderboards, social visits, user-generated content, live events, analytics, payments, advertising, multiple themes, narrative campaign, detailed ingredients, staff scheduling, supply chains, mobile-first redesign, and voice acting.
+Accounts, cloud saves, multiplayer, chat, leaderboards, social visits, user-generated content, live events, analytics, payments, advertising, multiple themes, narrative campaign, medical or personalized dietary advice, ingredient-safety certification, staff scheduling, supply chains, and voice acting.
 
 ## Success and release gates
 

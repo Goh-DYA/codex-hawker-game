@@ -60,8 +60,8 @@ assert.equal(
 );
 
 const html = await rootResponse.text();
-assert.match(html, /<title>Hawker Simulator/);
-assert.match(html, /Build a place everyone can share/);
+assert.match(html, /<title>Hawker Balance/);
+assert.match(html, /Run the centre\. Read the plate\./);
 assert.match(html, /data-testid="game-world"/);
 assert.match(html, /manifest\.webmanifest/);
 
@@ -76,7 +76,7 @@ for (const match of html.matchAll(/https?:\/\/[^"'<>\s]+/g)) {
 
 const manifestResponse = await request("/manifest.webmanifest");
 const manifest = await manifestResponse.json();
-assert.equal(manifest.name, "Hawker Simulator");
+assert.equal(manifest.name, "Hawker Balance");
 assert.equal(manifest.start_url, "/");
 assert.equal(manifest.display, "standalone");
 

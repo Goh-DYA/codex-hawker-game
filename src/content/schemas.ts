@@ -278,6 +278,150 @@ export const economySchema = z.object({
   levelXpThresholds: z.array(z.number().int().nonnegative()).min(2),
 });
 
+export const nutritionMetricSchema = z.enum([
+  "energyKcal",
+  "proteinG",
+  "totalFatG",
+  "saturatedFatG",
+  "transFatG",
+  "carbohydrateG",
+  "totalSugarG",
+  "dietaryFibreG",
+  "sodiumMg",
+  "calciumMg",
+  "ironMg",
+  "waterG",
+]);
+
+export const nutritionIntentIdSchema = z.enum([
+  "lighter-energy",
+  "protein-forward",
+  "fibre-forward",
+  "sodium-aware",
+  "lower-total-sugar-drink",
+]);
+
+export const nutritionValueSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("known"), value: z.number().finite().nonnegative() }),
+  z.object({ status: z.literal("trace") }),
+  z.object({
+    status: z.literal("unavailable"),
+    reason: z.enum(["not-reported", "invalid-source", "unmapped"]),
+  }),
+]);
+
+export const nutritionNutrientsSchema = z.object({
+  energyKcal: nutritionValueSchema,
+  proteinG: nutritionValueSchema,
+  totalFatG: nutritionValueSchema,
+  saturatedFatG: nutritionValueSchema,
+  transFatG: nutritionValueSchema,
+  carbohydrateG: nutritionValueSchema,
+  totalSugarG: nutritionValueSchema,
+  dietaryFibreG: nutritionValueSchema,
+  sodiumMg: nutritionValueSchema,
+  calciumMg: nutritionValueSchema,
+  ironMg: nutritionValueSchema,
+  waterG: nutritionValueSchema,
+});
+
+export const nutritionServingSchema = z.object({
+  amount: z.number().finite().positive(),
+  unit: z.enum(["g", "ml"]),
+  label: z.string().min(2),
+});
+
+export const nutritionProvenanceSchema = z.object({
+  snapshotId: z.string().min(3),
+  sourceFile: z.string().min(3).refine(
+    (fileName) => !/[\\/]/.test(fileName),
+    "Source provenance must store a file name, not a path.",
+  ),
+  sourceFileSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  sourceRowNumber: z.number().int().min(2),
+  sourceFoodName: z.string().min(2),
+  sourceRowSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  sourceDataType: z.string().min(1),
+  mappingKind: z.enum(["exact", "curated-synonym", "scaled-exact"]),
+  multiplier: z.number().positive(),
+  reviewNote: z.string().min(8),
+});
+
+export const nutritionProfileSchema = z.object({
+  id: z.string().min(3),
+  dishId: contentIdSchema.refine((id) => id.startsWith("dish.")),
+  variantId: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+  status: z.enum(["released", "unavailable", "quarantined"]),
+  nutritionClass: z.enum(["meal", "drink"]),
+  serving: nutritionServingSchema.optional(),
+  nutrients: nutritionNutrientsSchema,
+  intentFits: z.partialRecord(
+    nutritionIntentIdSchema,
+    z.number().min(0).max(1),
+  ),
+  provenance: nutritionProvenanceSchema.optional(),
+  unavailableReason: z
+    .enum(["not-reported", "invalid-source", "unmapped"])
+    .optional(),
+  reviewNote: z.string().min(8),
+  quarantineReasons: z.array(z.string().min(8)).min(1).optional(),
+});
+
+export const nutritionVariantSchema = z.object({
+  id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  name: z.string().min(2),
+  profileId: z.string().min(3),
+  unlockRank: z.union([z.literal(1), z.literal(2), z.literal(4), z.literal(7)]),
+  visualKey: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+});
+
+export const nutritionVariantFamilySchema = z.object({
+  dishId: contentIdSchema.refine((id) => id.startsWith("dish.")),
+  defaultVariantId: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  variants: z.array(nutritionVariantSchema).min(2),
+});
+
+export const nutritionIntentSchema = z.object({
+  id: nutritionIntentIdSchema,
+  name: z.string().min(3),
+  description: z.string().min(16),
+  metric: nutritionMetricSchema,
+  direction: z.enum(["lower", "higher"]),
+  nutritionClass: z.enum(["meal", "drink"]),
+});
+
+export const nutritionSourceSnapshotSchema = z.object({
+  id: z.string().min(3),
+  fileName: z.string().min(3).refine(
+    (fileName) => !/[\\/]/.test(fileName),
+    "Source snapshots must store a file name, not a path.",
+  ),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  rowCount: z.number().int().positive(),
+});
+
+export const nutritionGuidelineSchema = z.object({
+  id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  nutrient: z.string().min(2),
+  lowerLimit: z.string().min(1),
+  upperLimit: z.string().min(1),
+  remarks: z.string().min(8),
+  source: z.string().min(2),
+  comparison: z.enum(["context-only", "not-comparable"]),
+  notComparableReason: z.string().min(8).optional(),
+});
+
+export const nutritionContentSchema = z.object({
+  schemaVersion: z.literal(1),
+  dataVersion: z.string().regex(/^sg-[a-f0-9]{12}-[a-f0-9]{12}$/),
+  sourceSnapshots: z.array(nutritionSourceSnapshotSchema).length(2),
+  profiles: z.array(nutritionProfileSchema).min(46),
+  variantFamilies: z.array(nutritionVariantFamilySchema).length(10),
+  intents: z.array(nutritionIntentSchema).length(5),
+  guidelines: z.array(nutritionGuidelineSchema).length(11),
+  disclosure: z.string().min(100),
+});
+
 export const launchContentSchema = z.object({
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   economy: economySchema,
@@ -285,5 +429,6 @@ export const launchContentSchema = z.object({
   dishes: z.array(dishSchema),
   placeables: z.array(placeableSchema),
   customerArchetypes: z.array(customerArchetypeSchema),
+  nutrition: nutritionContentSchema,
   localization: z.record(z.string(), z.string().min(1)),
 });

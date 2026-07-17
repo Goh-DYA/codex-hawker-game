@@ -1,0 +1,6535 @@
+{
+  "schemaVersion": 1,
+  "dataVersion": "sg-1bc212db6eda-c87987b4281c",
+  "sourceSnapshots": [
+    {
+      "id": "food-1bc212db6eda",
+      "fileName": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+      "sha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+      "rowCount": 2689
+    },
+    {
+      "id": "guidelines-c87987b4281c",
+      "fileName": "daily_nutrition_sgadults.csv",
+      "sha256": "c87987b4281c8557f75b61fefa96d95d13e9ff60c2c41e38fe4a428219064ab4",
+      "rowCount": 11
+    }
+  ],
+  "profiles": [
+    {
+      "id": "dish.poached-chicken-rice",
+      "dishId": "dish.poached-chicken-rice",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 346,
+        "unit": "g",
+        "label": "1 plate(s) = 346g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 488
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 19.22
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 11.63
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 4.33
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 75.74
+        },
+        "totalSugarG": {
+          "status": "trace"
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 5.07
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1227
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 16
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 209.94
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.5106,
+        "protein-forward": 0.4255,
+        "fibre-forward": 0.3182,
+        "sodium-aware": 0.617
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1564,
+        "sourceFoodName": "Steamed chicken rice",
+        "sourceRowSha256": "946975a31eb2e006423b3d7dde4fe6d1446208863fdd9a23407a96cc282c12bb",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The reviewed steamed-chicken serving is the closest source match for the game's poached chicken rice."
+      },
+      "reviewNote": "The reviewed steamed-chicken serving is the closest source match for the game's poached chicken rice."
+    },
+    {
+      "id": "dish.roast-chicken-rice",
+      "dishId": "dish.roast-chicken-rice",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 363,
+        "unit": "g",
+        "label": "1 plate(s) = 363g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 643
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 29.67
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 20.94
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 6.97
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.04
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 84.11
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 0.72
+        },
+        "dietaryFibreG": {
+          "status": "trace"
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1061
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 32
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 222.56
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.383,
+        "protein-forward": 0.7447,
+        "sodium-aware": 0.6809
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1543,
+        "sourceFoodName": "Roasted chicken rice",
+        "sourceRowSha256": "0c32717814471dcc0b8a61751b0cdb252a397c20753c2e41eebb5721dc42a7b7",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The source uses roasted rather than roast in the food name."
+      },
+      "reviewNote": "The source uses roasted rather than roast in the food name."
+    },
+    {
+      "id": "dish.soya-tofu-rice",
+      "dishId": "dish.soya-tofu-rice",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No source row represents the game's complete soya-tofu rice serving."
+    },
+    {
+      "id": "dish.chicken-congee",
+      "dishId": "dish.chicken-congee",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 556,
+        "unit": "g",
+        "label": "1 bowl(s) = 556g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 311
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 15.57
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 10.29
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 3.45
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 38.92
+        },
+        "totalSugarG": {
+          "status": "trace"
+        },
+        "dietaryFibreG": {
+          "status": "trace"
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1434
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 22
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 486.22
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.8298,
+        "protein-forward": 0.3404,
+        "sodium-aware": 0.4894
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1452,
+        "sourceFoodName": "Chicken porridge",
+        "sourceRowSha256": "23aef248889f38247499da6cab922e3af672af297bc588abceb5baf89ea80fb1",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "Singapore source terminology uses porridge for the game's chicken congee."
+      },
+      "reviewNote": "Singapore source terminology uses porridge for the game's chicken congee."
+    },
+    {
+      "id": "dish.nasi-lemak",
+      "dishId": "dish.nasi-lemak",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 410,
+        "unit": "g",
+        "label": "1 plate(s) = 410g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 831
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 36.5
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 37.38
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 13.22
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.08
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 87.02
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 7.85
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 7.51
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1581
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 152
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.86
+        },
+        "waterG": {
+          "status": "known",
+          "value": 213.94
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.234,
+        "protein-forward": 0.7872,
+        "fibre-forward": 0.5682,
+        "sodium-aware": 0.4255
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1518,
+        "sourceFoodName": "Nasi lemak (chicken wing set)",
+        "sourceRowSha256": "b9613670513943cc8bec1caf2cc51c76c3949bd375b389eb1d2da2dfe585921e",
+        "sourceDataType": "Derived",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The chicken-wing set matches the default plated game recipe."
+      },
+      "reviewNote": "The chicken-wing set matches the default plated game recipe.",
+      "variantId": "nasi-lemak-chicken-wing"
+    },
+    {
+      "id": "dish.mee-rebus",
+      "dishId": "dish.mee-rebus",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 619,
+        "unit": "g",
+        "label": "1 plate(s) = 619g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 729
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 26.27
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 25.34
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 7.23
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.19
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 99.19
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 2.16
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 15.94
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2466
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 229
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 3.28
+        },
+        "waterG": {
+          "status": "known",
+          "value": 460.73
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.2766,
+        "protein-forward": 0.6809,
+        "fibre-forward": 1,
+        "sodium-aware": 0.1064
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1329,
+        "sourceFoodName": "Mee rebus",
+        "sourceRowSha256": "855d4443a36d7aacbafc7847ed2912385ea3bc904cddfa05e85561a24a310a6d",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match."
+    },
+    {
+      "id": "dish.soto-ayam",
+      "dishId": "dish.soto-ayam",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 569,
+        "unit": "g",
+        "label": "1 bowl(s) = 569g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 216
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 19.35
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 7.97
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 2.85
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 17.64
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 6.26
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 7.97
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2418
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 63
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 4.55
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.9362,
+        "protein-forward": 0.4468,
+        "fibre-forward": 0.6136,
+        "sodium-aware": 0.1702
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1366,
+        "sourceFoodName": "Soto ayam",
+        "sourceRowSha256": "3b70e229f82a1c5a7886a4c30efe304fc24bdf151faa27e98efbd70753fb2159",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match."
+    },
+    {
+      "id": "dish.lontong-sayur",
+      "dishId": "dish.lontong-sayur",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's full lontong sayur composition."
+    },
+    {
+      "id": "dish.kopi",
+      "dishId": "dish.kopi",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 193
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 1.63
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 5.45
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 2.7
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 34.33
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 19.05
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 45
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.83
+        },
+        "waterG": {
+          "status": "known",
+          "value": 220.17
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.2308
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 467,
+        "sourceFoodName": "Kopi",
+        "sourceRowSha256": "40e215eb0701ab2cfd7f0e8220fdb209b2dc282e78a037ea1be90014e242f214",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact hot kopi serving match."
+      },
+      "reviewNote": "Exact hot kopi serving match.",
+      "variantId": "kopi-default"
+    },
+    {
+      "id": "dish.sugarcane-juice",
+      "dishId": "dish.sugarcane-juice",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 550,
+        "unit": "ml",
+        "label": "1 medium cup(s) = 550ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 303
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 1.27
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 73.7
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 73.48
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 28
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.83
+        },
+        "waterG": {
+          "status": "known",
+          "value": 491.59
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 54,
+        "sourceFoodName": "Fresh sugarcane juice",
+        "sourceRowSha256": "0373df6d07c2f6c92ac4356af3eabb7b1a503e6a81c151dfb08e647013f55474",
+        "sourceDataType": "Derived",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The source adds the preparation descriptor fresh."
+      },
+      "reviewNote": "The source adds the preparation descriptor fresh."
+    },
+    {
+      "id": "dish.ice-kacang",
+      "dishId": "dish.ice-kacang",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 425,
+        "unit": "g",
+        "label": "1 bowl(s) = 425g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 268
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 5.1
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 1.28
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0.51
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 59.93
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 40.38
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 11.05
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 115
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 51
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.13
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.8936,
+        "protein-forward": 0.0319,
+        "fibre-forward": 0.8409,
+        "sodium-aware": 0.9787
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 709,
+        "sourceFoodName": "Ice kacang",
+        "sourceRowSha256": "bdfb61c96f4c26dc1122912f21bbe19638215ecf5c76388344a2e441b68e337d",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dessert match."
+      },
+      "reviewNote": "Exact named dessert match."
+    },
+    {
+      "id": "dish.char-kway-teow",
+      "dishId": "dish.char-kway-teow",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 480,
+        "unit": "g",
+        "label": "1 plate(s) = 480g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 989
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 25.73
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 42.72
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 14.16
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.05
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 125.04
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 11.28
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 5.52
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2107
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 154
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 4.51
+        },
+        "waterG": {
+          "status": "known",
+          "value": 280.08
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.1064,
+        "protein-forward": 0.6596,
+        "fibre-forward": 0.3409,
+        "sodium-aware": 0.2553
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1265,
+        "sourceFoodName": "Char kway teow",
+        "sourceRowSha256": "b1581b6a8c9f4206997720d487f4e8e9fc5af92dc3feb76c4239ceeb58cde7d8",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match."
+    },
+    {
+      "id": "dish.hokkien-prawn-mee",
+      "dishId": "dish.hokkien-prawn-mee",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's Hokkien prawn mee serving."
+    },
+    {
+      "id": "dish.fried-carrot-cake",
+      "dishId": "dish.fried-carrot-cake",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 321,
+        "unit": "g",
+        "label": "1 plate(s) = 321g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 478
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 11.17
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 23.11
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 7.29
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.06
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 56.18
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 0.64
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 7
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1573
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 51
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.02
+        },
+        "waterG": {
+          "status": "known",
+          "value": 222.93
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.5319,
+        "protein-forward": 0.1702,
+        "fibre-forward": 0.5227,
+        "sodium-aware": 0.4468
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1487,
+        "sourceFoodName": "Fried carrot cake (white)",
+        "sourceRowSha256": "b852c5c87e0615d20e6334643495acadee713bcc526b576a78a28009e38427e8",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "White carrot cake is the game's default recipe; black is available as a reviewed variant."
+      },
+      "reviewNote": "White carrot cake is the game's default recipe; black is available as a reviewed variant.",
+      "variantId": "carrot-cake-white"
+    },
+    {
+      "id": "dish.oyster-omelette",
+      "dishId": "dish.oyster-omelette",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 100,
+        "unit": "g",
+        "label": "1 scoop(s) (serving spoon) = 100g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 255
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 7.1
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 19.5
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 7.9
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 12.8
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "dietaryFibreG": {
+          "status": "trace"
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 295
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 33
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.4
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.9149,
+        "protein-forward": 0.1064,
+        "sodium-aware": 0.9149
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 648,
+        "sourceFoodName": "Oyster omelette",
+        "sourceRowSha256": "2c7634223fb4e61a8c958052736d50ee3136b1abe78c204e8e0aba276eed5813",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match."
+    },
+    {
+      "id": "dish.roti-prata",
+      "dishId": "dish.roti-prata",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 535,
+        "unit": "g",
+        "label": "1 set(s) = 535g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 1241
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 31.03
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 48.9
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 20.17
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.7
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 169.54
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 11.02
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 12.79
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 3381
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 134
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 5.4
+        },
+        "waterG": {
+          "status": "known",
+          "value": 275.79
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.0213,
+        "protein-forward": 0.766,
+        "fibre-forward": 0.8636,
+        "sodium-aware": 0.0213
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1118,
+        "sourceFoodName": "Plain prata (2 pc, with curry)",
+        "sourceRowSha256": "f6e609687141598f2cb29c617f7cd209595910b5b77a3a6c6019f52684c9e3a8",
+        "sourceDataType": "Derived",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The source serving matches the game's two-piece prata plate with curry."
+      },
+      "reviewNote": "The source serving matches the game's two-piece prata plate with curry.",
+      "variantId": "prata-two-plain-curry"
+    },
+    {
+      "id": "dish.mee-goreng-mamak",
+      "dishId": "dish.mee-goreng-mamak",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 465,
+        "unit": "g",
+        "label": "1 plate(s) = 465g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 856
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 26.46
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 33.95
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 12.46
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.14
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 111.37
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 6.98
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 15.67
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 3050
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 126
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 5.25
+        },
+        "waterG": {
+          "status": "known",
+          "value": 284.35
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.1702,
+        "protein-forward": 0.7021,
+        "fibre-forward": 0.9773,
+        "sodium-aware": 0.0638
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1325,
+        "sourceFoodName": "Mee goreng",
+        "sourceRowSha256": "3acf59f7ee8b5c615a448e9701dc4037c5c081eb5c6cdfcfc384ad55e910e812",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The source row is the reviewed local mee goreng preparation."
+      },
+      "reviewNote": "The source row is the reviewed local mee goreng preparation."
+    },
+    {
+      "id": "dish.chicken-murtabak",
+      "dishId": "dish.chicken-murtabak",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 330,
+        "unit": "g",
+        "label": "1 plate(s) = 330g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 851
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 42.54
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 48.61
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 21.78
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 61.25
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 6.6
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 5.58
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1353
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.1915,
+        "protein-forward": 0.8936,
+        "fibre-forward": 0.3636,
+        "sodium-aware": 0.5745
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1100,
+        "sourceFoodName": "Murtabak (chicken)",
+        "sourceRowSha256": "358e531436578766b3b829bec79e54b0a01ea4cf2c0480c50e573b8229322e3b",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The source expresses the protein as a parenthetical variant."
+      },
+      "reviewNote": "The source expresses the protein as a parenthetical variant.",
+      "variantId": "murtabak-chicken"
+    },
+    {
+      "id": "dish.nasi-briyani",
+      "dishId": "dish.nasi-briyani",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 759,
+        "unit": "g",
+        "label": "1 plate(s) = 759g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 1100
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 50.62
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 48.99
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 17.39
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.78
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 112.89
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.55
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 14.7
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2783
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 170
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 4.54
+        },
+        "waterG": {
+          "status": "known",
+          "value": 487.04
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.0851,
+        "protein-forward": 0.9574,
+        "fibre-forward": 0.9318,
+        "sodium-aware": 0.0851
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1510,
+        "sourceFoodName": "Nasi briyani (chicken)",
+        "sourceRowSha256": "bf3c9fdf1830e8f78b8a8d9e3170f5336e0680ccad4210a9971ea807ad5d7b53",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "Chicken is the game's default briyani protein."
+      },
+      "reviewNote": "Chicken is the game's default briyani protein.",
+      "variantId": "briyani-chicken"
+    },
+    {
+      "id": "dish.masala-thosai",
+      "dishId": "dish.masala-thosai",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 271,
+        "unit": "g",
+        "label": "1 piece(s) = 271g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 439
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 11.76
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 15.72
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 6.15
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.11
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 62.19
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 1.22
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 8.13
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1070
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 43
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.2
+        },
+        "waterG": {
+          "status": "known",
+          "value": 175.61
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.5957,
+        "protein-forward": 0.1915,
+        "fibre-forward": 0.6364,
+        "sodium-aware": 0.6596
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1029,
+        "sourceFoodName": "Masala thosai",
+        "sourceRowSha256": "5281698ed6874d07821369565eaa3a3cc34d2691e0768eafeb5a20add4b987f4",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match.",
+      "variantId": "thosai-masala"
+    },
+    {
+      "id": "dish.idli-sambar",
+      "dishId": "dish.idli-sambar",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 269,
+        "unit": "g",
+        "label": "1 piece(s) = 269g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 347
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 14.45
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 2.56
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0.46
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 66.71
+        },
+        "totalSugarG": {
+          "status": "trace"
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 9.85
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 823
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 35
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.13
+        },
+        "waterG": {
+          "status": "known",
+          "value": 180.77
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.766,
+        "protein-forward": 0.3191,
+        "fibre-forward": 0.7955,
+        "sodium-aware": 0.7234
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1026,
+        "sourceFoodName": "Idli",
+        "sourceRowSha256": "50282172f22a82f3dc1319d3086909d09b0724a12036f71274ccc966f317df33",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The reviewed source serving description includes the accompaniments represented by the game."
+      },
+      "reviewNote": "The reviewed source serving description includes the accompaniments represented by the game."
+    },
+    {
+      "id": "dish.vadai-set",
+      "dishId": "dish.vadai-set",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "The available source serving does not represent the game's full vadai set."
+    },
+    {
+      "id": "dish.lemon-rice",
+      "dishId": "dish.lemon-rice",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed source row matches the game's lemon-rice serving and sides."
+    },
+    {
+      "id": "dish.nyonya-laksa",
+      "dishId": "dish.nyonya-laksa",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's Nyonya laksa composition."
+    },
+    {
+      "id": "dish.ayam-buah-keluak",
+      "dishId": "dish.ayam-buah-keluak",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's ayam buah keluak composition."
+    },
+    {
+      "id": "dish.chap-chye",
+      "dishId": "dish.chap-chye",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's complete chap chye serving."
+    },
+    {
+      "id": "dish.babi-pongteh",
+      "dishId": "dish.babi-pongteh",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "The source row is a 100 g component basis rather than the game's plated meal."
+    },
+    {
+      "id": "dish.sambal-stingray",
+      "dishId": "dish.sambal-stingray",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 254,
+        "unit": "g",
+        "label": "1 plate(s) = 254g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 424
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 41.78
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 20.96
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 6.81
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 17.15
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 10.54
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 6.35
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1201
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 236
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 3.66
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.617,
+        "protein-forward": 0.8723,
+        "fibre-forward": 0.4091,
+        "sodium-aware": 0.6383
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 918,
+        "sourceFoodName": "Sambal stingray",
+        "sourceRowSha256": "dfd2efb5fd4f7049c4abc39f8e388c0a70d93e793309efd9136c4e3e1e53eb02",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match."
+    },
+    {
+      "id": "dish.sliced-fish-soup",
+      "dishId": "dish.sliced-fish-soup",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 811,
+        "unit": "g",
+        "label": "1 bowl(s) = 811g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 389
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 21
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 6.65
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.78
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 78.02
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 5.11
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 6.24
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2425
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.6702,
+        "protein-forward": 0.5532,
+        "fibre-forward": 0.3864,
+        "sodium-aware": 0.1489
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1363,
+        "sourceFoodName": "Sliced fish beehoon soup (no milk)",
+        "sourceRowSha256": "fdf21ae91c778a13b55c373be8903baf578c9446161911ea76069c3b67168317",
+        "sourceDataType": "Derived",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The no-milk beehoon preparation matches the default game bowl."
+      },
+      "reviewNote": "The no-milk beehoon preparation matches the default game bowl.",
+      "variantId": "fish-soup-beehoon-no-milk"
+    },
+    {
+      "id": "dish.black-pepper-crab",
+      "dishId": "dish.black-pepper-crab",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "The available source basis represents a component portion rather than the game's shared crab platter."
+    },
+    {
+      "id": "dish.bak-chor-mee",
+      "dishId": "dish.bak-chor-mee",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 430,
+        "unit": "g",
+        "label": "1 bowl(s) = 430g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 563
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 21.67
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 15.48
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 5.29
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 83.85
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 4.3
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 10.92
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1621
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 52
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.54
+        },
+        "waterG": {
+          "status": "known",
+          "value": 303.8
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.4255,
+        "protein-forward": 0.5957,
+        "fibre-forward": 0.8182,
+        "sodium-aware": 0.4043
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1247,
+        "sourceFoodName": "Bak chor mee (dry)",
+        "sourceRowSha256": "a98d659fc64075e82b77be520b60ee3d762d0dfd396e28d2dbaef7c38462d493",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "Dry is the game's default noodle preparation."
+      },
+      "reviewNote": "Dry is the game's default noodle preparation.",
+      "variantId": "bak-chor-mee-dry"
+    },
+    {
+      "id": "dish.fishball-mee-pok",
+      "dishId": "dish.fishball-mee-pok",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 377,
+        "unit": "g",
+        "label": "1 bowl(s) = 377g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 532
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 20.4
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 15.83
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 5.35
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.08
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 76.53
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 6.03
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 8.97
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1715
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 45
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 1.55
+        },
+        "waterG": {
+          "status": "known",
+          "value": 259
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.4681,
+        "protein-forward": 0.5106,
+        "fibre-forward": 0.6818,
+        "sodium-aware": 0.3617
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1301,
+        "sourceFoodName": "Fishball noodles (dry)",
+        "sourceRowSha256": "ed1150489f8a42aed1ac794a574e8be2266e36faa526d3598b3f4af187cbbd77",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "curated-synonym",
+        "multiplier": 1,
+        "reviewNote": "The reviewed dry fishball-noodle serving matches the game's mee pok presentation."
+      },
+      "reviewNote": "The reviewed dry fishball-noodle serving matches the game's mee pok presentation."
+    },
+    {
+      "id": "dish.lor-mee",
+      "dishId": "dish.lor-mee",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 716,
+        "unit": "g",
+        "label": "1 bowl(s) = 716g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 695
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 25.13
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 18.97
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 6.87
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 105.97
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 1.43
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 13.03
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 3444
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 72
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.43
+        },
+        "waterG": {
+          "status": "known",
+          "value": 555.62
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.3191,
+        "protein-forward": 0.6383,
+        "fibre-forward": 0.8864,
+        "sodium-aware": 0
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1320,
+        "sourceFoodName": "Lor mee",
+        "sourceRowSha256": "dcc102e752dc913d075d4d557afb9f85555c02919b13eba0e80da26e05414c18",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dish match."
+      },
+      "reviewNote": "Exact named dish match."
+    },
+    {
+      "id": "dish.teochew-fish-dumpling-soup",
+      "dishId": "dish.teochew-fish-dumpling-soup",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's Teochew fish-dumpling soup bowl."
+    },
+    {
+      "id": "dish.chendol",
+      "dishId": "dish.chendol",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 423,
+        "unit": "g",
+        "label": "1 bowl(s) = 423g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 372
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 6.22
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 13.32
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 10.79
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 56.68
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 19.67
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 14.13
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 216
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 34
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.07
+        },
+        "waterG": {
+          "status": "known",
+          "value": 344.96
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.7234,
+        "protein-forward": 0.0638,
+        "fibre-forward": 0.9091,
+        "sodium-aware": 0.9362
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 704,
+        "sourceFoodName": "Chendol",
+        "sourceRowSha256": "d4249ab7690b0df5d0285fb2f9688115dd32a641be12439611b27b5231dc278d",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dessert match."
+      },
+      "reviewNote": "Exact named dessert match."
+    },
+    {
+      "id": "dish.tau-huay",
+      "dishId": "dish.tau-huay",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's tau huay serving."
+    },
+    {
+      "id": "dish.teh-tarik",
+      "dishId": "dish.teh-tarik",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 150,
+        "unit": "ml",
+        "label": "1 small cup (150ml) = 150ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 72
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 0.9
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 2.34
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0.99
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 11.82
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 9.87
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 0.54
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 32
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.6923
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 563,
+        "sourceFoodName": "Teh Tarik",
+        "sourceRowSha256": "bd7c557c7edf5823b24a22c63cf5840447a783a94966a9f5a3377ee5d7c135d0",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named drink match with source capitalization retained in provenance."
+      },
+      "reviewNote": "Exact named drink match with source capitalization retained in provenance.",
+      "variantId": "teh-tarik"
+    },
+    {
+      "id": "dish.pulut-hitam",
+      "dishId": "dish.pulut-hitam",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 425,
+        "unit": "g",
+        "label": "1 bowl(s) = 425g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 302
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 5.1
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 5.19
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 4.17
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.04
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 59.08
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 32.3
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 0.85
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 111
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 17
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.89
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.8511,
+        "protein-forward": 0.0319,
+        "fibre-forward": 0.0227,
+        "sodium-aware": 1
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 746,
+        "sourceFoodName": "Pulut hitam",
+        "sourceRowSha256": "0c5d187faad5f47d1cd0c1b320487f7aef919c4ad51eda787ff26ef95502467a",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dessert match."
+      },
+      "reviewNote": "Exact named dessert match."
+    },
+    {
+      "id": "dish.chicken-satay-set",
+      "dishId": "dish.chicken-satay-set",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "The source does not provide a reviewed complete chicken satay set matching the game's portion and sides."
+    },
+    {
+      "id": "dish.bbq-chicken-wings",
+      "dishId": "dish.bbq-chicken-wings",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's barbecue chicken-wing portion and preparation."
+    },
+    {
+      "id": "dish.beef-satay-set",
+      "dishId": "dish.beef-satay-set",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "The source does not provide a reviewed complete beef satay set matching the game's portion and sides."
+    },
+    {
+      "id": "dish.sambal-grilled-squid",
+      "dishId": "dish.sambal-grilled-squid",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's sambal grilled-squid serving."
+    },
+    {
+      "id": "dish.har-gow",
+      "dishId": "dish.har-gow",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "The available source basis does not match the game's basket portion."
+    },
+    {
+      "id": "dish.siew-mai",
+      "dishId": "dish.siew-mai",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 30,
+        "unit": "g",
+        "label": "1 piece(s) = 30g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 67
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 2.75
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 3.99
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.31
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.01
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 4.94
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 1.17
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 0.38
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 145
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 3
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.14
+        },
+        "waterG": {
+          "status": "known",
+          "value": 17.85
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 1,
+        "protein-forward": 0,
+        "fibre-forward": 0,
+        "sodium-aware": 0.9574
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1803,
+        "sourceFoodName": "Siew mai",
+        "sourceRowSha256": "7796a0e41eb8beec77b9f18aa2a7c11553b1603b8840c20f49a18847b5824673",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Exact named dim sum match."
+      },
+      "reviewNote": "Exact named dim sum match."
+    },
+    {
+      "id": "dish.char-siew-bao",
+      "dishId": "dish.char-siew-bao",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 168,
+        "unit": "g",
+        "label": "3 pieces (168 g)"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 441
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 16.77
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 12.93
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 4.44
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 63.93
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 16.98
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 3.24
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 498
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 24
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.75
+        },
+        "waterG": {
+          "status": "known",
+          "value": 72.66
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.5745,
+        "protein-forward": 0.3617,
+        "fibre-forward": 0.2273,
+        "sodium-aware": 0.8723
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1050,
+        "sourceFoodName": "Char siew pau",
+        "sourceRowSha256": "e0edd960f563ac077c7965b553936f566a9aa3b3cd81c6a04b29ee2201ecdd75",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "scaled-exact",
+        "multiplier": 3,
+        "reviewNote": "The source reports one pau; values are scaled to the game's three-piece basket."
+      },
+      "reviewNote": "The source reports one pau; values are scaled to the game's three-piece basket."
+    },
+    {
+      "id": "dish.lotus-leaf-rice",
+      "dishId": "dish.lotus-leaf-rice",
+      "status": "unavailable",
+      "nutritionClass": "meal",
+      "nutrients": {
+        "energyKcal": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "proteinG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "saturatedFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "carbohydrateG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "totalSugarG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "unmapped"
+        }
+      },
+      "intentFits": {},
+      "unavailableReason": "unmapped",
+      "reviewNote": "No reviewed row matches the game's lotus-leaf rice parcel."
+    },
+    {
+      "id": "dish.kopi:kopi-siu-dai",
+      "dishId": "dish.kopi",
+      "variantId": "kopi-siu-dai",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 150
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 1.13
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 3.47
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.7
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 28.53
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 20.1
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 38
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.8
+        },
+        "waterG": {
+          "status": "known",
+          "value": 225.95
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.1538
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 474,
+        "sourceFoodName": "Kopi siu dai",
+        "sourceRowSha256": "21463c507305460ebb2feebf7031d85fc854779a67867cb8dc0eeefaf3443bfa",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Reduced-sugar kopi variant."
+      },
+      "reviewNote": "Reduced-sugar kopi variant."
+    },
+    {
+      "id": "dish.kopi:kopi-c",
+      "dishId": "dish.kopi",
+      "variantId": "kopi-c",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 130
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 2.08
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 3.18
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.73
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 23.28
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 15.4
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 75
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 229.2
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.4615
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 468,
+        "sourceFoodName": "Kopi C",
+        "sourceRowSha256": "a07fcf9acd71485a1add9a6558ddd918cc9fbd73ece6ddb71de42779142fdf16",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Kopi with evaporated milk."
+      },
+      "reviewNote": "Kopi with evaporated milk."
+    },
+    {
+      "id": "dish.kopi:kopi-c-kosong",
+      "dishId": "dish.kopi",
+      "variantId": "kopi-c-kosong",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 93
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 2.5
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 3.7
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 2.03
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 12.1
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 4.25
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 88
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.87
+        },
+        "waterG": {
+          "status": "known",
+          "value": 234.83
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.7692
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 469,
+        "sourceFoodName": "Kopi C kosong",
+        "sourceRowSha256": "1d89af46b167d51c601d5dc12870df8a70832277093b32f507730bf9ca7a814c",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Kopi C without added sugar."
+      },
+      "reviewNote": "Kopi C without added sugar."
+    },
+    {
+      "id": "dish.kopi:kopi-o",
+      "dishId": "dish.kopi",
+      "variantId": "kopi-o",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 78
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 0.58
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 18.93
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 11.73
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 5
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.63
+        },
+        "waterG": {
+          "status": "known",
+          "value": 235.93
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.5385
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 471,
+        "sourceFoodName": "Kopi O",
+        "sourceRowSha256": "2631ad3aafb0abe61d6c5075aaf19568edfd001a657c5fe74502db2344a12b72",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Black kopi with sugar."
+      },
+      "reviewNote": "Black kopi with sugar."
+    },
+    {
+      "id": "dish.kopi:kopi-o-kosong",
+      "dishId": "dish.kopi",
+      "variantId": "kopi-o-kosong",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 33
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 0.68
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 7.25
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 0
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 8
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 243.1
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 1
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 472,
+        "sourceFoodName": "Kopi O kosong",
+        "sourceRowSha256": "5cade7214c2f4230443ebbc44f7eb890a292448c95be844c2fa13e814f8b61d4",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Black kopi without added sugar."
+      },
+      "reviewNote": "Black kopi without added sugar."
+    },
+    {
+      "id": "dish.teh-tarik:teh",
+      "dishId": "dish.teh-tarik",
+      "variantId": "teh",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 150
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 1.33
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 4.77
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 2.43
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 25.83
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 23.42
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 45
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.6
+        },
+        "waterG": {
+          "status": "known",
+          "value": 226.45
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.0769
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 554,
+        "sourceFoodName": "Teh",
+        "sourceRowSha256": "42fd257a94d653bdfb95b3568f0eafa56a5f534c18b70dee6fdc9090e61b50e9",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Standard hot milk tea."
+      },
+      "reviewNote": "Standard hot milk tea."
+    },
+    {
+      "id": "dish.teh-tarik:teh-siu-dai",
+      "dishId": "dish.teh-tarik",
+      "variantId": "teh-siu-dai",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 98
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 0.75
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 2.8
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.45
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 17.55
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 16.33
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 23
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.15
+        },
+        "waterG": {
+          "status": "known",
+          "value": 234.95
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.3846
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 562,
+        "sourceFoodName": "Teh siu dai",
+        "sourceRowSha256": "cbc6e7fa34943c0d1862f9c7d15d4a124b02547bb4fae38a5070a9880a92b3ef",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Reduced-sugar tea variant."
+      },
+      "reviewNote": "Reduced-sugar tea variant."
+    },
+    {
+      "id": "dish.teh-tarik:teh-c",
+      "dishId": "dish.teh-tarik",
+      "variantId": "teh-c",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 125
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 1.85
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 3.4
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.78
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 21.8
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 18.23
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 80
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 230.17
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.3077
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 555,
+        "sourceFoodName": "Teh C",
+        "sourceRowSha256": "8dec152de4367cc1e5726d32986ad7440e7c928cef9cdbae8696aa500183f873",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Tea with evaporated milk."
+      },
+      "reviewNote": "Tea with evaporated milk."
+    },
+    {
+      "id": "dish.teh-tarik:teh-c-kosong",
+      "dishId": "dish.teh-tarik",
+      "variantId": "teh-c-kosong",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 55
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 1.68
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 2.58
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.48
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 6.08
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.28
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 63
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 241.4
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.8462
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 556,
+        "sourceFoodName": "Teh C kosong",
+        "sourceRowSha256": "3dbc600ceace99a29fc441de863ee07570ef51d909cb19cf976d5a0950933268",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Teh C without added sugar."
+      },
+      "reviewNote": "Teh C without added sugar."
+    },
+    {
+      "id": "dish.teh-tarik:teh-o",
+      "dishId": "dish.teh-tarik",
+      "variantId": "teh-o",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 48
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 0
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 12.12
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 10.05
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 3
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.48
+        },
+        "waterG": {
+          "status": "known",
+          "value": 240.58
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.6154
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 559,
+        "sourceFoodName": "Teh O",
+        "sourceRowSha256": "5db30e99dd94a70e3ee2c573798270f0c40ccb48096591472d89b0b9f7ca107a",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Black tea with sugar."
+      },
+      "reviewNote": "Black tea with sugar."
+    },
+    {
+      "id": "dish.teh-tarik:teh-o-kosong",
+      "dishId": "dish.teh-tarik",
+      "variantId": "teh-o-kosong",
+      "status": "released",
+      "nutritionClass": "drink",
+      "serving": {
+        "amount": 250,
+        "unit": "ml",
+        "label": "1 regular cup(s) = 250ml"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 5
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 0
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 1.55
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 0.6
+        },
+        "dietaryFibreG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "sodiumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 5
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0.18
+        },
+        "waterG": {
+          "status": "known",
+          "value": 249.2
+        }
+      },
+      "intentFits": {
+        "lower-total-sugar-drink": 0.9231
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 560,
+        "sourceFoodName": "Teh O kosong",
+        "sourceRowSha256": "5c7fca4d51ab41b068717f1fab70acb6bfd1b16febd526dd681c68e304658a40",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Black tea without added sugar."
+      },
+      "reviewNote": "Black tea without added sugar."
+    },
+    {
+      "id": "dish.nasi-lemak:nasi-lemak-chicken-cutlet",
+      "dishId": "dish.nasi-lemak",
+      "variantId": "nasi-lemak-chicken-cutlet",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 399,
+        "unit": "g",
+        "label": "1 plate(s) = 399g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 922
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 39.9
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 44.77
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 15.52
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.12
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 89.5
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 7.86
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 7.62
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1768
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 144
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 3.15
+        },
+        "waterG": {
+          "status": "known",
+          "value": 218.01
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.1277,
+        "protein-forward": 0.8511,
+        "fibre-forward": 0.5909,
+        "sodium-aware": 0.3191
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1516,
+        "sourceFoodName": "Nasi lemak (chicken cutlet set)",
+        "sourceRowSha256": "f4d0223e4f4d2374c81f63d5255c1fe70ff373b2fbbafc423c26d09352f6b4d0",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Chicken-cutlet set."
+      },
+      "reviewNote": "Chicken-cutlet set."
+    },
+    {
+      "id": "dish.nasi-lemak:nasi-lemak-wing-cutlet",
+      "dishId": "dish.nasi-lemak",
+      "variantId": "nasi-lemak-wing-cutlet",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 496,
+        "unit": "g",
+        "label": "1 plate(s) = 496g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 1107
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 54.96
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 56.46
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 19.01
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.14
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 94.28
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 7.85
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 8.5
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1966
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 163
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 3.78
+        },
+        "waterG": {
+          "status": "known",
+          "value": 253.43
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.0638,
+        "protein-forward": 0.9787,
+        "fibre-forward": 0.6591,
+        "sodium-aware": 0.2766
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1517,
+        "sourceFoodName": "Nasi lemak (chicken wing and chicken cutlet set)",
+        "sourceRowSha256": "35720bf70f2b757f2381d9bea4d668d620b5fc64769ba0d81accb0343a134b85",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Larger set with both chicken preparations."
+      },
+      "reviewNote": "Larger set with both chicken preparations."
+    },
+    {
+      "id": "dish.nasi-lemak:nasi-lemak-egg-ikan-bilis-peanut",
+      "dishId": "dish.nasi-lemak",
+      "variantId": "nasi-lemak-egg-ikan-bilis-peanut",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 313,
+        "unit": "g",
+        "label": "1 plate(s) = 313g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 645
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 21.44
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 25.67
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 9.73
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 82.23
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 7.86
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 6.6
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1383
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 131
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.22
+        },
+        "waterG": {
+          "status": "known",
+          "value": 178.47
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.3617,
+        "protein-forward": 0.5745,
+        "fibre-forward": 0.4659,
+        "sodium-aware": 0.5532
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1519,
+        "sourceFoodName": "Nasi lemak (egg, ikan bilis, peanut set)",
+        "sourceRowSha256": "0b757b635f46a8ce61830d1c5a570f92e29980cd4c689d3a3138f0b8144abfe6",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Set centred on egg, ikan bilis and peanuts."
+      },
+      "reviewNote": "Set centred on egg, ikan bilis and peanuts."
+    },
+    {
+      "id": "dish.nasi-lemak:nasi-lemak-fish",
+      "dishId": "dish.nasi-lemak",
+      "variantId": "nasi-lemak-fish",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 349,
+        "unit": "g",
+        "label": "1 plate(s) = 349g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 707
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 28.58
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 29.21
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 11.02
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.07
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 82.24
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 7.84
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 6.6
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1541
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 188
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.45
+        },
+        "waterG": {
+          "status": "known",
+          "value": 189.11
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.2979,
+        "protein-forward": 0.7234,
+        "fibre-forward": 0.4659,
+        "sodium-aware": 0.4681
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1520,
+        "sourceFoodName": "Nasi lemak (fish set)",
+        "sourceRowSha256": "84e3cd11a4de6c6798839b8137bf8009cd22a6d54e00da007ad2bc7c31321e3c",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Fish set."
+      },
+      "reviewNote": "Fish set."
+    },
+    {
+      "id": "dish.nasi-lemak:nasi-lemak-rice-only",
+      "dishId": "dish.nasi-lemak",
+      "variantId": "nasi-lemak-rice-only",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 214,
+        "unit": "g",
+        "label": "1 plate(s) = 214g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 366
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 7.19
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 7.17
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 4.22
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 68.16
+        },
+        "totalSugarG": {
+          "status": "trace"
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 2.82
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 785
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 15
+        },
+        "ironMg": {
+          "status": "trace"
+        },
+        "waterG": {
+          "status": "known",
+          "value": 128.83
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.7447,
+        "protein-forward": 0.1277,
+        "fibre-forward": 0.1818,
+        "sodium-aware": 0.766
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1521,
+        "sourceFoodName": "Nasi lemak (rice only)",
+        "sourceRowSha256": "bb36f220ec7886a292a964c7eaf2b87ae5c0c9ef063e4bd19e3e19a62547e02b",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Rice-only source serving; presented as a portion-size trade-off, not a complete-meal recommendation."
+      },
+      "reviewNote": "Rice-only source serving; presented as a portion-size trade-off, not a complete-meal recommendation."
+    },
+    {
+      "id": "dish.fried-carrot-cake:carrot-cake-black",
+      "dishId": "dish.fried-carrot-cake",
+      "variantId": "carrot-cake-black",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 331,
+        "unit": "g",
+        "label": "1 plate(s) = 331g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 606
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 12.58
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 26.81
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 9
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.07
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 77.95
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 17.38
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 9.27
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1794
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 122
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 3.28
+        },
+        "waterG": {
+          "status": "known",
+          "value": 207.21
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.4043,
+        "protein-forward": 0.234,
+        "fibre-forward": 0.75,
+        "sodium-aware": 0.2979
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1486,
+        "sourceFoodName": "Fried carrot cake (black)",
+        "sourceRowSha256": "724132d8d4573d9571c6e7aee801b49d84bd54fa727fcd169ed0feb12ba644ca",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Sweet dark-soy preparation."
+      },
+      "reviewNote": "Sweet dark-soy preparation."
+    },
+    {
+      "id": "dish.roti-prata:prata-plain",
+      "dishId": "dish.roti-prata",
+      "variantId": "prata-plain",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 141,
+        "unit": "g",
+        "label": "1 piece(s) = 141g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 496
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 12.52
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 16.92
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 7.22
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.06
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 73.39
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 5.5
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 3.02
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 805
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 18
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 1.18
+        },
+        "waterG": {
+          "status": "known",
+          "value": 35.81
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.4894,
+        "protein-forward": 0.2128,
+        "fibre-forward": 0.2045,
+        "sodium-aware": 0.7447
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1198,
+        "sourceFoodName": "Plain prata",
+        "sourceRowSha256": "5a2a03b67b08b34de648bfdeab52d288b057705cddbf682681773a943e157152",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Single plain prata source serving."
+      },
+      "reviewNote": "Single plain prata source serving."
+    },
+    {
+      "id": "dish.roti-prata:prata-egg",
+      "dishId": "dish.roti-prata",
+      "variantId": "prata-egg",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 119,
+        "unit": "g",
+        "label": "1 piece(s) = 119g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 331
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 13.03
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 13.15
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 4.62
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.02
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 39.87
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.93
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 6.55
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 500
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 36
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 1.55
+        },
+        "waterG": {
+          "status": "known",
+          "value": 51.05
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.8085,
+        "protein-forward": 0.2766,
+        "fibre-forward": 0.4318,
+        "sodium-aware": 0.8511
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1126,
+        "sourceFoodName": "Prata (egg)",
+        "sourceRowSha256": "3ee6c1b3f2248d208849ffa3c7aba9c1a6ab5892368397f52d803279ae68a155",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Egg-filled prata."
+      },
+      "reviewNote": "Egg-filled prata."
+    },
+    {
+      "id": "dish.roti-prata:prata-egg-onion",
+      "dishId": "dish.roti-prata",
+      "variantId": "prata-egg-onion",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 177,
+        "unit": "g",
+        "label": "1 piece(s) = 177g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 389
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 14.44
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 19.05
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 8.55
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 40.14
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.29
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 1.77
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 487
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.6702,
+        "protein-forward": 0.2979,
+        "fibre-forward": 0.0682,
+        "sodium-aware": 0.8936
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1127,
+        "sourceFoodName": "Prata (egg, onion)",
+        "sourceRowSha256": "bae859be16752d6c39e7f351bc35e4951011b30170879b0215ed48a3f52af706",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Egg-and-onion prata."
+      },
+      "reviewNote": "Egg-and-onion prata."
+    },
+    {
+      "id": "dish.roti-prata:prata-egg-onion-cheese",
+      "dishId": "dish.roti-prata",
+      "variantId": "prata-egg-onion-cheese",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 185,
+        "unit": "g",
+        "label": "1 piece(s) = 185g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 459
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 20.65
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 26.46
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 14.62
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 34.6
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.2
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 1.91
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 833
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.5532,
+        "protein-forward": 0.5319,
+        "fibre-forward": 0.0909,
+        "sodium-aware": 0.7021
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1128,
+        "sourceFoodName": "Prata (egg, onion, cheese)",
+        "sourceRowSha256": "9d7678d9da76e5e0d6e90cf05ad2eaedf654d52884686adea4ccae69c1517d55",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Egg, onion and cheese prata."
+      },
+      "reviewNote": "Egg, onion and cheese prata."
+    },
+    {
+      "id": "dish.sliced-fish-soup:fish-soup-beehoon-milk",
+      "dishId": "dish.sliced-fish-soup",
+      "variantId": "fish-soup-beehoon-milk",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 600,
+        "unit": "g",
+        "label": "1 bowl(s) = 600g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 294
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 20.34
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 6.3
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 3.18
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.06
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 38.1
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 4.26
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 2.58
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1410
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 102
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.52
+        },
+        "waterG": {
+          "status": "known",
+          "value": 458.52
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.8723,
+        "protein-forward": 0.4894,
+        "fibre-forward": 0.1591,
+        "sodium-aware": 0.5106
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1364,
+        "sourceFoodName": "Sliced fish beehoon soup (with milk)",
+        "sourceRowSha256": "d4f37c17caf414a7521dbfc4915da31c36af6642c9d5f8084d030509dfb6ab43",
+        "sourceDataType": "Derived",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Milky soup with beehoon."
+      },
+      "reviewNote": "Milky soup with beehoon."
+    },
+    {
+      "id": "dish.sliced-fish-soup:fish-soup-sliced-no-milk",
+      "dishId": "dish.sliced-fish-soup",
+      "variantId": "fish-soup-sliced-no-milk",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 561,
+        "unit": "g",
+        "label": "1 bowl(s) = 561g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 84
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 17.05
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 5.95
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 1.4
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 8.02
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 4.54
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 3.48
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2407
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.9787,
+        "protein-forward": 0.383,
+        "fibre-forward": 0.25,
+        "sodium-aware": 0.1915
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 824,
+        "sourceFoodName": "Sliced fish soup (no milk)",
+        "sourceRowSha256": "5462db406ef5f8018b449a1deddfa6a718e6e7d32255f26b47d89e7b1850eee7",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Clear sliced-fish soup without noodles."
+      },
+      "reviewNote": "Clear sliced-fish soup without noodles."
+    },
+    {
+      "id": "dish.sliced-fish-soup:fish-soup-sliced-milk",
+      "dishId": "dish.sliced-fish-soup",
+      "variantId": "fish-soup-sliced-milk",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 500,
+        "unit": "g",
+        "label": "1 bowl(s) = 500g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 170
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 18.75
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 6
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 3
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.05
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 10.1
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 4
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 1.5
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1405
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 100
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 2.5
+        },
+        "waterG": {
+          "status": "known",
+          "value": 458.5
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.9574,
+        "protein-forward": 0.4043,
+        "fibre-forward": 0.0455,
+        "sodium-aware": 0.5319
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 825,
+        "sourceFoodName": "Sliced fish soup (with milk)",
+        "sourceRowSha256": "582dffb6f52658d388441aaea043c7f65ef7750340f409faeb78d3ef3a0351a7",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Milky sliced-fish soup without noodles."
+      },
+      "reviewNote": "Milky sliced-fish soup without noodles."
+    },
+    {
+      "id": "dish.bak-chor-mee:bak-chor-mee-soup",
+      "dishId": "dish.bak-chor-mee",
+      "variantId": "bak-chor-mee-soup",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 682,
+        "unit": "g",
+        "label": "1 bowl(s) = 682g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 539
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 39.08
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 9.55
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 2.46
+        },
+        "transFatG": {
+          "status": "trace"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 73.66
+        },
+        "totalSugarG": {
+          "status": "trace"
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 9.62
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2135
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 68
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 3.89
+        },
+        "waterG": {
+          "status": "known",
+          "value": 553.1
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.4468,
+        "protein-forward": 0.8298,
+        "fibre-forward": 0.7727,
+        "sodium-aware": 0.234
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1248,
+        "sourceFoodName": "Bak chor mee (soup)",
+        "sourceRowSha256": "68c7ae69f6296fea162f26ea2c7cbf86d772e027d4ac6bcff1f97016b881f881",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Soup preparation."
+      },
+      "reviewNote": "Soup preparation."
+    },
+    {
+      "id": "dish.chicken-murtabak:murtabak-chicken-mushroom-cheese",
+      "dishId": "dish.chicken-murtabak",
+      "variantId": "murtabak-chicken-mushroom-cheese",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 611,
+        "unit": "g",
+        "label": "1 piece(s) = 611g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 1821
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 133.81
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 118.53
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 59.27
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 54.5
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 9.17
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 9.17
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2187
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0,
+        "protein-forward": 1,
+        "fibre-forward": 0.7273,
+        "sodium-aware": 0.2128
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1101,
+        "sourceFoodName": "Murtabak (chicken, mushroom, cheese)",
+        "sourceRowSha256": "dda2de7156a43f0ea2f5c3bd1715a68e109e5105dace701434c8adfb358b05d0",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Larger chicken, mushroom and cheese serving."
+      },
+      "reviewNote": "Larger chicken, mushroom and cheese serving."
+    },
+    {
+      "id": "dish.chicken-murtabak:murtabak-mutton",
+      "dishId": "dish.chicken-murtabak",
+      "variantId": "murtabak-mutton",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 345,
+        "unit": "g",
+        "label": "1 plate(s) = 345g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 849
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 48.75
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 47.02
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 21.39
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 57.44
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 6.31
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 4.69
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1273
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.2128,
+        "protein-forward": 0.9362,
+        "fibre-forward": 0.2727,
+        "sodium-aware": 0.5957
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1102,
+        "sourceFoodName": "Murtabak (mutton)",
+        "sourceRowSha256": "613837399b9edfee1a60093ba2777b49a6316a080bb75afcba295f80f2643aab",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Mutton filling."
+      },
+      "reviewNote": "Mutton filling."
+    },
+    {
+      "id": "dish.chicken-murtabak:murtabak-vegetable",
+      "dishId": "dish.chicken-murtabak",
+      "variantId": "murtabak-vegetable",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 437,
+        "unit": "g",
+        "label": "1 plate(s) = 437g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 830
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 21.68
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 44.57
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 21.98
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 85.74
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 7.43
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 9
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1643
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.2553,
+        "protein-forward": 0.617,
+        "fibre-forward": 0.7045,
+        "sodium-aware": 0.383
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1103,
+        "sourceFoodName": "Murtabak (vegetable)",
+        "sourceRowSha256": "d6f85d97e121964b764c9b9ab86910b0ba9378779a37581b89066f0b62d1807d",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Vegetable filling; the label does not imply dietary certification."
+      },
+      "reviewNote": "Vegetable filling; the label does not imply dietary certification."
+    },
+    {
+      "id": "dish.nasi-briyani:briyani-fish-prawn",
+      "dishId": "dish.nasi-briyani",
+      "variantId": "briyani-fish-prawn",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 587,
+        "unit": "g",
+        "label": "1 plate(s) = 587g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 863
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 38.8
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 32.58
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 15.85
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 102.96
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.4
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 6.81
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 2448
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.1489,
+        "protein-forward": 0.8085,
+        "fibre-forward": 0.5,
+        "sodium-aware": 0.1277
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1511,
+        "sourceFoodName": "Nasi briyani (fish or prawn)",
+        "sourceRowSha256": "4118b46507dfaee117f9b1f9babacd7012402c06ab3dd579767e37df53cc3acf",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Seafood serving; the source groups fish and prawn together."
+      },
+      "reviewNote": "Seafood serving; the source groups fish and prawn together."
+    },
+    {
+      "id": "dish.nasi-briyani:briyani-mutton",
+      "dishId": "dish.nasi-briyani",
+      "variantId": "briyani-mutton",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 724,
+        "unit": "g",
+        "label": "1 plate(s) = 724g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 1211
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 44.96
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 55.53
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 21.88
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 1.81
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 132.46
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 4.35
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 15.05
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 3077
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 181
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 5.89
+        },
+        "waterG": {
+          "status": "known",
+          "value": 424.13
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.0426,
+        "protein-forward": 0.9149,
+        "fibre-forward": 0.9545,
+        "sodium-aware": 0.0426
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1512,
+        "sourceFoodName": "Nasi briyani (mutton)",
+        "sourceRowSha256": "cece075864ff885e3926d14545183228e32eda47fd8c2a4930a984e29d1ffa7b",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Mutton serving."
+      },
+      "reviewNote": "Mutton serving."
+    },
+    {
+      "id": "dish.nasi-briyani:briyani-vegetable",
+      "dishId": "dish.nasi-briyani",
+      "variantId": "briyani-vegetable",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 518,
+        "unit": "g",
+        "label": "1 plate(s) = 518g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 668
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 19.99
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 21.5
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 10.26
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 99.15
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 2.64
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 7.36
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 1756
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.3404,
+        "protein-forward": 0.4681,
+        "fibre-forward": 0.5455,
+        "sodium-aware": 0.3404
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1513,
+        "sourceFoodName": "Nasi briyani (vegetable)",
+        "sourceRowSha256": "bdb779ad39c21324a2ab33d808e0dbe2bbc15627640055a56e0b4137ad1875c1",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Vegetable serving; the label does not imply dietary certification."
+      },
+      "reviewNote": "Vegetable serving; the label does not imply dietary certification."
+    },
+    {
+      "id": "dish.masala-thosai:thosai-plain",
+      "dishId": "dish.masala-thosai",
+      "variantId": "thosai-plain",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 156,
+        "unit": "g",
+        "label": "1 piece(s) = 156g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 402
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 10.92
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 11.54
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 4.35
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0.03
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 63.88
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 1.09
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 4.93
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 501
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 22
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 1.59
+        },
+        "waterG": {
+          "status": "known",
+          "value": 66.85
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.6383,
+        "protein-forward": 0.1489,
+        "fibre-forward": 0.2955,
+        "sodium-aware": 0.8298
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1033,
+        "sourceFoodName": "Thosai",
+        "sourceRowSha256": "69e24651dc6971ba910bcf865a419892b99aaef1bdc1fe88b9142b729f801294",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Plain thosai serving."
+      },
+      "reviewNote": "Plain thosai serving."
+    },
+    {
+      "id": "dish.masala-thosai:thosai-egg",
+      "dishId": "dish.masala-thosai",
+      "variantId": "thosai-egg",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 146,
+        "unit": "g",
+        "label": "1 piece(s) = 146g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 342
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 12.59
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 12.35
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 5.21
+        },
+        "transFatG": {
+          "status": "known",
+          "value": 0
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 44.97
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 5.21
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 2.03
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 742
+        },
+        "calciumMg": {
+          "status": "known",
+          "value": 25
+        },
+        "ironMg": {
+          "status": "known",
+          "value": 0
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.7872,
+        "protein-forward": 0.2553,
+        "fibre-forward": 0.1364,
+        "sodium-aware": 0.7872
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1035,
+        "sourceFoodName": "Thosai (egg)",
+        "sourceRowSha256": "ea5118d25b78b8ee601685f6ec52320128772781834d7f2bfd2c3e571f861e32",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Egg thosai serving."
+      },
+      "reviewNote": "Egg thosai serving."
+    },
+    {
+      "id": "dish.masala-thosai:thosai-ghee",
+      "dishId": "dish.masala-thosai",
+      "variantId": "thosai-ghee",
+      "status": "released",
+      "nutritionClass": "meal",
+      "serving": {
+        "amount": 108,
+        "unit": "g",
+        "label": "1 piece(s) = 108g"
+      },
+      "nutrients": {
+        "energyKcal": {
+          "status": "known",
+          "value": 373
+        },
+        "proteinG": {
+          "status": "known",
+          "value": 6.62
+        },
+        "totalFatG": {
+          "status": "known",
+          "value": 18.98
+        },
+        "saturatedFatG": {
+          "status": "known",
+          "value": 11.84
+        },
+        "transFatG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "carbohydrateG": {
+          "status": "known",
+          "value": 43.86
+        },
+        "totalSugarG": {
+          "status": "known",
+          "value": 3.28
+        },
+        "dietaryFibreG": {
+          "status": "known",
+          "value": 1.97
+        },
+        "sodiumMg": {
+          "status": "known",
+          "value": 638
+        },
+        "calciumMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "ironMg": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        },
+        "waterG": {
+          "status": "unavailable",
+          "reason": "not-reported"
+        }
+      },
+      "intentFits": {
+        "lighter-energy": 0.7021,
+        "protein-forward": 0.0851,
+        "fibre-forward": 0.1136,
+        "sodium-aware": 0.8085
+      },
+      "provenance": {
+        "snapshotId": "food-1bc212db6eda",
+        "sourceFile": "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
+        "sourceFileSha256": "1bc212db6eda06c29a5f8a1ddfe8a0ca82b02a71ffc34c07ced45d8b2f9b273e",
+        "sourceRowNumber": 1036,
+        "sourceFoodName": "Thosai (ghee)",
+        "sourceRowSha256": "f838b61f5fa0548030bef85e8197c2d3d28e5059b83ebee0325de5b29eaf9a0d",
+        "sourceDataType": "Lab Analysis",
+        "mappingKind": "exact",
+        "multiplier": 1,
+        "reviewNote": "Ghee thosai serving."
+      },
+      "reviewNote": "Ghee thosai serving."
+    }
+  ],
+  "variantFamilies": [
+    {
+      "dishId": "dish.kopi",
+      "defaultVariantId": "kopi-default",
+      "variants": [
+        {
+          "id": "kopi-default",
+          "name": "Kopi",
+          "profileId": "dish.kopi",
+          "unlockRank": 1,
+          "visualKey": "kopi-milk-sugar-standard"
+        },
+        {
+          "id": "kopi-siu-dai",
+          "name": "Kopi siu dai",
+          "profileId": "dish.kopi:kopi-siu-dai",
+          "unlockRank": 2,
+          "visualKey": "kopi-milk-one-sugar"
+        },
+        {
+          "id": "kopi-c",
+          "name": "Kopi C",
+          "profileId": "dish.kopi:kopi-c",
+          "unlockRank": 4,
+          "visualKey": "kopi-evaporated-milk-two-sugar"
+        },
+        {
+          "id": "kopi-c-kosong",
+          "name": "Kopi C kosong",
+          "profileId": "dish.kopi:kopi-c-kosong",
+          "unlockRank": 7,
+          "visualKey": "kopi-evaporated-milk-no-sugar"
+        },
+        {
+          "id": "kopi-o",
+          "name": "Kopi O",
+          "profileId": "dish.kopi:kopi-o",
+          "unlockRank": 7,
+          "visualKey": "kopi-black-two-sugar"
+        },
+        {
+          "id": "kopi-o-kosong",
+          "name": "Kopi O kosong",
+          "profileId": "dish.kopi:kopi-o-kosong",
+          "unlockRank": 7,
+          "visualKey": "kopi-black-no-sugar"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.teh-tarik",
+      "defaultVariantId": "teh-tarik",
+      "variants": [
+        {
+          "id": "teh-tarik",
+          "name": "Teh Tarik",
+          "profileId": "dish.teh-tarik",
+          "unlockRank": 1,
+          "visualKey": "teh-pulled-foam"
+        },
+        {
+          "id": "teh",
+          "name": "Teh",
+          "profileId": "dish.teh-tarik:teh",
+          "unlockRank": 2,
+          "visualKey": "teh-milk-sugar-standard"
+        },
+        {
+          "id": "teh-siu-dai",
+          "name": "Teh siu dai",
+          "profileId": "dish.teh-tarik:teh-siu-dai",
+          "unlockRank": 4,
+          "visualKey": "teh-milk-one-sugar"
+        },
+        {
+          "id": "teh-c",
+          "name": "Teh C",
+          "profileId": "dish.teh-tarik:teh-c",
+          "unlockRank": 7,
+          "visualKey": "teh-evaporated-milk-two-sugar"
+        },
+        {
+          "id": "teh-c-kosong",
+          "name": "Teh C kosong",
+          "profileId": "dish.teh-tarik:teh-c-kosong",
+          "unlockRank": 7,
+          "visualKey": "teh-evaporated-milk-no-sugar"
+        },
+        {
+          "id": "teh-o",
+          "name": "Teh O",
+          "profileId": "dish.teh-tarik:teh-o",
+          "unlockRank": 7,
+          "visualKey": "teh-black-two-sugar"
+        },
+        {
+          "id": "teh-o-kosong",
+          "name": "Teh O kosong",
+          "profileId": "dish.teh-tarik:teh-o-kosong",
+          "unlockRank": 7,
+          "visualKey": "teh-black-no-sugar"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.nasi-lemak",
+      "defaultVariantId": "nasi-lemak-chicken-wing",
+      "variants": [
+        {
+          "id": "nasi-lemak-chicken-wing",
+          "name": "Chicken wing set",
+          "profileId": "dish.nasi-lemak",
+          "unlockRank": 1,
+          "visualKey": "nasi-wing"
+        },
+        {
+          "id": "nasi-lemak-chicken-cutlet",
+          "name": "Chicken cutlet set",
+          "profileId": "dish.nasi-lemak:nasi-lemak-chicken-cutlet",
+          "unlockRank": 2,
+          "visualKey": "nasi-cutlet"
+        },
+        {
+          "id": "nasi-lemak-wing-cutlet",
+          "name": "Wing and cutlet set",
+          "profileId": "dish.nasi-lemak:nasi-lemak-wing-cutlet",
+          "unlockRank": 4,
+          "visualKey": "nasi-wing-cutlet"
+        },
+        {
+          "id": "nasi-lemak-egg-ikan-bilis-peanut",
+          "name": "Egg, ikan bilis and peanut set",
+          "profileId": "dish.nasi-lemak:nasi-lemak-egg-ikan-bilis-peanut",
+          "unlockRank": 7,
+          "visualKey": "nasi-egg-ikan-bilis-peanut"
+        },
+        {
+          "id": "nasi-lemak-fish",
+          "name": "Fish set",
+          "profileId": "dish.nasi-lemak:nasi-lemak-fish",
+          "unlockRank": 7,
+          "visualKey": "nasi-fish"
+        },
+        {
+          "id": "nasi-lemak-rice-only",
+          "name": "Coconut rice only",
+          "profileId": "dish.nasi-lemak:nasi-lemak-rice-only",
+          "unlockRank": 7,
+          "visualKey": "nasi-rice-only"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.fried-carrot-cake",
+      "defaultVariantId": "carrot-cake-white",
+      "variants": [
+        {
+          "id": "carrot-cake-white",
+          "name": "White carrot cake",
+          "profileId": "dish.fried-carrot-cake",
+          "unlockRank": 1,
+          "visualKey": "carrot-cake-white-egg"
+        },
+        {
+          "id": "carrot-cake-black",
+          "name": "Black carrot cake",
+          "profileId": "dish.fried-carrot-cake:carrot-cake-black",
+          "unlockRank": 2,
+          "visualKey": "carrot-cake-black-sauce"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.roti-prata",
+      "defaultVariantId": "prata-two-plain-curry",
+      "variants": [
+        {
+          "id": "prata-two-plain-curry",
+          "name": "Two plain prata with curry",
+          "profileId": "dish.roti-prata",
+          "unlockRank": 1,
+          "visualKey": "prata-two-curry"
+        },
+        {
+          "id": "prata-plain",
+          "name": "Plain prata",
+          "profileId": "dish.roti-prata:prata-plain",
+          "unlockRank": 2,
+          "visualKey": "prata-single-plain"
+        },
+        {
+          "id": "prata-egg",
+          "name": "Egg prata",
+          "profileId": "dish.roti-prata:prata-egg",
+          "unlockRank": 4,
+          "visualKey": "prata-egg-centre"
+        },
+        {
+          "id": "prata-egg-onion",
+          "name": "Egg and onion prata",
+          "profileId": "dish.roti-prata:prata-egg-onion",
+          "unlockRank": 7,
+          "visualKey": "prata-egg-onion"
+        },
+        {
+          "id": "prata-egg-onion-cheese",
+          "name": "Egg, onion and cheese prata",
+          "profileId": "dish.roti-prata:prata-egg-onion-cheese",
+          "unlockRank": 7,
+          "visualKey": "prata-egg-onion-cheese"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.sliced-fish-soup",
+      "defaultVariantId": "fish-soup-beehoon-no-milk",
+      "variants": [
+        {
+          "id": "fish-soup-beehoon-no-milk",
+          "name": "Fish beehoon, no milk",
+          "profileId": "dish.sliced-fish-soup",
+          "unlockRank": 1,
+          "visualKey": "fish-beehoon-clear"
+        },
+        {
+          "id": "fish-soup-beehoon-milk",
+          "name": "Fish beehoon with milk",
+          "profileId": "dish.sliced-fish-soup:fish-soup-beehoon-milk",
+          "unlockRank": 2,
+          "visualKey": "fish-beehoon-milky"
+        },
+        {
+          "id": "fish-soup-sliced-no-milk",
+          "name": "Sliced fish soup, no milk",
+          "profileId": "dish.sliced-fish-soup:fish-soup-sliced-no-milk",
+          "unlockRank": 4,
+          "visualKey": "fish-slices-clear"
+        },
+        {
+          "id": "fish-soup-sliced-milk",
+          "name": "Sliced fish soup with milk",
+          "profileId": "dish.sliced-fish-soup:fish-soup-sliced-milk",
+          "unlockRank": 7,
+          "visualKey": "fish-slices-milky"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.bak-chor-mee",
+      "defaultVariantId": "bak-chor-mee-dry",
+      "variants": [
+        {
+          "id": "bak-chor-mee-dry",
+          "name": "Bak chor mee, dry",
+          "profileId": "dish.bak-chor-mee",
+          "unlockRank": 1,
+          "visualKey": "bak-chor-dry-sauce"
+        },
+        {
+          "id": "bak-chor-mee-soup",
+          "name": "Bak chor mee soup",
+          "profileId": "dish.bak-chor-mee:bak-chor-mee-soup",
+          "unlockRank": 2,
+          "visualKey": "bak-chor-broth"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.chicken-murtabak",
+      "defaultVariantId": "murtabak-chicken",
+      "variants": [
+        {
+          "id": "murtabak-chicken",
+          "name": "Chicken murtabak",
+          "profileId": "dish.chicken-murtabak",
+          "unlockRank": 1,
+          "visualKey": "murtabak-chicken"
+        },
+        {
+          "id": "murtabak-chicken-mushroom-cheese",
+          "name": "Chicken, mushroom and cheese murtabak",
+          "profileId": "dish.chicken-murtabak:murtabak-chicken-mushroom-cheese",
+          "unlockRank": 2,
+          "visualKey": "murtabak-chicken-mushroom-cheese"
+        },
+        {
+          "id": "murtabak-mutton",
+          "name": "Mutton murtabak",
+          "profileId": "dish.chicken-murtabak:murtabak-mutton",
+          "unlockRank": 4,
+          "visualKey": "murtabak-mutton"
+        },
+        {
+          "id": "murtabak-vegetable",
+          "name": "Vegetable murtabak",
+          "profileId": "dish.chicken-murtabak:murtabak-vegetable",
+          "unlockRank": 7,
+          "visualKey": "murtabak-vegetable"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.nasi-briyani",
+      "defaultVariantId": "briyani-chicken",
+      "variants": [
+        {
+          "id": "briyani-chicken",
+          "name": "Chicken briyani",
+          "profileId": "dish.nasi-briyani",
+          "unlockRank": 1,
+          "visualKey": "briyani-chicken"
+        },
+        {
+          "id": "briyani-fish-prawn",
+          "name": "Fish or prawn briyani",
+          "profileId": "dish.nasi-briyani:briyani-fish-prawn",
+          "unlockRank": 2,
+          "visualKey": "briyani-fish-prawn"
+        },
+        {
+          "id": "briyani-mutton",
+          "name": "Mutton briyani",
+          "profileId": "dish.nasi-briyani:briyani-mutton",
+          "unlockRank": 4,
+          "visualKey": "briyani-mutton"
+        },
+        {
+          "id": "briyani-vegetable",
+          "name": "Vegetable briyani",
+          "profileId": "dish.nasi-briyani:briyani-vegetable",
+          "unlockRank": 7,
+          "visualKey": "briyani-vegetable"
+        }
+      ]
+    },
+    {
+      "dishId": "dish.masala-thosai",
+      "defaultVariantId": "thosai-masala",
+      "variants": [
+        {
+          "id": "thosai-masala",
+          "name": "Masala thosai",
+          "profileId": "dish.masala-thosai",
+          "unlockRank": 1,
+          "visualKey": "thosai-masala-fold"
+        },
+        {
+          "id": "thosai-plain",
+          "name": "Plain thosai",
+          "profileId": "dish.masala-thosai:thosai-plain",
+          "unlockRank": 2,
+          "visualKey": "thosai-plain-roll"
+        },
+        {
+          "id": "thosai-egg",
+          "name": "Egg thosai",
+          "profileId": "dish.masala-thosai:thosai-egg",
+          "unlockRank": 4,
+          "visualKey": "thosai-egg-centre"
+        },
+        {
+          "id": "thosai-ghee",
+          "name": "Ghee thosai",
+          "profileId": "dish.masala-thosai:thosai-ghee",
+          "unlockRank": 7,
+          "visualKey": "thosai-ghee-gloss"
+        }
+      ]
+    }
+  ],
+  "intents": [
+    {
+      "id": "lighter-energy",
+      "name": "Lighter energy",
+      "description": "Prefers a lower-energy meal among reviewed in-game options.",
+      "metric": "energyKcal",
+      "direction": "lower",
+      "nutritionClass": "meal"
+    },
+    {
+      "id": "protein-forward",
+      "name": "Protein-forward",
+      "description": "Prefers a higher-protein meal among reviewed in-game options.",
+      "metric": "proteinG",
+      "direction": "higher",
+      "nutritionClass": "meal"
+    },
+    {
+      "id": "fibre-forward",
+      "name": "Fibre-forward",
+      "description": "Prefers a higher-fibre meal among reviewed in-game options.",
+      "metric": "dietaryFibreG",
+      "direction": "higher",
+      "nutritionClass": "meal"
+    },
+    {
+      "id": "sodium-aware",
+      "name": "Sodium-aware",
+      "description": "Prefers a lower-sodium meal among reviewed in-game options.",
+      "metric": "sodiumMg",
+      "direction": "lower",
+      "nutritionClass": "meal"
+    },
+    {
+      "id": "lower-total-sugar-drink",
+      "name": "Lower-total-sugar drink",
+      "description": "Prefers a lower-total-sugar drink among reviewed in-game options.",
+      "metric": "totalSugarG",
+      "direction": "lower",
+      "nutritionClass": "drink"
+    }
+  ],
+  "guidelines": [
+    {
+      "id": "energy",
+      "nutrient": "kcal (Energy)",
+      "lowerLimit": "1,800 kcal",
+      "upperLimit": "2,200 kcal",
+      "remarks": "Averages are generally 1,800 kcal for women and 2,200 kcal for men. Active individuals may require up to 2,700 kcal.",
+      "source": "Health Promotion Board (HPB)",
+      "comparison": "context-only"
+    },
+    {
+      "id": "fats",
+      "nutrient": "Fats",
+      "lowerLimit": "20% of total energy",
+      "upperLimit": "35% of total energy",
+      "remarks": "Translates to roughly 40g – 78g on a 2,000 kcal diet. HPB advises focusing on unsaturated fats (e.g., healthier oils).",
+      "source": "HPB",
+      "comparison": "context-only"
+    },
+    {
+      "id": "saturated-fat",
+      "nutrient": "Saturated Fat",
+      "lowerLimit": "0% of total energy",
+      "upperLimit": "< 10% of total energy",
+      "remarks": "Equates to a maximum of about 20g – 24g daily on a 2,000 kcal diet. Limit as much as possible.",
+      "source": "HPB",
+      "comparison": "context-only"
+    },
+    {
+      "id": "trans-fat",
+      "nutrient": "Trans Fat",
+      "lowerLimit": "0g",
+      "upperLimit": "< 1% of total energy",
+      "remarks": "Keep as close to zero as possible. Singapore enacted a ban on partially hydrogenated oils (the main source of artificial trans fats) in 2021.",
+      "source": "HPB / Ministry of Health (MOH)",
+      "comparison": "context-only"
+    },
+    {
+      "id": "protein",
+      "nutrient": "Protein",
+      "lowerLimit": "10% of total energy",
+      "upperLimit": "35% of total energy",
+      "remarks": "Translates to roughly 60g for women and 80g for men, depending on body weight and activity levels.",
+      "source": "HPB",
+      "comparison": "context-only"
+    },
+    {
+      "id": "carbohydrates",
+      "nutrient": "Carbohydrates",
+      "lowerLimit": "45% of total energy",
+      "upperLimit": "60% of total energy",
+      "remarks": "Roughly 225g – 300g daily on a 2,000 kcal diet. Recommendations heavily emphasize choosing whole grains.",
+      "source": "HPB",
+      "comparison": "context-only"
+    },
+    {
+      "id": "added-sugar",
+      "nutrient": "Sugar",
+      "lowerLimit": "0g",
+      "upperLimit": "< 10% of total energy",
+      "remarks": "Refers to added sugars. 10% translates to roughly 40g–50g (8–10 teaspoons) daily. HPB advises a further reduction to < 5% for additional health benefits.",
+      "source": "HPB",
+      "comparison": "not-comparable",
+      "notComparableReason": "The food dataset reports total sugar, while this guideline refers to added sugar."
+    },
+    {
+      "id": "fibre",
+      "nutrient": "Fiber",
+      "lowerLimit": "20g",
+      "upperLimit": "N/A",
+      "remarks": "HPB recommends roughly 20g for women and 26g for men. This is achievable by consuming 2 servings of fruit, 2 servings of vegetables, and whole grains daily.",
+      "source": "HPB",
+      "comparison": "context-only"
+    },
+    {
+      "id": "cholesterol",
+      "nutrient": "Cholesterol",
+      "lowerLimit": "0 mg",
+      "upperLimit": "300 mg",
+      "remarks": "Maintain intake as low as possible while consuming a balanced, nutritionally adequate diet.",
+      "source": "HPB",
+      "comparison": "not-comparable",
+      "notComparableReason": "The food dataset does not report cholesterol."
+    },
+    {
+      "id": "sodium",
+      "nutrient": "Sodium",
+      "lowerLimit": "0 mg",
+      "upperLimit": "2,000 mg",
+      "remarks": "2,000 mg of sodium is equivalent to approximately 1 teaspoon (5g) of salt per day.",
+      "source": "HPB / MOH",
+      "comparison": "context-only"
+    },
+    {
+      "id": "drinking-water",
+      "nutrient": "Water",
+      "lowerLimit": "1,600 ml (8 glasses)",
+      "upperLimit": "N/A",
+      "remarks": "HPB generally recommends 8 to 10 glasses daily. Requirements increase with intense physical activity or prolonged heat exposure.",
+      "source": "HPB",
+      "comparison": "not-comparable",
+      "notComparableReason": "Food water in grams is not comparable with drinking-water guidance in millilitres."
+    }
+  ],
+  "disclosure": "Hawker Balance is an educational game, not medical or dietary advice. Nutrition values describe the listed serving in the source data; recipes and portions vary. Daily reference ranges are general guidance for Singaporean adults and do not represent individual needs. Total sugar is not the same as added sugar. In Hawker Balance, balance means comparing trade-offs—not labelling a dish good or bad."
+}

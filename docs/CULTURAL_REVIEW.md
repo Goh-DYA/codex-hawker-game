@@ -27,6 +27,8 @@ These sources guide research; they do not substitute for practitioner/community 
 - Use real dish names where accurate; write original descriptions and depictions.
 - Do not reproduce a real centre, stall frontage, brand, certification mark, poster, uniform, or menu.
 - Do not use accents, ethnic jokes, sacred imagery, flags, or scripts as decorative shorthand.
+- Treat nutrition intents as fictional needs for one visit, never as ethnic, age, disability, body-size, or socioeconomic traits.
+- Review serving labels and every recipe-variant visual against recognizable local preparation while retaining the source-data uncertainty notice.
 
 ## High-risk labels and claims
 
@@ -45,6 +47,7 @@ Every item in CONTENT_CATALOGUE.md needs a reviewer to check:
 - whether “vegetarian” wording is supportable for stock, sauces, and preparation;
 - whether grouping it under the proposed fictional stall is coherent;
 - whether price/quality/progression framing creates a hierarchy between cuisines.
+- whether nutrition comparison copy avoids moralizing dishes or presenting one cuisine as inherently healthier than another.
 
 Priority review: ayam buah keluak, babi pongteh, Nyonya/laksa attribution, Indian-Muslim stall framing, Tamarind Leaf’s vegetable/vegetarian wording, roti prata/thosai/idli presentation, nasi lemak accompaniments, Hokkien prawn mee, char kway teow, seafood species, and all halal/dietary implications.
 
