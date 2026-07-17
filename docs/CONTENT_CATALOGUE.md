@@ -3,6 +3,12 @@
 Status: Expanded typed roster runtime-integrated and validated on the supported runtime; human cultural review pending
 Counting rule: unique ID plus meaningful functional, footprint, interaction, unlock, or constructed-visual difference. Palette-only recolours do not count.
 
+## Nutrition coverage
+
+All 46 dishes have an explicit nutrition-data status. Twenty-eight base dishes have reviewed source mappings; the other eighteen remain playable and display `Data under review` rather than an estimate. Ten dish families add reviewed, rank-gated recipe variants for comparison: kopi, teh, nasi lemak, fried carrot cake, roti prata, fish soup, bak chor mee, murtabak, briyani, and thosai.
+
+Nutrition values describe the listed source serving and do not alter a dish family's price, quality, preparation time, serving time, or eating time. See [NUTRITION_DATA.md](NUTRITION_DATA.md) for source, validation, scoring, and disclosure boundaries.
+
 ## Twelve fictional stalls and 46 dishes
 
 All stall identities are original. Real dish names are descriptive cultural references, not brands. Dietary tags are preference aids only and never safety, allergen, vegetarian, or halal certification claims. The table mirrors the current typed content roster; runtime IDs and tests are authoritative.

@@ -1,16 +1,26 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { describe, it } from "vitest";
 
-import { CUSTOMER_ARCHETYPES, DISHES, PLACEABLES, STALLS } from "../src/content/index";
+import {
+  CUSTOMER_ARCHETYPES,
+  DISHES,
+  NUTRITION_CONTENT,
+  PLACEABLES,
+  STALLS,
+} from "../src/content/index";
 import type { CustomerStatus } from "../src/game/core/index";
+import { nutritionVisualKeyForVariant } from "../src/game/runtime/createHawkerRuntime";
 import {
   CUSTOMER_INDICATOR_LEGEND,
   animationPoseForCustomer,
   customerAppearanceForId,
+  variantVisualFamilyForKey,
   type CustomerIndicator,
   vendorAnimationPoseForStall,
   visualRecipeForCustomer,
   visualRecipeForDish,
+  visualRecipeForDishVariant,
   visualRecipeForPlaceable,
   visualRecipeForStallVendor,
 } from "../src/game/runtime/visualRecipes";
@@ -120,6 +130,105 @@ describe("code-native placeable visual recipes", () => {
     assert.ok(
       recipes.get("dish.pulut-hitam")?.presentation.detailCues.includes("white-coconut-swirl"),
     );
+  });
+
+  it("gives every reviewed nutrition variant a non-colour composition contract", () => {
+    const dishById = new Map(DISHES.map((dish) => [dish.id, dish]));
+    const recipes = NUTRITION_CONTENT.variantFamilies.flatMap((family) => {
+      const dish = dishById.get(family.dishId);
+      assert.ok(dish);
+      return family.variants.map((variant) =>
+        visualRecipeForDishVariant(dish, variant.visualKey),
+      );
+    });
+
+    assert.ok(recipes.length > 40);
+    assert.equal(
+      new Set(recipes.map((recipe) => recipe.presentation.semanticKey)).size,
+      recipes.length,
+    );
+    assert.equal(
+      new Set(recipes.map((recipe) => recipe.variantGeometryCue)).size,
+      recipes.length,
+    );
+    assert.ok(recipes.every((recipe) => recipe.variantVisualKey));
+    assert.ok(recipes.every((recipe) => recipe.variantVisualFamily !== "fallback"));
+    assert.ok(
+      recipes.every((recipe) =>
+        recipe.presentation.detailCues.includes(recipe.variantGeometryCue as string),
+      ),
+    );
+    assert.deepEqual(
+      new Set(recipes.map((recipe) => recipe.variantVisualFamily)),
+      new Set([
+        "drink",
+        "nasi-lemak",
+        "carrot-cake",
+        "prata",
+        "fish-soup",
+        "bak-chor",
+        "murtabak",
+        "briyani",
+        "thosai",
+      ]),
+    );
+    assert.equal(variantVisualFamilyForKey("future-variant"), "fallback");
+  });
+
+  it("omits variant geometry for synthetic listed servings", () => {
+    const family = NUTRITION_CONTENT.variantFamilies[0];
+    const variant = family?.variants[0];
+    assert.ok(family);
+    assert.ok(variant);
+    assert.equal(
+      nutritionVisualKeyForVariant(family.dishId, variant.id),
+      variant.visualKey,
+    );
+
+    const listedProfile = NUTRITION_CONTENT.profiles.find(
+      (profile) =>
+        profile.id === profile.dishId &&
+        !NUTRITION_CONTENT.variantFamilies.some(
+          (candidate) => candidate.dishId === profile.dishId,
+        ),
+    );
+    assert.ok(listedProfile);
+    const dish = DISHES.find((candidate) => candidate.id === listedProfile.dishId);
+    assert.ok(dish);
+    const visualKey = nutritionVisualKeyForVariant(listedProfile.dishId, listedProfile.id);
+    const recipe = visualRecipeForDishVariant(dish, visualKey);
+
+    assert.equal(visualKey, undefined);
+    assert.equal(recipe.variantVisualKey, undefined);
+    assert.equal(recipe.variantGeometryCue, undefined);
+  });
+
+  it("renders each reviewed variant family with a semantic canvas branch", async () => {
+    const runtimeSource = await readFile(
+      new URL("../src/game/runtime/createHawkerRuntime.ts", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(runtimeSource, /function drawNutritionVariantCue/);
+    for (const family of [
+      "drink",
+      "nasi-lemak",
+      "carrot-cake",
+      "prata",
+      "fish-soup",
+      "bak-chor",
+      "murtabak",
+      "briyani",
+      "thosai",
+    ]) {
+      assert.ok(runtimeSource.includes(`family === "${family}"`), family);
+    }
+    assert.match(runtimeSource, /orderedNutritionVariantId/);
+    assert.match(runtimeSource, /nutritionVisualKey/);
+    assert.match(runtimeSource, /has\("evaporated"\)/);
+    assert.match(runtimeSource, /has\("mutton"\)/);
+    assert.match(runtimeSource, /has\("vegetable"\)/);
+    assert.match(runtimeSource, /has\("mushroom-cheese"\)/);
   });
 
   it("infers a useful deterministic profile for future catalogue dishes", () => {

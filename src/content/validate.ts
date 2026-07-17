@@ -21,6 +21,8 @@ export interface ContentValidationReport {
     readonly dishes: number;
     readonly placeables: number;
     readonly customerArchetypes: number;
+    readonly nutritionProfiles: number;
+    readonly nutritionVariantFamilies: number;
     readonly localizationKeys: number;
   };
   readonly categoryCounts: Readonly<Record<PlaceableCategory, number>>;
@@ -242,6 +244,162 @@ export const validateContent = (
         `${dish.id} mentions peanuts but is missing the contains-peanuts dietary tag.`,
       );
     }
+  }
+
+  const nutritionProfileById = new Map(
+    content.nutrition.profiles.map((profile) => [profile.id, profile]),
+  );
+  const nutritionProfileIds = new Set<string>();
+  const primaryNutritionProfileByDishId = new Map(
+    content.nutrition.profiles
+      .filter((profile) => profile.id === profile.dishId)
+      .map((profile) => [profile.dishId, profile]),
+  );
+  const sourceSnapshotIds = new Set(
+    content.nutrition.sourceSnapshots.map((snapshot) => snapshot.id),
+  );
+  const nutritionIntentIds = new Set(
+    content.nutrition.intents.map((intent) => intent.id),
+  );
+
+  check(
+    nutritionProfileById.size === content.nutrition.profiles.length,
+    "Nutrition profile IDs must be unique.",
+  );
+  check(
+    primaryNutritionProfileByDishId.size === content.dishes.length,
+    `Every dish requires one primary nutrition profile; found ${primaryNutritionProfileByDishId.size}.`,
+  );
+  check(
+    content.nutrition.variantFamilies.length === 10,
+    "Nutrition content must ship exactly ten reviewed variant families.",
+  );
+  check(
+    nutritionIntentIds.size === content.nutrition.intents.length,
+    "Nutrition intent IDs must be unique.",
+  );
+
+  const primaryProfiles = content.nutrition.profiles.filter(
+    (profile) => profile.id === profile.dishId,
+  );
+  check(
+    primaryProfiles.filter((profile) => profile.status === "released").length === 28,
+    "Nutrition content must release exactly 28 primary dish profiles.",
+  );
+  check(
+    primaryProfiles.filter((profile) => profile.status === "unavailable").length === 18,
+    "Nutrition content must explicitly mark 18 primary dish profiles unavailable.",
+  );
+
+  for (const profile of content.nutrition.profiles) {
+    check(!nutritionProfileIds.has(profile.id), `Duplicate nutrition profile ID: ${profile.id}.`);
+    nutritionProfileIds.add(profile.id);
+    check(
+      dishById.has(profile.dishId),
+      `${profile.id} references missing dish ${profile.dishId}.`,
+    );
+    if (profile.status === "released") {
+      check(Boolean(profile.serving), `${profile.id} is released without a serving basis.`);
+      check(Boolean(profile.provenance), `${profile.id} is released without provenance.`);
+      check(
+        profile.quarantineReasons === undefined,
+        `${profile.id} is released but still has quarantine reasons.`,
+      );
+    } else if (profile.status === "unavailable") {
+      check(
+        profile.unavailableReason !== undefined,
+        `${profile.id} is unavailable without a reason.`,
+      );
+      check(
+        Object.values(profile.nutrients).every(
+          (value) => value.status === "unavailable",
+        ),
+        `${profile.id} is unavailable but exposes numeric nutrition values.`,
+      );
+      check(
+        Object.keys(profile.intentFits).length === 0,
+        `${profile.id} is unavailable but exposes intent fit scores.`,
+      );
+    } else {
+      check(
+        (profile.quarantineReasons?.length ?? 0) > 0,
+        `${profile.id} is quarantined without an actionable reason.`,
+      );
+      check(
+        Object.keys(profile.intentFits).length === 0,
+        `${profile.id} is quarantined but exposes intent fit scores.`,
+      );
+    }
+    if (profile.provenance) {
+      check(
+        sourceSnapshotIds.has(profile.provenance.snapshotId),
+        `${profile.id} references missing source snapshot ${profile.provenance.snapshotId}.`,
+      );
+    }
+    for (const [intentId, fit] of Object.entries(profile.intentFits)) {
+      check(
+        nutritionIntentIds.has(intentId as never),
+        `${profile.id} exposes unknown nutrition intent ${intentId}.`,
+      );
+      check(
+        Number.isFinite(fit) && fit >= 0 && fit <= 1,
+        `${profile.id} has out-of-range intent fit ${intentId}.`,
+      );
+    }
+  }
+
+  const variantFamilyDishIds = new Set<string>();
+  const variantVisualKeys = new Set<string>();
+  for (const family of content.nutrition.variantFamilies) {
+    check(
+      !variantFamilyDishIds.has(family.dishId),
+      `Dish ${family.dishId} has more than one nutrition variant family.`,
+    );
+    variantFamilyDishIds.add(family.dishId);
+    check(dishById.has(family.dishId), `Nutrition variants reference missing dish ${family.dishId}.`);
+    check(
+      family.variants[0]?.id === family.defaultVariantId,
+      `${family.dishId} must list its default nutrition variant first.`,
+    );
+    const variantIds = new Set<string>();
+    family.variants.forEach((variant, index) => {
+      check(
+        !variantIds.has(variant.id),
+        `${family.dishId} repeats nutrition variant ${variant.id}.`,
+      );
+      variantIds.add(variant.id);
+      const expectedRank = index === 0 ? 1 : index === 1 ? 2 : index === 2 ? 4 : 7;
+      check(
+        variant.unlockRank === expectedRank,
+        `${family.dishId} variant ${variant.id} must unlock at rank ${expectedRank}.`,
+      );
+      const profile = nutritionProfileById.get(variant.profileId);
+      check(Boolean(profile), `${variant.id} references missing profile ${variant.profileId}.`);
+      check(
+        profile?.dishId === family.dishId,
+        `${variant.id} uses a nutrition profile from another dish.`,
+      );
+      check(
+        profile?.variantId === variant.id,
+        `${variant.id} is not reciprocated by its nutrition profile.`,
+      );
+      check(
+        !variantVisualKeys.has(variant.visualKey),
+        `Nutrition variants must not reuse visual key ${variant.visualKey}.`,
+      );
+      variantVisualKeys.add(variant.visualKey);
+    });
+  }
+
+  for (const guidelineId of ["added-sugar", "cholesterol", "drinking-water"]) {
+    const guideline = content.nutrition.guidelines.find(
+      (candidate) => candidate.id === guidelineId,
+    );
+    check(
+      guideline?.comparison === "not-comparable" &&
+        Boolean(guideline.notComparableReason),
+      `${guidelineId} guidance must be explicitly excluded from direct comparison.`,
+    );
   }
 
   const categoryCounts = Object.fromEntries(
@@ -526,6 +684,8 @@ export const validateContent = (
       dishes: content.dishes.length,
       placeables: content.placeables.length,
       customerArchetypes: content.customerArchetypes.length,
+      nutritionProfiles: content.nutrition.profiles.length,
+      nutritionVariantFamilies: content.nutrition.variantFamilies.length,
       localizationKeys: Object.keys(content.localization).length,
     },
     categoryCounts,

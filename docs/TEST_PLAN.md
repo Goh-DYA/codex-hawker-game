@@ -47,6 +47,9 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 - Seat choice term sensitivity: path, group, comfort, cleanliness, congestion.
 - No available stall, unaffordable dish, no seat, all exits stressed, and centre close.
 - Deterministic seeded results and agent despawn.
+- Nutrition-intent assignment is seed-reproducible, independent of persona, limited to one intent from level 2, and consumes one roll only under its documented conditions.
+- Only the configured order-time variant contributes nutrition choice weight and outcome; changing a variant during preparation cannot rewrite the order.
+- Matched, missed, and unknown outcomes update once at sale while price, quality, satisfaction, cash, XP, and reputation follow their existing paths unchanged.
 
 ### Economy and progression
 
@@ -63,6 +66,8 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 - Every dish assigned, every stall has a menu item available at its unlock, every required English key present, no unlock cycles.
 - Footprint/interaction/depth anchors valid, every referenced visual/audio/animation known, and every stall/dish primary visual reference unique.
 - Catalogue duplicate policy check.
+- Exact nutrition status for all 46 dishes, 28 released mappings, 18 unavailable mappings, and ten reviewed variant families.
+- Deterministic CSV generation, source and row hash drift, serving scaling, malformed booleans, `Trace`, unavailable values, quarantine rules, percentile ties, and incompatible daily-guideline comparisons.
 
 ### Stall graphics and animation
 
@@ -80,6 +85,7 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 - Renamed/removed objects and dishes, added required fields, changed map size/upgrades.
 - Unsafe runtime customers normalize without losing map/economy/progression.
 - Quota error, denied/private storage, refresh during save, reset isolation.
+- Core V3-to-V4 and runtime V1-to-V2 nutrition migrations, default/locked/tampered variant repair, data-version recovery notice, and 50-record outcome cap.
 
 ### Offline shell and UI
 
@@ -88,6 +94,7 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 - Offline navigation shell responds after first successful load.
 - Waiting-worker update does not activate before a safe reload.
 - React error/loading states, modal focus, settings persistence, and reset confirmation.
+- Nutrition Lens value semantics, Variant Lab focus return, customer inspector departure, responsive Focus route, per-nutrient Pulse denominators, disclosure, and no color-only or composite health grade.
 
 ## Browser end-to-end scenarios
 
@@ -95,9 +102,9 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 2. Complete or deliberately skip/replay the tutorial.
 3. Keyboard-place a table, seats, tray return, and stall; verify invalid placement feedback.
 4. Paint a preferred guest lane with pointer and keyboard controls; verify predicted-path shift, clear, undo, save/reload, and Escape speed restoration.
-5. Configure a menu and open the centre.
+5. Configure a menu, compare a reviewed variant, and open the centre.
 6. Observe one customer complete order, seat, eat, tray/clear, and exit.
-7. Confirm cash/XP/reputation change and inspect the reason breakdown.
+7. Confirm cash/XP/reputation change, inspect the reason breakdown and fictional nutrition intent, and verify the Nutrition Pulse updates without changing satisfaction.
 8. Move an active target and verify recovery.
 9. Save, reload, and compare persistent map/progression/economy state.
 10. Change text scale, reduced motion, audio, and quality mode; reload.

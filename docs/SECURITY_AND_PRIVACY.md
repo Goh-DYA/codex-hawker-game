@@ -8,6 +8,8 @@ The 1.0 game has no accounts, backend gameplay service, cloud save, advertising,
 
 No player name is required. If a centre name is supported, store plain text locally, limit length, normalize control characters, and render through React text nodes—never as HTML.
 
+Nutrition source CSVs are build-time operator inputs only. Raw files, machine-specific paths, and source data are not read by the browser or included in player saves. Generated profiles contain bounded numeric values and provenance hashes, and use the same schema validation and import-size protections as other launch content.
+
 The public-facing notice is PRIVACY.md. It describes behavior, not legal compliance.
 
 ## Threat model

@@ -21,6 +21,7 @@ Status: Active; architecture decisions have detailed ADRs under docs/adr
 | D-015 | Package version does not determine release state | Prevent premature 1.0 claims; checklist and signed evidence decide release | Accepted |
 | D-016 | Expand the roster to 12 fictional stalls / 46 dishes while retaining 80 meaningful placeables / eight behavior archetypes | Broaden menu and visual variety without redefining the established build catalogue or customer-model scope | Accepted |
 | D-017 | Expand the customer model to 12 behavior archetypes and 300 English localization entries, superseding the customer-roster portions of D-010 and D-016 | Add four distinct visit-goal personas while preserving the 12-stall / 46-dish / 80-placeable scope and keeping ethnicity, disability, and accessibility needs separate from consumer personality | Accepted |
+| D-018 | Rebrand as Hawker Balance and add nutrition as a parallel educational system | Teach serving-level trade-offs through reviewed data, variants, fictional visit intents, objectives, and analytics without altering the established economy or assigning health traits to personas | Accepted; source and human review pending |
 
 ## Decision changes
 

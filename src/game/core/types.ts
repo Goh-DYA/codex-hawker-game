@@ -48,10 +48,19 @@ export interface DishDefinition {
   /** Authored relative appeal in the inclusive 0-1 range. */
   readonly baseDemand?: number;
   readonly preferenceTags?: readonly string[];
+  /** Optional progression gates used when evaluating nutrition-intent availability. */
+  readonly unlockLevel?: number;
+  readonly unlockReputation?: number;
+  /** Reviewed nutrition variants. The runtime selects exactly one active variant. */
+  readonly nutritionVariants?: readonly NutritionVariant[];
+  readonly defaultNutritionVariantId?: string;
+  readonly activeNutritionVariantId?: string;
 }
 
 export interface StallDefinition {
   readonly dishIds: readonly string[];
+  /** Full authored menu, retained when dishIds is narrowed to the active menu. */
+  readonly allDishIds?: readonly string[];
   readonly orderMs: number;
   readonly preparationCapacity: number;
   readonly queueCapacity: number;
@@ -189,6 +198,12 @@ export interface Customer {
   readonly ratingSettled?: boolean;
   readonly targetStallId?: string;
   readonly orderedDishId?: string;
+  /** Fictional preference for this visit; it is never a diagnosis or demographic trait. */
+  readonly nutritionIntentId?: NutritionIntent;
+  /** Order-time values remain frozen when the player changes a stall recipe. */
+  readonly orderedNutritionVariantId?: string;
+  readonly orderedNutritionProfile?: NutritionProfile;
+  readonly nutritionRequestResult?: NutritionRequestResult;
   readonly reservedSeatKey?: string;
   readonly targetTrayReturnId?: string;
   readonly hasTray: boolean;
@@ -220,7 +235,12 @@ export interface VisitRating {
   readonly day: number;
 }
 
-export type ObjectiveKind = "serve" | "revenue" | "happiness" | "flow" | "variety" | "facility";
+export type ObjectiveKind = "serve" | "revenue" | "happiness" | "flow" | "variety" | "facility" | "nutrition";
+
+export type NutritionObjectiveCriterion =
+  | "profiled-servings"
+  | "intent-matches"
+  | "variant-servings";
 
 export interface DailyObjective {
   readonly id: string;
@@ -234,6 +254,114 @@ export interface DailyObjective {
   readonly rewardCash: number;
   readonly rewardXp: number;
   readonly completed: boolean;
+  readonly nutritionCriterion?: NutritionObjectiveCriterion;
+}
+
+export type NutritionIntent =
+  | "lighter-energy"
+  | "protein-forward"
+  | "fibre-forward"
+  | "sodium-aware"
+  | "lower-total-sugar-drink";
+
+export type NutritionMetric =
+  | "energyKcal"
+  | "proteinG"
+  | "totalFatG"
+  | "saturatedFatG"
+  | "transFatG"
+  | "carbohydrateG"
+  | "totalSugarG"
+  | "dietaryFibreG"
+  | "sodiumMg"
+  | "calciumMg"
+  | "ironMg"
+  | "waterG";
+
+export type NutritionValue =
+  | { readonly status: "known"; readonly value: number }
+  | { readonly status: "trace" }
+  | {
+      readonly status: "unavailable";
+      readonly reason?: "not-reported" | "invalid-source" | "unmapped";
+    };
+
+export type NutritionProfileStatus = "released" | "unavailable" | "quarantined";
+export type NutritionClass = "meal" | "drink";
+
+export interface NutritionServing {
+  readonly amount: number;
+  readonly unit: "g" | "ml";
+  readonly label: string;
+}
+
+export interface NutritionProfile {
+  readonly id: string;
+  readonly dishId: string;
+  readonly status: NutritionProfileStatus;
+  readonly serving?: NutritionServing;
+  readonly nutrients: Readonly<Record<NutritionMetric, NutritionValue>>;
+  /** Precomputed relative fits among reviewed in-game meal or drink options. */
+  readonly intentFits: Partial<Readonly<Record<NutritionIntent, number>>>;
+  readonly nutritionClass: NutritionClass;
+}
+
+export interface NutritionVariant {
+  readonly id: string;
+  readonly label: string;
+  readonly unlockRank: number;
+  readonly profileId: string;
+  readonly visualKey: string;
+  readonly profile?: NutritionProfile;
+}
+
+export type NutritionRequestResult = "matched" | "missed" | "unknown";
+
+export interface NutritionOutcome {
+  readonly customerId: string;
+  readonly day: number;
+  readonly intentId?: NutritionIntent;
+  readonly dishId: string;
+  readonly variantId?: string;
+  readonly result: NutritionRequestResult;
+  readonly profile?: NutritionProfile;
+}
+
+export interface NutritionIntentMetrics {
+  readonly requests: number;
+  readonly matches: number;
+  readonly misses: number;
+  readonly unknowns: number;
+}
+
+export interface NutritionMetrics {
+  readonly servedMeals: number;
+  readonly profiledServings: number;
+  readonly nonDefaultVariantServings: number;
+  readonly intentRequests: number;
+  readonly intentMatches: number;
+  readonly intentMisses: number;
+  readonly intentUnknowns: number;
+  readonly byIntent: Readonly<Record<NutritionIntent, NutritionIntentMetrics>>;
+  readonly nutrientTotals: Readonly<Record<NutritionMetric, number>>;
+  readonly nutrientKnownCounts: Readonly<Record<NutritionMetric, number>>;
+  readonly dishServings: Readonly<Record<string, number>>;
+  readonly recentOutcomes: readonly NutritionOutcome[];
+  readonly today: NutritionDailyMetrics;
+}
+
+export interface NutritionDailyMetrics {
+  readonly day: number;
+  readonly servedMeals: number;
+  readonly profiledServings: number;
+  readonly intentRequests: number;
+  readonly intentMatches: number;
+  readonly intentMisses: number;
+  readonly intentUnknowns: number;
+  readonly byIntent: Readonly<Record<NutritionIntent, NutritionIntentMetrics>>;
+  readonly nutrientTotals: Readonly<Record<NutritionMetric, number>>;
+  readonly nutrientKnownCounts: Readonly<Record<NutritionMetric, number>>;
+  readonly dishServings: Readonly<Record<string, number>>;
 }
 
 export interface StallMasteryState {
@@ -271,6 +399,7 @@ export interface SimulationMetrics {
   readonly recoveredTargets: number;
   readonly trayReturns: number;
   readonly visitRatings: readonly VisitRating[];
+  readonly nutrition: NutritionMetrics;
 }
 
 export interface QualitySettings {
@@ -342,7 +471,7 @@ export interface UndoEntry {
 }
 
 export interface GameState {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 4;
   readonly map: GridMap;
   readonly accessPoints: readonly AccessPoint[];
   readonly routeGuidePoints: readonly GridPoint[];
@@ -491,7 +620,7 @@ export interface AdvanceResult {
 }
 
 export interface GameSnapshot {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 4;
   readonly tick: number;
   readonly elapsedMs: number;
   readonly map: GridMap;
@@ -543,6 +672,22 @@ export interface PersistentGameStateV3 {
   readonly elapsedMs: number;
 }
 
+export interface PersistentGameStateV4 {
+  readonly schemaVersion: 4;
+  readonly savedAtTick: number;
+  readonly map: GridMap;
+  readonly accessPoints: readonly AccessPoint[];
+  readonly routeGuidePoints: readonly GridPoint[];
+  readonly qualityMode: QualityMode;
+  readonly objects: readonly PlacedObject[];
+  readonly economy: EconomyState;
+  readonly progression: ProgressionState;
+  readonly metrics: Pick<SimulationMetrics, "trayReturns" | "visitRatings" | "nutrition">;
+  readonly rngState: number;
+  readonly nextCustomerSequence: number;
+  readonly elapsedMs: number;
+}
+
 export interface PersistentGameStateV1 {
   readonly schemaVersion: 1;
   readonly map: GridMap;
@@ -555,4 +700,8 @@ export interface PersistentGameStateV1 {
   readonly seed: number;
 }
 
-export type AnyPersistentGameState = PersistentGameStateV1 | PersistentGameStateV2 | PersistentGameStateV3;
+export type AnyPersistentGameState =
+  | PersistentGameStateV1
+  | PersistentGameStateV2
+  | PersistentGameStateV3
+  | PersistentGameStateV4;

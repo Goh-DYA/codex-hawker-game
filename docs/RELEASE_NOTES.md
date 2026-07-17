@@ -2,7 +2,7 @@
 
 ## Unreleased — release candidate
 
-Hawker Simulator is a complete, free, local-first browser management game candidate. It is not yet production-approved because exact-artifact real-browser/offline QA and required human reviews remain open.
+Hawker Balance is a complete, free, local-first browser management and nutrition-education game candidate. It is not yet production-approved because exact-artifact real-browser/offline QA and required human reviews remain open.
 
 ### Playable launch scope
 
@@ -13,10 +13,12 @@ Hawker Simulator is a complete, free, local-first browser management game candid
 - Paint saved preferred walking lanes that shift guest routes while retaining obstacle-safe fallback paths.
 - Read live queue, cleanliness, seating, ambience, cash, reputation, level, objective, and diagnostic feedback.
 - Expand the hall and progress through deterministic economy, XP, reputation, and unlock rules.
+- Compare reviewed serving profiles through ten recipe-variant families without changing prices, service timing, satisfaction, XP, reputation, or dish quality.
+- Respond to fictional nutrition intents, inspect neutral trade-offs, complete rotating nutrition objectives, and read current-day Nutrition Pulse analytics without composite health grades.
 
 ### Interface and accessibility engineering
 
-- Semantic React controls surround the Phaser world for the catalogue, menus, settings, save tools, objectives, tutorial, and status.
+- Semantic React controls surround the Phaser world for the catalogue, menus, settings, save tools, objectives, tutorials, Nutrition Lens, Variant Lab, customer inspector, Nutrition Pulse, and status.
 - Pointer and keyboard camera/build controls, focus-managed dialogs, visible focus, Escape behavior, high contrast, reduced motion, text scaling, and separate audio controls are implemented.
 - Important audio events have visual equivalents; unavailable audio/storage degrades with an explicit message.
 - Standard and lower-end quality modes apply separate crowd/fixed-step/frame-rate limits.
@@ -24,12 +26,13 @@ Hawker Simulator is a complete, free, local-first browser management game candid
 ### Saves and offline shell
 
 - IndexedDB active/backup saves use versioned checksummed envelopes and serialized writes.
-- V1-to-V2 migration, newest-save backup recovery, content alias/refund recovery, export/import, and reset are implemented.
+- Core V3-to-V4 and runtime V1-to-V2 migrations, newest-save backup recovery, content alias/refund recovery, nutrition variant fallback, export/import, and reset are implemented.
 - The PWA includes a manifest, offline fallback, deterministic content-derived cache ID, acknowledged runtime warming, and an explicit save-before-update activation flow.
 
 ### Automated evidence
 
 - Content validation requires and checks 12 stalls, 46 dishes, 80 placeables, 12 archetypes, and 300 English localization entries.
+- Nutrition validation checks all 46 profile statuses, 28 reviewed mappings, 18 explicit unavailable mappings, ten variant families, provenance hashes, scaling, trace values, quarantine rules, deterministic generation, and incompatible guideline comparisons.
 - Deterministic simulation, grid/pathfinding, build/economy/progression, persistence/migration/recovery, target reconciliation, soak, and an 80-agent Node benchmark have automated tests.
 - Production-render checks assert the release shell, security headers, PWA update protocol, and absence of starter-facing copy.
 - See `TEST_REPORT.md` and `PERFORMANCE_REPORT.md` for the current supported-runtime automated results, the historical payload baseline, and remaining browser-only measurements.

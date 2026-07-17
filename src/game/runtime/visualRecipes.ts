@@ -253,7 +253,37 @@ export interface DishVisualRecipe {
   readonly foodFrame: string;
   readonly containerFrame: string;
   readonly presentation: DishPresentationProfile;
+  /** Variant composition key used by renderers for geometry, arrangement, and garnish cues. */
+  readonly variantVisualKey?: string;
+  /** Non-colour cue that must remain legible in high-contrast rendering. */
+  readonly variantGeometryCue?: string;
+  readonly variantVisualFamily?: DishVariantVisualFamily;
   readonly contractKey: string;
+}
+
+export type DishVariantVisualFamily =
+  | "drink"
+  | "nasi-lemak"
+  | "carrot-cake"
+  | "prata"
+  | "fish-soup"
+  | "bak-chor"
+  | "murtabak"
+  | "briyani"
+  | "thosai"
+  | "fallback";
+
+export function variantVisualFamilyForKey(visualKey: string): DishVariantVisualFamily {
+  if (visualKey.startsWith("kopi-") || visualKey.startsWith("teh-")) return "drink";
+  if (visualKey.startsWith("nasi-")) return "nasi-lemak";
+  if (visualKey.startsWith("carrot-cake-")) return "carrot-cake";
+  if (visualKey.startsWith("prata-")) return "prata";
+  if (visualKey.startsWith("fish-")) return "fish-soup";
+  if (visualKey.startsWith("bak-chor-")) return "bak-chor";
+  if (visualKey.startsWith("murtabak-")) return "murtabak";
+  if (visualKey.startsWith("briyani-")) return "briyani";
+  if (visualKey.startsWith("thosai-")) return "thosai";
+  return "fallback";
 }
 
 interface DishPresentationSeed {
@@ -427,6 +457,38 @@ export function visualRecipeForDish(dish: DishDefinition): DishVisualRecipe {
     containerFrame: `${dish.containerSprite.atlas}:${dish.containerSprite.frame}`,
     presentation,
     contractKey: `${dish.id}:${semanticKey}:${vessel}:${foodForm}:${dish.portionColour}:${garnishColour.toString(16)}:${dish.foodSprite.frame}:${dish.containerSprite.frame}`,
+  };
+}
+
+/**
+ * Resolves a reviewed nutrition variant into a visual recipe. The visual key is
+ * deliberately carried separately from colour so canvas, catalogue, and
+ * high-contrast renderers can all express a composition change.
+ */
+export function visualRecipeForDishVariant(
+  dish: DishDefinition,
+  visualKey?: string,
+): DishVisualRecipe {
+  const base = visualRecipeForDish(dish);
+  if (!visualKey) return base;
+  const variantSeed = stableVisualHash(`${dish.id}:${visualKey}`);
+  const garnishColour = ACCENTS[(variantSeed >>> 8) % ACCENTS.length] as number;
+  const geometryCue = visualKey;
+  const presentation: DishPresentationProfile = {
+    ...base.presentation,
+    motif: `${base.presentation.motif}-${geometryCue}`,
+    detailCues: [...base.presentation.detailCues, geometryCue],
+    semanticKey: `${base.presentation.semanticKey}:variant:${geometryCue}`,
+  };
+  return {
+    ...base,
+    garnishColour,
+    garnishCount: 1 + ((variantSeed >>> 13) % 4),
+    presentation,
+    variantVisualKey: visualKey,
+    variantGeometryCue: geometryCue,
+    variantVisualFamily: variantVisualFamilyForKey(visualKey),
+    contractKey: `${base.contractKey}:variant:${geometryCue}:${garnishColour.toString(16)}`,
   };
 }
 

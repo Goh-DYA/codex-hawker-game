@@ -11,6 +11,7 @@ The target is WCAG 2.2 AA for applicable web UI and equivalent access to essenti
 - Build objects can be selected and moved with buttons/keys; dragging is never the sole mechanism.
 - Escape reliably cancels placement or closes the top dialog without losing a committed action.
 - Focus returns to the invoking control after a dialog.
+- The Variant Lab traps focus only while open, closes with Escape, and returns focus to its Tune recipe trigger; a departing selected customer closes its inspector with an announcement.
 - Keyboard shortcuts are documented, remappable where practical, and disabled while typing.
 - Targets are at least 24 × 24 CSS pixels, with 44 × 44 preferred for primary controls.
 
@@ -20,6 +21,7 @@ The canvas is not the only information source. React provides:
 
 - a named game region and concise control instructions;
 - an inspect panel for selected tile/object/customer;
+- a text nutrition summary for each profiled dish and selected customer, including explicit `Trace amount`, `Not available`, and `Data under review` states;
 - text reason summaries for queue, seat, path, and satisfaction problems;
 - a keyboard-accessible Settings legend that pairs every customer status bubble and patience ring with visible text;
 - a live-region setting with Off / Important / Detailed verbosity;
@@ -35,6 +37,7 @@ Layered stall facades, food displays, and vendor characters are supplemental can
 
 - Normal text target contrast is at least 4.5:1; large text and essential graphics at least 3:1.
 - State uses icon, label/pattern, and color together.
+- Nutrition comparisons use the words higher, lower, same, trace, and unavailable; no red/green health grade or color-only delta is permitted.
 - Stall identities and displayed food use silhouette, vessel, ingredient, equipment, and facade cues in addition to palette; high contrast must preserve the separation between vendor, counter, props, shutter, and background.
 - UI text scale supports 100%, 125%, 150%, and 200% without clipped essential controls.
 - Reference viewport: 1280 × 720; minimum target: 1024 × 640. Browser zoom at 80%, 100%, 125%, 150%, and 200% is manually checked.
@@ -75,6 +78,7 @@ Layered stall facades, food displays, and vendor characters are supplemental can
 - All 12 stall facades at full and reduced motion, including an in-place toggle while open and paused; verify the vendor freezes immediately without disappearing or conveying unique state through motion.
 - Normal/high-contrast comparison of compact and large stalls with active food displays and closed shutters; verify distinct shapes, readable layering, and text-equivalent menu/open state.
 - Color-vision simulation for placement, satisfaction, and overlays.
+- Keyboard and screen-reader checks for the Nutrition Lens, Variant Lab radio cards, customer inspector, Focus sheet, disclosure, and Pulse empty/data states.
 - Pointer target and drag-alternative review.
 
 Human accessibility review and assistive-technology results remain pending and are release gates.

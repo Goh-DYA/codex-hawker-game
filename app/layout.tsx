@@ -16,33 +16,33 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     metadataBase,
-    title: "Hawker Simulator — Build a place everyone can share",
+    title: "Hawker Balance — Run the centre. Read the plate.",
     description:
-      "A welcoming, local-first Singapore hawker-centre management game.",
-    applicationName: "Hawker Simulator",
+      "A local-first Singapore hawker-centre management game about service, menu trade-offs, and nutrition education.",
+    applicationName: "Hawker Balance",
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
-      title: "Hawker Simulator",
+      title: "Hawker Balance",
       statusBarStyle: "black-translucent",
     },
     openGraph: {
-      title: "Hawker Simulator",
-      description: "Build a place everyone can share.",
+      title: "Hawker Balance",
+      description: "Run the centre. Read the plate.",
       type: "website",
       images: [
         {
           url: socialImage,
-          width: 1733,
-          height: 909,
-          alt: "An illustrated top-down Hawker Simulator centre filled with stalls, tables, and diners.",
+          width: 1731,
+          height: 908,
+          alt: "An illustrated top-down Hawker Balance centre filled with stalls, tables, diners, and nutrition cues.",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Hawker Simulator",
-      description: "Build a place everyone can share.",
+      title: "Hawker Balance",
+      description: "Run the centre. Read the plate.",
       images: [socialImage],
     },
     icons: {

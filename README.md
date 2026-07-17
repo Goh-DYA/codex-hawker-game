@@ -1,6 +1,6 @@
-# Hawker Simulator
+# Hawker Balance
 
-Hawker Simulator is a local-first desktop browser game about building and operating an original Singapore-inspired community dining hall. Players arrange stalls, communal seating, tray-return points, fans, lighting, plants, signs, and practical facilities, then watch a deterministic customer simulation reveal queue, route, seating, cleanliness, and service bottlenecks.
+Hawker Balance is a local-first desktop browser game about building and operating an original Singapore-inspired community dining hall while learning to compare nutrition trade-offs. Players arrange stalls and facilities, plan menus and reviewed recipe variants, then watch a deterministic customer simulation reveal service and nutrition decisions without labelling dishes good or bad.
 
 The current release candidate is fully free and contains no accounts, advertising, analytics, payments, loot boxes, energy systems, or server-dependent mechanics.
 
@@ -14,12 +14,12 @@ The main workspace combines a tile-based centre, live operational readouts, and 
 
 Customers choose stalls, form separate queues, carry visible meals, find reserved seats, eat, return trays, and leave through the active exit.
 
-![Hawker Simulator planning view with the centre map, management dashboard, and furniture catalogue](docs/images/hawker-overview.png)
+![Hawker Balance planning view with the centre map, management dashboard, and furniture catalogue](docs/images/hawker-overview.png)
 
 
 ### Manage each food stall
 
-Every operating stall displays its queue count. Players can select a cardinal automatic route or draw a custom obstacle-safe line with bends. Players can also curate the food menu from each store.
+Every operating stall displays its queue count. Players can select a cardinal automatic route or draw a custom obstacle-safe line with bends. Players can also curate each menu, compare values for listed servings, and tune reviewed recipe variants while price and service timing remain stable.
 
 ![The stall management panel and an L-shaped custom queue route in the game world](docs/images/hawker-custom-queue.png)
 
@@ -32,6 +32,7 @@ The Route editor lets players paint preferred walking lanes across clear floor t
 
 - 12 original operational stalls
 - 46 named dishes
+- 28 reviewed base-dish nutrition profiles and 10 reviewed variant families
 - 80 meaningfully distinct placeable catalogue items
 - 12 customer archetypes
 - 1 top-down neighbourhood-hall map theme
@@ -74,7 +75,7 @@ Controls:
 - `Enter` places, selects, or toggles a preferred route tile; `R` rotates, `Esc` finishes/cancels, and `U` undoes.
 - Choose **Route** to paint or erase preferred guest lanes with the pointer or keyboard cursor.
 - `Space` pauses while the world has focus.
-- The HTML controls expose build, stall, dish-menu, insight, speed, save, and settings actions.
+- The HTML controls expose build, stall, menu-planning, nutrition, insight, speed, save, and settings actions.
 
 ## Validate
 
@@ -124,6 +125,7 @@ Start with:
 - [Technical design](docs/TECHNICAL_DESIGN.md)
 - [Art bible](docs/ART_BIBLE.md)
 - [Content catalogue](docs/CONTENT_CATALOGUE.md)
+- [Nutrition data and educational-use policy](docs/NUTRITION_DATA.md)
 - [Cultural review checklist](docs/CULTURAL_REVIEW.md)
 - [Accessibility](docs/ACCESSIBILITY.md)
 - [Test plan and report](docs/TEST_PLAN.md)
@@ -136,4 +138,4 @@ The expanded 12-stall / 46-dish source passes the automated release gate on bund
 
 ## License and provenance
 
-All game identity, code-native visual assets, procedural audio cues, copy, stall names, and content data in this repository are original project work. Dependency notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); asset provenance is in [docs/ASSET_PROVENANCE.md](docs/ASSET_PROVENANCE.md).
+All game identity, code-native visual assets, procedural audio cues, copy, and stall names are original project work. Generated nutrition content is a reviewed transformation of operator-supplied source snapshots; the raw datasets are not redistributed. Dependency notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); asset provenance is in [docs/ASSET_PROVENANCE.md](docs/ASSET_PROVENANCE.md).

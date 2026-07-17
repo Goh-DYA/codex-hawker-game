@@ -13,6 +13,7 @@ import {
   CUSTOMER_ARCHETYPES,
   DISHES,
   ENGLISH_LOCALIZATION,
+  getNutritionProfile,
   PLACEABLES,
   STALLS,
   validateContent,
@@ -53,6 +54,19 @@ import type {
   RuntimeSettings,
   RuntimeSnapshot,
 } from "@/src/game/runtime/types";
+import {
+  customerVariantLabel,
+  CustomerNutritionInspector,
+  dialogFocusAction,
+  NutritionDisclosure,
+  NutritionProfileSummary,
+  NutritionPulseCard,
+  VariantLabDialog,
+  type CustomerNutritionView,
+  type NutritionFamilyView,
+  type NutritionProfileView,
+  type NutritionPulseView,
+} from "./NutritionEducation";
 
 const INITIAL_LEVEL = 1;
 const INITIAL_REPUTATION = 8;
@@ -87,6 +101,23 @@ const INITIAL_SNAPSHOT: RuntimeSnapshot = {
     level: INITIAL_LEVEL,
     reputation: INITIAL_REPUTATION,
   }),
+  activeDishVariants: {},
+  nutritionFamilies: [],
+  nutritionPulse: {
+    servedMeals: 0,
+    profiledMeals: 0,
+    intentRequests: 0,
+    intentMatches: 0,
+    intentMisses: 0,
+    intentUnknowns: 0,
+    averages: {},
+    knownCounts: {
+      energyKcal: 0,
+      proteinG: 0,
+      dietaryFibreG: 0,
+      sodiumMg: 0,
+    },
+  },
   placedStalls: [],
   canUndo: false,
   objectiveProgress: 0,
@@ -146,16 +177,34 @@ function normalizeSettings(
   };
 }
 
-type Panel = "build" | "stalls" | "dishes" | "insights" | "activity";
+type Panel = "focus" | "build" | "stalls" | "dishes" | "insights" | "activity";
 type TutorialStep = 0 | 1 | 2 | 3 | 4 | 5;
+type NutritionTourStep = 0 | 1 | 2;
 
 const PANEL_COPY: Readonly<Record<Panel, { kicker: string; title: string }>> = {
+  focus: { kicker: "Today at a glance", title: "Focus" },
   build: { kicker: "Build catalogue", title: "Make it yours" },
   stalls: { kicker: "Food & drink", title: "Stalls" },
-  dishes: { kicker: "Menus", title: "Hawker menus" },
-  insights: { kicker: "Why it happens", title: "Flow insights" },
+  dishes: { kicker: "Dishes & nutrition", title: "Menu planning" },
+  insights: { kicker: "Service review", title: "Centre insights" },
   activity: { kicker: "Recent events", title: "Activity" },
 };
+
+const EMPTY_NUTRITION_PULSE = {
+  servedMeals: 0,
+  profiledMeals: 0,
+  intentRequests: 0,
+  intentMatches: 0,
+  intentMisses: 0,
+  intentUnknowns: 0,
+  averages: {},
+  knownCounts: {
+    energyKcal: 0,
+    proteinG: 0,
+    dietaryFibreG: 0,
+    sodiumMg: 0,
+  },
+} as const;
 
 const subscribeToStaticValue = () => () => undefined;
 const getDebugSnapshot = () =>
@@ -426,6 +475,36 @@ function dishPreview(dish: (typeof DISHES)[number]): {
   };
 }
 
+function nutritionProfileView(
+  dishId: string,
+  variantId?: string,
+): NutritionProfileView | undefined {
+  const profile = getNutritionProfile(dishId, variantId);
+  if (!profile) return undefined;
+  return {
+    status: profile.status,
+    servingLabel: profile.serving?.label,
+    energyKcal: profile.nutrients.energyKcal,
+    proteinG: profile.nutrients.proteinG,
+    dietaryFibreG: profile.nutrients.dietaryFibreG,
+    sodiumMg: profile.nutrients.sodiumMg,
+    totalSugarG: profile.nutrients.totalSugarG,
+    intentFits: profile.intentFits,
+  };
+}
+
+function dishLabel(dishId: string) {
+  const dish = DISHES.find((candidate) => candidate.id === dishId);
+  return dish ? localize(dish.nameKey) : dishId.replace(/^dish\./, "").replaceAll("-", " ");
+}
+
+function personaLabel(archetypeId: string) {
+  const archetype = CUSTOMER_ARCHETYPES.find((candidate) => candidate.id === archetypeId);
+  return archetype
+    ? localize(archetype.nameKey)
+    : archetypeId.replace(/^customer\./, "").replaceAll("-", " ");
+}
+
 function signedEffect(value: number, suffix = "") {
   return `${value > 0 ? "+" : ""}${Math.round(value)}${suffix}`;
 }
@@ -507,8 +586,8 @@ function unlockLabel(
 const TUTORIAL_COPY = [
   {
     eyebrow: "Welcome, neighbour",
-    title: "Build a place everyone can share",
-    body: "Your small community dining hall is ready for its first lunch crowd. Every choice changes how people move, queue, eat, and feel.",
+    title: "Run the centre. Read the plate.",
+    body: "Your community dining hall is ready for its first lunch crowd. Every choice changes how people move, queue, eat, and compare menu trade-offs.",
     action: "Show me around",
   },
   {
@@ -526,7 +605,7 @@ const TUTORIAL_COPY = [
   {
     eyebrow: "Step 3 of 4",
     title: "Read the living layout",
-    body: "Dotted paths show routes. Numbered queue markers show pressure. Seat rings show reservations. The Insights panel explains every bottleneck.",
+    body: "Dotted paths show routes. Numbered queue markers show pressure. Seat rings show reservations. Centre insights explains every bottleneck.",
     action: "Next",
   },
   {
@@ -552,9 +631,12 @@ export function HawkerSimulator() {
   const panelRef = useRef<Panel>("build");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tutorialDialogRef = useRef<HTMLElement>(null);
+  const nutritionTourDialogRef = useRef<HTMLElement>(null);
+  const cataloguePanelRef = useRef<HTMLElement>(null);
   const settingsDialogRef = useRef<HTMLElement>(null);
   const helpDialogRef = useRef<HTMLElement>(null);
   const resetDialogRef = useRef<HTMLElement>(null);
+  const managementReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const [snapshot, setSnapshot] = useState(INITIAL_SNAPSHOT);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -567,6 +649,11 @@ export function HawkerSimulator() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState<TutorialStep>(0);
+  const [nutritionTourStep, setNutritionTourStep] = useState<NutritionTourStep>(2);
+  const [nutritionLens, setNutritionLens] = useState(true);
+  const [variantLabDishId, setVariantLabDishId] = useState<string>();
+  const [managementOpen, setManagementOpen] = useState(false);
+  const [compactManagement, setCompactManagement] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activityEntries, setActivityEntries] = useState<readonly ActivityEntry[]>([]);
   const [activityUnread, setActivityUnread] = useState(0);
@@ -658,6 +745,8 @@ export function HawkerSimulator() {
         validateContent();
         let savedSettings = DEFAULT_SETTINGS;
         let completedTutorial = false;
+        let completedNutritionTour = false;
+        let savedNutritionLens = true;
         let initialStates: readonly unknown[] = [];
         try {
           const initialSettings = {
@@ -670,6 +759,10 @@ export function HawkerSimulator() {
           );
           completedTutorial =
             (await loadPreference<unknown>("tutorial-complete", false)) === true;
+          completedNutritionTour =
+            (await loadPreference<unknown>("nutrition-tour-v1-complete", false)) === true;
+          savedNutritionLens =
+            (await loadPreference<unknown>("nutrition-lens-enabled", true)) !== false;
         } catch {
           reportStorageIssue(
             "Local preferences are unavailable. The game will continue with defaults.",
@@ -685,6 +778,8 @@ export function HawkerSimulator() {
         if (disposed || !gameHostRef.current) return;
         setSettings(savedSettings);
         setTutorialStep(completedTutorial ? 5 : 0);
+        setNutritionTourStep(completedNutritionTour ? 2 : 0);
+        setNutritionLens(savedNutritionLens);
         const { createHawkerRuntime } = await import(
           "@/src/game/runtime/createHawkerRuntime"
         );
@@ -780,15 +875,32 @@ export function HawkerSimulator() {
   }, [reportStorageIssue, settings]);
 
   useEffect(() => {
+    if (loading) return;
+    void savePreference("nutrition-lens-enabled", nutritionLens).catch(() =>
+      reportStorageIssue("Nutrition Lens preference could not be saved."),
+    );
+  }, [loading, nutritionLens, reportStorageIssue]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 899px)");
+    const updateCompactManagement = () => setCompactManagement(mediaQuery.matches);
+    updateCompactManagement();
+    mediaQuery.addEventListener("change", updateCompactManagement);
+    return () => mediaQuery.removeEventListener("change", updateCompactManagement);
+  }, []);
+
+  useEffect(() => {
     const modal = resetOpen
       ? resetDialogRef.current
       : settingsOpen
         ? settingsDialogRef.current
-        : helpOpen
-          ? helpDialogRef.current
-          : tutorialStep < 5
-            ? tutorialDialogRef.current
-            : null;
+          : helpOpen
+            ? helpDialogRef.current
+            : tutorialStep < 5
+              ? tutorialDialogRef.current
+              : nutritionTourStep < 2
+                ? nutritionTourDialogRef.current
+              : null;
     if (!modal) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     const focusableSelector = [
@@ -812,10 +924,15 @@ export function HawkerSimulator() {
         if (resetOpen) setResetOpen(false);
         else if (settingsOpen) setSettingsOpen(false);
         else if (helpOpen) setHelpOpen(false);
-        else {
+        else if (tutorialStep < 5) {
           setTutorialStep(5);
           void savePreference("tutorial-complete", true).catch(() =>
             reportStorageIssue("Tutorial progress could not be saved."),
+          );
+        } else {
+          setNutritionTourStep(2);
+          void savePreference("nutrition-tour-v1-complete", true).catch(() =>
+            reportStorageIssue("Nutrition tour progress could not be saved."),
           );
         }
         return;
@@ -842,7 +959,7 @@ export function HawkerSimulator() {
       document.removeEventListener("keydown", handleModalKeys);
       window.requestAnimationFrame(() => previousFocus?.focus());
     };
-  }, [helpOpen, reportStorageIssue, resetOpen, settingsOpen, tutorialStep]);
+  }, [helpOpen, nutritionTourStep, reportStorageIssue, resetOpen, settingsOpen, tutorialStep]);
 
   const buildCategories = useMemo(
     () => ["all", ...new Set(PLACEABLES.map((item) => item.category))],
@@ -933,6 +1050,31 @@ export function HawkerSimulator() {
     if (openCentre && !snapshot.isOpen) toggleCentre();
   }
 
+  async function finishNutritionTour() {
+    setNutritionTourStep(2);
+    await savePreference("nutrition-tour-v1-complete", true).catch(() =>
+      reportStorageIssue("Nutrition tour progress could not be saved."),
+    );
+  }
+
+  function openPanel(nextPanel: Panel, returnFocus?: HTMLElement) {
+    if (
+      !managementOpen &&
+      window.matchMedia("(max-width: 899px)").matches
+    ) {
+      managementReturnFocusRef.current =
+        returnFocus ?? document.activeElement as HTMLElement | null;
+    }
+    setPanel(nextPanel);
+    setManagementOpen(true);
+    if (nextPanel === "activity") setActivityUnread(0);
+  }
+
+  function closeManagementSheet() {
+    setManagementOpen(false);
+    controllerRef.current?.selectCustomer(undefined);
+  }
+
   async function saveNow(): Promise<boolean> {
     window.clearTimeout(saveTimerRef.current);
     pendingSaveRef.current = undefined;
@@ -968,7 +1110,7 @@ export function HawkerSimulator() {
     link.href = URL.createObjectURL(
       new Blob([exportSave(state)], { type: "application/json" }),
     );
-    link.download = `hawker-simulator-day-${snapshot.day}.json`;
+    link.download = `hawker-balance-day-${snapshot.day}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
   }
@@ -981,8 +1123,10 @@ export function HawkerSimulator() {
       window.clearTimeout(saveTimerRef.current);
       pendingSaveRef.current = undefined;
       const payload = importSave(await file.text());
-      controllerRef.current?.importState(payload);
-      await performSave(payload);
+      const controller = controllerRef.current;
+      if (!controller) throw new Error("The game is not ready to import a save.");
+      controller.importState(payload);
+      await performSave(controller.exportState());
       announce({ kind: "success", message: "Save imported and checked.", importance: "important" });
     } catch (error) {
       announce({
@@ -1002,14 +1146,108 @@ export function HawkerSimulator() {
     controllerRef.current?.reset();
     setResetOpen(false);
     setTutorialStep(0);
+    setNutritionTourStep(0);
     await savePreference("tutorial-complete", false).catch(() =>
       reportStorageIssue("Tutorial progress could not be reset."),
+    );
+    await savePreference("nutrition-tour-v1-complete", false).catch(() =>
+      reportStorageIssue("Nutrition tour progress could not be reset."),
     );
     announce({ kind: "info", message: "A fresh centre is ready." });
   }
 
   const tutorialCopy = TUTORIAL_COPY[Math.min(tutorialStep, 4)]!;
-  const interfaceInert = tutorialStep < 5 || settingsOpen || helpOpen || resetOpen;
+  const nutritionRuntime = snapshot as RuntimeSnapshot & {
+    readonly nutritionFamilies?: readonly NutritionFamilyView[];
+    readonly nutritionPulse?: NutritionPulseView;
+    readonly selectedCustomerNutrition?: CustomerNutritionView;
+  };
+  const nutritionFamilies = nutritionRuntime.nutritionFamilies ?? [];
+  const nutritionPulse = nutritionRuntime.nutritionPulse ?? EMPTY_NUTRITION_PULSE;
+  const selectedCustomerNutrition = nutritionRuntime.selectedCustomerNutrition;
+  const managementSheetOpen = compactManagement && (
+    managementOpen || Boolean(selectedCustomerNutrition)
+  );
+  const variantLabFamily = variantLabDishId
+    ? nutritionFamilies.find((family) => family.dishId === variantLabDishId)
+    : undefined;
+  const interfaceInert =
+    tutorialStep < 5 ||
+    nutritionTourStep < 2 ||
+    settingsOpen ||
+    helpOpen ||
+    resetOpen ||
+    Boolean(variantLabFamily);
+
+  useEffect(() => {
+    if (!managementSheetOpen) return;
+    const sheet = cataloguePanelRef.current;
+    if (!sheet) return;
+    if (!managementReturnFocusRef.current) {
+      managementReturnFocusRef.current = document.activeElement as HTMLElement | null;
+    }
+    const focusableSelector = [
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[href]",
+      "summary",
+      "[tabindex]:not([tabindex='-1'])",
+    ].join(",");
+    const focusables = () =>
+      Array.from(sheet.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => !element.hidden && element.getAttribute("aria-hidden") !== "true",
+      );
+    const initialFocusFrame = window.requestAnimationFrame(() => {
+      const inspectorClose = sheet.querySelector<HTMLElement>(
+        ".customer-nutrition-inspector button",
+      );
+      (inspectorClose ?? focusables()[0] ?? sheet).focus();
+    });
+    const handleSheetKeys = (event: KeyboardEvent) => {
+      const activeModal = (document.activeElement as HTMLElement | null)?.closest(
+        "[aria-modal='true']",
+      );
+      if (activeModal && activeModal !== sheet) return;
+      const available = focusables();
+      const first = available[0];
+      const last = available.at(-1);
+      const activeElement = document.activeElement;
+      const action = dialogFocusAction(
+        event.key,
+        event.shiftKey,
+        available.length,
+        activeElement === first || !sheet.contains(activeElement),
+        activeElement === last || !sheet.contains(activeElement),
+      );
+      if (action === "close") {
+        event.preventDefault();
+        setManagementOpen(false);
+        controllerRef.current?.selectCustomer(undefined);
+      } else if (action === "container") {
+        event.preventDefault();
+        sheet.focus();
+      } else if (action === "last") {
+        event.preventDefault();
+        last?.focus();
+      } else if (action === "first") {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleSheetKeys);
+    return () => {
+      window.cancelAnimationFrame(initialFocusFrame);
+      document.removeEventListener("keydown", handleSheetKeys);
+      const shouldRestore = sheet.contains(document.activeElement);
+      const returnFocus = managementReturnFocusRef.current;
+      managementReturnFocusRef.current = null;
+      if (shouldRestore) {
+        window.requestAnimationFrame(() => returnFocus?.focus());
+      }
+    };
+  }, [managementSheetOpen]);
   const unlockedCustomerCount = CUSTOMER_ARCHETYPES.filter(
     (customer) =>
       customer.unlockRequirement.level <= snapshot.level &&
@@ -1024,16 +1262,18 @@ export function HawkerSimulator() {
       className="game-shell"
       data-contrast={settings.highContrast ? "high" : "normal"}
       data-motion={settings.reducedMotion ? "reduced" : "full"}
+      data-management-open={managementOpen || Boolean(selectedCustomerNutrition)}
       onPointerDown={unlockAudio}
     >
       <header className="topbar" inert={interfaceInert} aria-hidden={interfaceInert}>
-        <div className="brand-lockup" aria-label="Hawker Simulator">
+        <div className="brand-lockup" aria-label="Hawker Balance">
           <span className="brand-mark" aria-hidden="true">
             <span />
           </span>
           <div>
-            <p>Neighbourhood edition</p>
-            <h1>Hawker Simulator</h1>
+            <p>Nutrition edition</p>
+            <h1>Hawker Balance</h1>
+            <span className="brand-tagline">Run the centre. Read the plate.</span>
           </div>
         </div>
 
@@ -1124,38 +1364,12 @@ export function HawkerSimulator() {
             </div>
           </section>
 
-          <section className="pulse-card">
-            <div className="section-heading">
-              <div>
-                <span>Live read</span>
-                <h2>Centre pulse</h2>
-              </div>
-              <span className="live-dot">Live</span>
-            </div>
-            <dl>
-              <div>
-                <dt>Guests inside</dt>
-                <dd>{snapshot.activeCustomers}</dd>
-              </div>
-              <div>
-                <dt>Free seats</dt>
-                <dd>
-                  {snapshot.freeSeats}/{snapshot.totalSeats}
-                </dd>
-              </div>
-              <div>
-                <dt>Happiness</dt>
-                <dd>{snapshot.hasSatisfactionRatings ? `${Math.round(snapshot.averageSatisfaction)}%` : "—"}</dd>
-              </div>
-              <div>
-                <dt>Cleanliness</dt>
-                <dd>{Math.round(snapshot.cleanliness)}%</dd>
-              </div>
-            </dl>
-            <button type="button" onClick={() => setPanel("insights")}>
-              Explain the flow <span aria-hidden="true">→</span>
-            </button>
-          </section>
+          <NutritionPulseCard
+            compact
+            pulse={nutritionPulse}
+            dishLabel={dishLabel}
+            onReview={() => openPanel("dishes")}
+          />
 
           <section className="tip-card">
             <span aria-hidden="true">✦</span>
@@ -1254,7 +1468,7 @@ export function HawkerSimulator() {
               role="application"
               aria-label={snapshot.buildTool === "route"
                 ? "Guest route editor. Use arrow keys to move the route cursor, Enter to add or remove a preferred route guide, and Escape to finish."
-                : "Interactive hawker centre. Use arrow keys to move the build cursor, Enter to place, R to rotate, and Escape to cancel."}
+                : "Interactive hawker centre. Use arrow keys to move the cursor. Enter selects a guest or places the current item, R rotates, and Escape clears the selection."}
               tabIndex={0}
             >
               {loading ? (
@@ -1367,7 +1581,14 @@ export function HawkerSimulator() {
           </div>
         </section>
 
-        <aside className="catalogue-panel" aria-label={`${PANEL_COPY[panel].title} panel`}>
+        <aside
+          ref={cataloguePanelRef}
+          className="catalogue-panel"
+          aria-label={`${PANEL_COPY[panel].title} panel`}
+          aria-modal={managementSheetOpen || undefined}
+          role={managementSheetOpen ? "dialog" : undefined}
+          tabIndex={managementSheetOpen ? -1 : undefined}
+        >
           <div className="catalogue-heading">
             <div>
               <span>{PANEL_COPY[panel].kicker}</span>
@@ -1378,13 +1599,63 @@ export function HawkerSimulator() {
                 ? STALLS.length
                 : panel === "dishes"
                   ? DISHES.length
+                  : panel === "focus"
+                    ? snapshot.objectives.length
                   : panel === "insights"
                     ? snapshot.activeCustomers
                     : panel === "activity"
                       ? activityEntries.length
                       : PLACEABLES.length}
             </span>
+            <button
+              type="button"
+              className="sheet-close-button"
+              aria-label="Close management sheet"
+              onClick={closeManagementSheet}
+            >
+              ×
+            </button>
           </div>
+
+          {panel === "focus" ? (
+            <div className="focus-panel">
+              <section className="objective-card">
+                <div className="card-kicker">
+                  <span>Today&apos;s focus</span>
+                  <span>Refresh {snapshot.objectiveRefreshLabel}</span>
+                </div>
+                <h2>Three ways to grow</h2>
+                <div className="objective-list">
+                  {snapshot.objectives.map((objective) => (
+                    <article key={objective.id} data-complete={objective.completed}>
+                      <strong>{objective.completed ? "✓ " : ""}{objective.title}</strong>
+                      <p>{objective.description}</p>
+                      <div className="objective-progress">
+                        <span style={{ width: `${Math.min(100, (objective.progress / Math.max(1, objective.target)) * 100)}%` }} />
+                      </div>
+                      <small>{Math.round(objective.progress)} / {objective.target} · ${objective.rewardCash} + {objective.rewardXp} XP</small>
+                    </article>
+                  ))}
+                  {snapshot.objectives.length === 0 ? <small>Opening today&apos;s objective board…</small> : null}
+                </div>
+              </section>
+              <NutritionPulseCard
+                pulse={nutritionPulse}
+                dishLabel={dishLabel}
+                onReview={() => openPanel("dishes")}
+              />
+              <section className="service-pulse-card" aria-label="Service pulse">
+                <h3>Service pulse</h3>
+                <dl>
+                  <div><dt>Guests inside</dt><dd>{snapshot.activeCustomers}</dd></div>
+                  <div><dt>Free seats</dt><dd>{snapshot.freeSeats}/{snapshot.totalSeats}</dd></div>
+                  <div><dt>Happiness</dt><dd>{snapshot.hasSatisfactionRatings ? `${Math.round(snapshot.averageSatisfaction)}%` : "—"}</dd></div>
+                  <div><dt>Cleanliness</dt><dd>{Math.round(snapshot.cleanliness)}%</dd></div>
+                </dl>
+              </section>
+              <NutritionDisclosure />
+            </div>
+          ) : null}
 
           {panel === "build" ? (
             <>
@@ -1551,6 +1822,17 @@ export function HawkerSimulator() {
                   ))}
                 </select>
               </label>
+              <div className="nutrition-lens-toolbar">
+                <label>
+                  <span>Nutrition Lens</span>
+                  <input
+                    type="checkbox"
+                    checked={nutritionLens}
+                    onChange={(event) => setNutritionLens(event.target.checked)}
+                  />
+                </label>
+                <p>Compare values per listed serving.</p>
+              </div>
               {STALLS.filter((stall) => stall.id === menuStallId).map((stall) => {
                 const activeMenu = snapshot.stallMenus[stall.id] ?? [];
                 const mastery = snapshot.stallMastery.find((candidate) => candidate.definitionId === stall.id);
@@ -1582,11 +1864,25 @@ export function HawkerSimulator() {
                           ? `All ${menuSlots} menu slots are active`
                           : undefined;
                       const reasonId = `dish-menu-reason-${dish.id.slice("dish.".length)}`;
+                      const dishTitleId = `dish-menu-title-${dish.id.slice("dish.".length)}`;
+                      const nutritionFamily = nutritionFamilies.find(
+                        (family) => family.dishId === dish.id,
+                      );
+                      const activeVariant = nutritionFamily?.variants.find(
+                        (variant) => variant.id === nutritionFamily.activeVariantId,
+                      );
+                      const profile = activeVariant?.profile
+                        ?? nutritionProfileView(dish.id, activeVariant?.id);
                       return (
-                        <label key={dish.id} className="dish-row menu-dish-row">
+                        <article
+                          key={dish.id}
+                          className="dish-row menu-dish-row"
+                          aria-labelledby={dishTitleId}
+                        >
                           <span
                             className="dish-preview"
                             data-dish={dish.id.slice("dish.".length)}
+                            data-variant={activeVariant?.visualKey}
                             data-form={preview.recipe.foodForm}
                             data-motif={preview.recipe.presentation.motif}
                             data-presentation={preview.presentation}
@@ -1599,32 +1895,59 @@ export function HawkerSimulator() {
                             <i className="dish-preview-garnish" />
                             <i className="dish-preview-side" />
                           </span>
-                          <div>
-                            <strong>{localize(dish.nameKey)}</strong>
+                          <div className="dish-menu-main">
+                            <h3 id={dishTitleId}>{localize(dish.nameKey)}</h3>
                             <small>
                               {dish.category.replace("-", " ")} · {money(dish.price)} · demand {Math.round(dish.baseDemand * 100)}%
                             </small>
+                            {activeVariant ? <small>Serving: {activeVariant.label}</small> : null}
                           </div>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={Boolean(unavailableReason)}
-                            aria-label={`Offer ${localize(dish.nameKey)}${unavailableReason ? `, unavailable: ${unavailableReason}` : ""}`}
-                            aria-describedby={unavailableReason ? reasonId : undefined}
-                            onChange={(event) =>
-                              controllerRef.current?.setDishEnabled(
-                                stall.id,
-                                dish.id,
-                                event.target.checked,
-                              )
-                            }
-                          />
+                          {nutritionLens ? <NutritionProfileSummary profile={profile} /> : null}
+                          <div className="dish-menu-actions">
+                            <button
+                              type="button"
+                              aria-label={`View nutrition for ${localize(dish.nameKey)}`}
+                              onClick={() => setNutritionLens(true)}
+                            >
+                              View nutrition
+                            </button>
+                            {nutritionFamily ? (
+                              <button
+                                type="button"
+                                aria-label={`Tune recipe for ${localize(dish.nameKey)}`}
+                                onClick={() => setVariantLabDishId(dish.id)}
+                              >
+                                Tune recipe
+                              </button>
+                            ) : null}
+                            <label className="dish-offer-control">
+                              <span>Offer</span>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={Boolean(unavailableReason)}
+                                aria-label={`Offer ${localize(dish.nameKey)}${unavailableReason ? `, unavailable: ${unavailableReason}` : ""}`}
+                                aria-describedby={unavailableReason ? reasonId : undefined}
+                                onChange={(event) =>
+                                  controllerRef.current?.setDishEnabled(
+                                    stall.id,
+                                    dish.id,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                            </label>
+                          </div>
                           {unavailableReason ? (
                             <em id={reasonId}>{unavailableReason}</em>
                           ) : null}
-                        </label>
+                        </article>
                       );
                     })}
+                    <p className="nutrition-lens-note">
+                      Nutrition values are estimates for the listed serving. Actual recipes and portions vary.
+                    </p>
+                    <NutritionDisclosure />
                   </div>
                 );
               })}
@@ -1825,6 +2148,18 @@ export function HawkerSimulator() {
             </div>
           ) : null}
 
+          {selectedCustomerNutrition ? (
+            <CustomerNutritionInspector
+              customer={selectedCustomerNutrition}
+              dishLabel={dishLabel}
+              personaLabel={personaLabel}
+              variantLabel={(dishId, variantId) =>
+                customerVariantLabel(nutritionFamilies, dishId, variantId)}
+              onClose={() => controllerRef.current?.selectCustomer(undefined)}
+              onRestoreFocus={() => gameHostRef.current?.focus()}
+            />
+          ) : null}
+
           {selectedContent && panel !== "activity" ? (
             <div className="selection-card">
               <button
@@ -1869,6 +2204,7 @@ export function HawkerSimulator() {
       <nav className="bottom-dock" aria-label="Game sections" inert={interfaceInert} aria-hidden={interfaceInert}>
         {(
           [
+            ["focus", "◎", "Focus"],
             ["build", "▦", "Build"],
             ["stalls", "▰", "Stalls"],
             ["dishes", "◉", "Dishes"],
@@ -1882,9 +2218,8 @@ export function HawkerSimulator() {
             className={panel === value ? "is-active" : ""}
             aria-current={panel === value ? "page" : undefined}
             aria-label={value === "activity" && activityUnread > 0 ? `Activity, ${activityUnread} unread` : label}
-            onClick={() => {
-              setPanel(value);
-              if (value === "activity") setActivityUnread(0);
+            onClick={(event) => {
+              openPanel(value, event.currentTarget);
             }}
           >
             <span aria-hidden="true">{icon}</span>
@@ -1973,6 +2308,62 @@ export function HawkerSimulator() {
         </div>
       ) : null}
 
+      {tutorialStep === 5 && nutritionTourStep < 2 ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            ref={nutritionTourDialogRef}
+            className="nutrition-tour-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nutrition-tour-title"
+            tabIndex={-1}
+          >
+            <div className="nutrition-tour-art" aria-hidden="true">
+              {nutritionTourStep === 0 ? "◉" : "☺"}
+            </div>
+            <div className="nutrition-tour-copy">
+              <span>Nutrition tour · {nutritionTourStep + 1} of 2</span>
+              <h2 id="nutrition-tour-title">
+                {nutritionTourStep === 0 ? "Read the menu, not a grade" : "Meet each visit intent"}
+              </h2>
+              <p>
+                {nutritionTourStep === 0
+                  ? "Open Menu planning to compare listed servings. The Nutrition Lens shows energy, protein, fibre, and sodium without calling a dish good or bad. Reviewed families can be tuned in the Variant Lab."
+                  : "Select a guest to see their fictional nutrition intent and the trade-off behind their order. Taste, price, queues, and distance still matter, so a request may be missed."}
+              </p>
+              <div className="tutorial-actions">
+                <button type="button" className="text-button" onClick={() => void finishNutritionTour()}>
+                  Skip tour
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  autoFocus
+                  onClick={() => {
+                    if (nutritionTourStep === 1) void finishNutritionTour();
+                    else setNutritionTourStep(1);
+                  }}
+                >
+                  {nutritionTourStep === 1 ? "Start balancing" : "Show customer intents"}
+                  <span aria-hidden="true"> →</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {variantLabFamily ? (
+        <VariantLabDialog
+          dishName={dishLabel(variantLabFamily.dishId)}
+          family={variantLabFamily}
+          onChoose={(variantId) => {
+            controllerRef.current?.setDishVariant(variantLabFamily.dishId, variantId);
+          }}
+          onClose={() => setVariantLabDishId(undefined)}
+        />
+      ) : null}
+
       {settingsOpen ? (
         <div className="modal-backdrop" role="presentation">
           <section ref={settingsDialogRef} className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" tabIndex={-1} inert={resetOpen} aria-hidden={resetOpen}>
@@ -2043,8 +2434,15 @@ export function HawkerSimulator() {
               <article><kbd>Esc</kbd><strong>Cancel</strong><p>Leave build mode without spending anything.</p></article>
               <article><kbd>Space</kbd><strong>Pause</strong><p>The simulation clamps time after a suspended tab.</p></article>
               <article><kbd>U</kbd><strong>Undo</strong><p>Restore the most recent build change safely.</p></article>
+              <article><kbd>Menu</kbd><strong>Compare trade-offs</strong><p>Use Nutrition Lens and Variant Lab for reviewed listed servings.</p></article>
+              <article><kbd>Guest</kbd><strong>Inspect a visit</strong><p>Select a guest to read their fictional intent and order result.</p></article>
             </div>
-            <footer><button type="button" onClick={() => { setHelpOpen(false); setTutorialStep(0); }}>Replay tutorial</button><button type="button" className="primary-button" onClick={() => setHelpOpen(false)}>Back to centre</button></footer>
+            <NutritionDisclosure />
+            <footer>
+              <button type="button" onClick={() => { setHelpOpen(false); setTutorialStep(0); }}>Replay tutorial</button>
+              <button type="button" onClick={() => { setHelpOpen(false); setNutritionTourStep(0); }}>Replay nutrition tour</button>
+              <button type="button" className="primary-button" onClick={() => setHelpOpen(false)}>Back to centre</button>
+            </footer>
           </section>
         </div>
       ) : null}

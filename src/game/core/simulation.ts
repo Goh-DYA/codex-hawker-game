@@ -18,6 +18,20 @@ import { compareIds } from "./ordering";
 import { cloneCustomer } from "./state";
 import { walkingSatisfactionScore } from "./satisfaction";
 import {
+  activeNutritionVariant,
+  bestEnabledNutritionIntentFit,
+  cloneNutritionMetrics,
+  cloneNutritionProfile,
+  createEmptyNutritionDayMetrics,
+  NUTRITION_INTENTS,
+  NUTRITION_METRICS,
+  nutritionIntentFit,
+  nutritionIntentFromRoll,
+  nutritionDishChoiceBonus,
+  nutritionRequestResult,
+  nutritionStallChoiceBonus,
+} from "./nutrition";
+import {
   awardStallMastery,
   effectiveStallDefinition,
   operatingDay,
@@ -42,6 +56,8 @@ import type {
   PlacedObject,
   SimulationEvent,
   SimulationMetrics,
+  NutritionIntent,
+  NutritionVariant,
 } from "./types";
 
 interface Draft {
@@ -114,7 +130,14 @@ function createDraft(state: GameState, tick: number): Draft {
     rngState: state.rngState,
     nextCustomerSequence: state.nextCustomerSequence,
     spawnCountdownMs: state.spawnCountdownMs,
-    metrics: { ...state.metrics, visitRatings: state.metrics.visitRatings.map((rating) => ({ ...rating, components: { ...rating.components } })) },
+    metrics: {
+      ...state.metrics,
+      visitRatings: state.metrics.visitRatings.map((rating) => ({
+        ...rating,
+        components: { ...rating.components },
+      })),
+      nutrition: cloneNutritionMetrics(state.metrics.nutrition),
+    },
     events: [],
     tick,
   };
@@ -377,6 +400,67 @@ function openStalls(draft: Draft): readonly StallRuntime[] {
 
 const OFF_SCHEDULE_PERSONA_WEIGHT = 0.2;
 
+function eligibleNutritionIntents(draft: Draft): readonly NutritionIntent[] {
+  const eligible = new Set<NutritionIntent>();
+  for (const stall of openStalls(draft)) {
+    const definitionId = stall.object.definitionId;
+    const masteryRank = draft.progression.stallMastery[definitionId]?.rank ?? 1;
+    const dishIds = stall.definition.stall?.allDishIds ?? stall.definition.stall?.dishIds ?? [];
+    for (const dishId of dishIds) {
+      const dish = draft.source.catalog.dishes[dishId];
+      if (
+        !dish ||
+        draft.progression.level < (dish.unlockLevel ?? 1) ||
+        draft.progression.reputation < (dish.unlockReputation ?? 0)
+      ) {
+        continue;
+      }
+      for (const variant of dish.nutritionVariants ?? []) {
+        const profile = variant.profile;
+        if (variant.unlockRank > masteryRank || !profile || profile.status !== "released") continue;
+        for (const intent of NUTRITION_INTENTS) {
+          if (typeof profile.intentFits[intent] === "number") eligible.add(intent);
+        }
+      }
+    }
+  }
+  return NUTRITION_INTENTS.filter((intent) => eligible.has(intent));
+}
+
+function recordIntentRequest(draft: Draft, intent: NutritionIntent | undefined): void {
+  if (!intent) return;
+  const current = draft.metrics.nutrition;
+  const day = operatingDay(draft.source.elapsedMs);
+  const today = current.today.day === day
+    ? current.today
+    : createEmptyNutritionDayMetrics(day);
+  draft.metrics = {
+    ...draft.metrics,
+    nutrition: {
+      ...current,
+      intentRequests: current.intentRequests + 1,
+      byIntent: {
+        ...current.byIntent,
+        [intent]: {
+          ...current.byIntent[intent],
+          requests: current.byIntent[intent].requests + 1,
+        },
+      },
+      today: {
+        ...today,
+        intentRequests: today.intentRequests + 1,
+        byIntent: {
+          ...today.byIntent,
+          [intent]: {
+            ...today.byIntent[intent],
+            requests: today.byIntent[intent].requests + 1,
+          },
+        },
+      },
+    },
+  };
+}
+
 export function customerArchetypeSpawnWeight(
   archetype: CustomerArchetype,
   level: number,
@@ -434,6 +518,17 @@ function spawnCustomer(draft: Draft): void {
     if (remainingWeight < 0) break;
   }
   if (!selected) return;
+  const eligibleIntents = eligibleNutritionIntents(draft);
+  let nutritionIntentId: NutritionIntent | undefined;
+  if (draft.progression.level >= 2 && eligibleIntents.length > 0) {
+    const nutritionRoll = nextFloat(draft.rngState);
+    draft.rngState = nutritionRoll.state;
+    nutritionIntentId = nutritionIntentFromRoll(
+      draft.progression.level,
+      eligibleIntents,
+      nutritionRoll.value,
+    );
+  }
   const id = `customer-${draft.nextCustomerSequence}`;
   const entrances = draft.source.accessPoints.filter((point) => point.kind === "entrance");
   const entrance = [...entrances].sort((a, b) => {
@@ -456,6 +551,7 @@ function spawnCustomer(draft: Draft): void {
     walkingDistanceTiles: 0,
     patienceRemainingMs: selected.archetype.patienceMs,
     satisfaction: 3,
+    nutritionIntentId,
     sourceEntranceId: entrance.id,
     hasTray: false,
     served: false,
@@ -503,6 +599,9 @@ function chooseStall(draft: Draft, source: Customer): Customer {
         );
       }),
     );
+    const nutritionBonus = nutritionStallChoiceBonus(
+      bestEnabledNutritionIntentFit(dishes, source.nutritionIntentId),
+    );
     const random = nextFloat(draft.rngState);
     draft.rngState = random.state;
     const novelty = random.value * (archetype.noveltyPreference ?? 0.35) * 2.5;
@@ -510,6 +609,7 @@ function chooseStall(draft: Draft, source: Customer): Customer {
     const committedWait = queue.length + activePreparationCount(draft, stall.object.id) * 0.5;
     const score =
       menuAppeal +
+      nutritionBonus +
       config.popularity * 1.25 +
       config.quality * archetype.qualitySensitivity +
       novelty -
@@ -526,23 +626,35 @@ function chooseStall(draft: Draft, source: Customer): Customer {
   return { ...customer, targetStallId: best.stall.object.id };
 }
 
-function chooseDish(draft: Draft, stall: StallRuntime, customer: Customer): DishDefinition | undefined {
+interface DishChoice {
+  readonly dish: DishDefinition;
+  readonly variant?: NutritionVariant;
+}
+
+function chooseDish(draft: Draft, stall: StallRuntime, customer: Customer): DishChoice | undefined {
   const archetype = getArchetype(draft, customer);
   const preferred = new Set(archetype.preferenceTags ?? []);
-  let best: { dish: DishDefinition; score: number } | undefined;
+  let best: { dish: DishDefinition; variant?: NutritionVariant; score: number } | undefined;
   for (const dish of [...affordableDishes(draft, stall, customer)].sort((a, b) => compareIds(a.id, b.id))) {
     const matches = (dish.preferenceTags ?? []).filter((tag) => preferred.has(tag)).length;
     const random = nextFloat(draft.rngState);
     draft.rngState = random.state;
+    const variant = activeNutritionVariant(dish);
+    const nutritionBonus = nutritionDishChoiceBonus(
+      nutritionIntentFit(dish, customer.nutritionIntentId),
+    );
     const score =
       dish.quality * archetype.qualitySensitivity +
       boundedDishDemandAppeal(dish) +
       matches * 2 -
       dish.price * archetype.priceSensitivity +
+      nutritionBonus +
       random.value * 0.001;
-    if (!best || score > best.score || (score === best.score && dish.id < best.dish.id)) best = { dish, score };
+    if (!best || score > best.score || (score === best.score && dish.id < best.dish.id)) {
+      best = { dish, variant, score };
+    }
   }
-  return best?.dish;
+  return best ? { dish: best.dish, variant: best.variant } : undefined;
 }
 
 function findSeat(draft: Draft, customer: Customer): { seat: SeatLocation; path: readonly GridPoint[] } | undefined {
@@ -616,11 +728,118 @@ function completeSale(draft: Draft, source: Customer, dish: DishDefinition): Cus
   removeFromAllQueues(draft, source.id);
   event(draft, { type: "sale-completed", entityId: source.id, amount: dish.price, message: dish.id });
   if (update.levelUp) event(draft, { type: "level-up", entityId: source.id, message: String(update.progression.level) });
+  const profile = cloneNutritionProfile(source.orderedNutritionProfile);
+  const requestResult = source.nutritionIntentId
+    ? nutritionRequestResult(source.nutritionIntentId, profile)
+    : undefined;
+  recordIntentRequest(draft, source.nutritionIntentId);
+  const nutrition = draft.metrics.nutrition;
+  const saleDay = operatingDay(draft.source.elapsedMs);
+  const today = nutrition.today.day === saleDay
+    ? nutrition.today
+    : createEmptyNutritionDayMetrics(saleDay);
+  const nutrientTotals = { ...nutrition.nutrientTotals };
+  const nutrientKnownCounts = { ...nutrition.nutrientKnownCounts };
+  const dailyNutrientTotals = { ...today.nutrientTotals };
+  const dailyNutrientKnownCounts = { ...today.nutrientKnownCounts };
+  if (profile?.status === "released") {
+    for (const metric of NUTRITION_METRICS) {
+      const value = profile.nutrients[metric];
+      if (value?.status !== "known") continue;
+      nutrientTotals[metric] += value.value;
+      nutrientKnownCounts[metric] += 1;
+      dailyNutrientTotals[metric] += value.value;
+      dailyNutrientKnownCounts[metric] += 1;
+    }
+  }
+  const defaultVariantId = dish.defaultNutritionVariantId;
+  const usedNonDefaultVariant = Boolean(
+    source.orderedNutritionVariantId &&
+      defaultVariantId &&
+      source.orderedNutritionVariantId !== defaultVariantId,
+  );
+  const byIntent = { ...nutrition.byIntent };
+  const dailyByIntent = { ...today.byIntent };
+  let intentMatches = nutrition.intentMatches;
+  let intentMisses = nutrition.intentMisses;
+  let intentUnknowns = nutrition.intentUnknowns;
+  if (source.nutritionIntentId && requestResult) {
+    const intent = source.nutritionIntentId;
+    const currentIntent = byIntent[intent];
+    byIntent[intent] = {
+      ...currentIntent,
+      matches: currentIntent.matches + (requestResult === "matched" ? 1 : 0),
+      misses: currentIntent.misses + (requestResult === "missed" ? 1 : 0),
+      unknowns: currentIntent.unknowns + (requestResult === "unknown" ? 1 : 0),
+    };
+    const currentDailyIntent = dailyByIntent[intent];
+    dailyByIntent[intent] = {
+      ...currentDailyIntent,
+      matches: currentDailyIntent.matches + (requestResult === "matched" ? 1 : 0),
+      misses: currentDailyIntent.misses + (requestResult === "missed" ? 1 : 0),
+      unknowns: currentDailyIntent.unknowns + (requestResult === "unknown" ? 1 : 0),
+    };
+    intentMatches += requestResult === "matched" ? 1 : 0;
+    intentMisses += requestResult === "missed" ? 1 : 0;
+    intentUnknowns += requestResult === "unknown" ? 1 : 0;
+  }
+  draft.metrics = {
+    ...draft.metrics,
+    nutrition: {
+      ...nutrition,
+      servedMeals: nutrition.servedMeals + 1,
+      profiledServings: nutrition.profiledServings + (profile?.status === "released" ? 1 : 0),
+      nonDefaultVariantServings:
+        nutrition.nonDefaultVariantServings + (usedNonDefaultVariant ? 1 : 0),
+      intentMatches,
+      intentMisses,
+      intentUnknowns,
+      byIntent,
+      nutrientTotals,
+      nutrientKnownCounts,
+      dishServings: profile?.status === "released"
+        ? {
+            ...nutrition.dishServings,
+            [dish.id]: (nutrition.dishServings[dish.id] ?? 0) + 1,
+          }
+        : nutrition.dishServings,
+      recentOutcomes: [
+        ...nutrition.recentOutcomes,
+        {
+          customerId: source.id,
+          day: operatingDay(draft.source.elapsedMs),
+          intentId: source.nutritionIntentId,
+          dishId: dish.id,
+          variantId: source.orderedNutritionVariantId,
+          result: requestResult ?? "unknown",
+          profile,
+        },
+      ].slice(-50),
+      today: {
+        ...today,
+        servedMeals: today.servedMeals + 1,
+        profiledServings: today.profiledServings + (profile?.status === "released" ? 1 : 0),
+        intentMatches: today.intentMatches + (requestResult === "matched" ? 1 : 0),
+        intentMisses: today.intentMisses + (requestResult === "missed" ? 1 : 0),
+        intentUnknowns: today.intentUnknowns + (requestResult === "unknown" ? 1 : 0),
+        byIntent: dailyByIntent,
+        nutrientTotals: dailyNutrientTotals,
+        nutrientKnownCounts: dailyNutrientKnownCounts,
+        dishServings: profile?.status === "released"
+          ? {
+              ...today.dishServings,
+              [dish.id]: (today.dishServings[dish.id] ?? 0) + 1,
+            }
+          : today.dishServings,
+      },
+    },
+  };
   return {
     ...transition(draft, source, "seeking-seat"),
     targetStallId: undefined,
     servedStallDefinitionId: servedStall?.definitionId,
     orderedDishId: dish.id,
+    nutritionRequestResult: requestResult,
     hasTray: true,
     served: true,
     spent: source.spent + dish.price,
@@ -716,12 +935,18 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         return { ...transition(draft, customer, "choosing-stall"), targetStallId: undefined };
       }
       if (customer.stateElapsedMs < (stall.definition.stall?.orderMs ?? 0)) return customer;
-      const dish = chooseDish(draft, stall, customer);
-      if (!dish) return beginExit(draft, customer, true);
+      const choice = chooseDish(draft, stall, customer);
+      if (!choice) return beginExit(draft, customer, true);
       // Ordering occupies the queue head; preparation occupies a capacity slot.
       // Releasing here lets the next customer advance while this meal is prepared.
       removeFromAllQueues(draft, customer.id);
-      return { ...transition(draft, customer, "waiting-for-food"), orderedDishId: dish.id };
+      return {
+        ...transition(draft, customer, "waiting-for-food"),
+        orderedDishId: choice.dish.id,
+        orderedNutritionVariantId: choice.variant?.id,
+        orderedNutritionProfile: cloneNutritionProfile(choice.variant?.profile),
+        nutritionRequestResult: undefined,
+      };
     }
 
     case "waiting-for-food": {

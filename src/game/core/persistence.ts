@@ -7,6 +7,12 @@ import {
 } from "./grid";
 import { createNewGame } from "./state";
 import { compareIds } from "./ordering";
+import {
+  cloneNutritionMetrics,
+  createEmptyNutritionMetrics,
+  NUTRITION_INTENTS,
+  NUTRITION_METRICS,
+} from "./nutrition";
 import type {
   AnyPersistentGameState,
   GameState,
@@ -14,6 +20,7 @@ import type {
   PersistentGameStateV1,
   PersistentGameStateV2,
   PersistentGameStateV3,
+  PersistentGameStateV4,
   PlacedObject,
   QualityMode,
   SimulationCatalog,
@@ -21,9 +28,17 @@ import type {
   DailyObjective,
   StallMasteryState,
   VisitRating,
+  NutritionIntent,
+  NutritionDailyMetrics,
+  NutritionIntentMetrics,
+  NutritionMetric,
+  NutritionMetrics,
+  NutritionProfile,
+  NutritionRequestResult,
+  NutritionValue,
 } from "./types";
 
-export const PERSISTENT_SCHEMA_VERSION = 3 as const;
+export const PERSISTENT_SCHEMA_VERSION = 4 as const;
 
 export class PersistenceError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -205,10 +220,21 @@ function parseDailyObjectives(value: unknown): readonly DailyObjective[] {
   return value.map((entry, index) => {
     if (!isRecord(entry)) throw new PersistenceError(`progression.dailyObjectives[${index}] must be an object`);
     const kind = entry.kind;
-    if (!["serve", "revenue", "happiness", "flow", "variety", "facility"].includes(String(kind))) {
+    if (!["serve", "revenue", "happiness", "flow", "variety", "facility", "nutrition"].includes(String(kind))) {
       throw new PersistenceError(`progression.dailyObjectives[${index}].kind is invalid`);
     }
     if (typeof entry.completed !== "boolean") throw new PersistenceError(`progression.dailyObjectives[${index}].completed must be boolean`);
+    const nutritionCriterion = entry.nutritionCriterion;
+    if (
+      kind === "nutrition" &&
+      nutritionCriterion !== "profiled-servings" &&
+      nutritionCriterion !== "intent-matches" &&
+      nutritionCriterion !== "variant-servings"
+    ) {
+      throw new PersistenceError(
+        `progression.dailyObjectives[${index}].nutritionCriterion is invalid`,
+      );
+    }
     return {
       id: stringValue(entry.id, `progression.dailyObjectives[${index}].id`),
       day: safeInteger(entry.day, `progression.dailyObjectives[${index}].day`, 1),
@@ -221,8 +247,225 @@ function parseDailyObjectives(value: unknown): readonly DailyObjective[] {
       rewardCash: finite(entry.rewardCash, `progression.dailyObjectives[${index}].rewardCash`, 0),
       rewardXp: safeInteger(entry.rewardXp, `progression.dailyObjectives[${index}].rewardXp`, 0),
       completed: entry.completed,
+      nutritionCriterion: kind === "nutrition"
+        ? nutritionCriterion as DailyObjective["nutritionCriterion"]
+        : undefined,
     };
   });
+}
+
+function parseNutritionValue(value: unknown, path: string): NutritionValue {
+  if (!isRecord(value)) throw new PersistenceError(`${path} must be an object`);
+  if (value.status === "known") {
+    return { status: "known", value: finite(value.value, `${path}.value`, 0) };
+  }
+  if (value.status === "trace") return { status: "trace" };
+  if (value.status === "unavailable") {
+    const reason = value.reason;
+    if (
+      reason !== undefined &&
+      reason !== "not-reported" &&
+      reason !== "invalid-source" &&
+      reason !== "unmapped"
+    ) {
+      throw new PersistenceError(`${path}.reason is invalid`);
+    }
+    return { status: "unavailable", reason };
+  }
+  throw new PersistenceError(`${path}.status is invalid`);
+}
+
+function parseNutritionProfile(value: unknown, path: string): NutritionProfile {
+  if (!isRecord(value) || !isRecord(value.nutrients)) {
+    throw new PersistenceError(`${path} must be a nutrition profile`);
+  }
+  const nutrientSource = value.nutrients;
+  if (
+    value.status !== "released" &&
+    value.status !== "unavailable" &&
+    value.status !== "quarantined"
+  ) {
+    throw new PersistenceError(`${path}.status is invalid`);
+  }
+  if (value.nutritionClass !== "meal" && value.nutritionClass !== "drink") {
+    throw new PersistenceError(`${path}.nutritionClass is invalid`);
+  }
+  const servingSource = value.serving;
+  if (
+    servingSource !== undefined &&
+    (!isRecord(servingSource) || (servingSource.unit !== "g" && servingSource.unit !== "ml"))
+  ) throw new PersistenceError(`${path}.serving is invalid`);
+  const intentFitsSource = isRecord(value.intentFits) ? value.intentFits : {};
+  const intentFits: Partial<Record<NutritionIntent, number>> = {};
+  for (const intent of NUTRITION_INTENTS) {
+    const fit = intentFitsSource[intent];
+    if (fit === undefined) continue;
+    intentFits[intent] = Math.min(1, finite(fit, `${path}.intentFits.${intent}`, 0));
+  }
+  return {
+    id: stringValue(value.id, `${path}.id`),
+    dishId: stringValue(value.dishId, `${path}.dishId`),
+    status: value.status,
+    serving: isRecord(servingSource)
+      ? {
+          amount: finite(servingSource.amount, `${path}.serving.amount`, Number.MIN_VALUE),
+          unit: servingSource.unit as "g" | "ml",
+          label: stringValue(servingSource.label, `${path}.serving.label`),
+        }
+      : undefined,
+    nutrients: Object.fromEntries(
+      NUTRITION_METRICS.map((metric) => [
+        metric,
+        parseNutritionValue(nutrientSource[metric], `${path}.nutrients.${metric}`),
+      ]),
+    ) as Record<NutritionMetric, NutritionValue>,
+    intentFits,
+    nutritionClass: value.nutritionClass,
+  };
+}
+
+function parseNutritionMetrics(value: unknown): NutritionMetrics {
+  if (!isRecord(value)) return createEmptyNutritionMetrics();
+  const empty = createEmptyNutritionMetrics();
+  const byIntentSource = isRecord(value.byIntent) ? value.byIntent : {};
+  const byIntent = Object.fromEntries(NUTRITION_INTENTS.map((intent) => {
+    const source = isRecord(byIntentSource[intent]) ? byIntentSource[intent] : {};
+    return [intent, {
+      requests: safeInteger(source.requests ?? 0, `metrics.nutrition.byIntent.${intent}.requests`),
+      matches: safeInteger(source.matches ?? 0, `metrics.nutrition.byIntent.${intent}.matches`),
+      misses: safeInteger(source.misses ?? 0, `metrics.nutrition.byIntent.${intent}.misses`),
+      unknowns: safeInteger(source.unknowns ?? 0, `metrics.nutrition.byIntent.${intent}.unknowns`),
+    } satisfies NutritionIntentMetrics];
+  })) as Record<NutritionIntent, NutritionIntentMetrics>;
+  const totalsSource = isRecord(value.nutrientTotals) ? value.nutrientTotals : {};
+  const countsSource = isRecord(value.nutrientKnownCounts) ? value.nutrientKnownCounts : {};
+  const dishSource = isRecord(value.dishServings) ? value.dishServings : {};
+  const recentSource = Array.isArray(value.recentOutcomes) ? value.recentOutcomes : [];
+  const todaySource = isRecord(value.today) ? value.today : {};
+  const todayByIntentSource = isRecord(todaySource.byIntent) ? todaySource.byIntent : {};
+  const recentOutcomes = recentSource.slice(-50).map((entry, index) => {
+    const path = `metrics.nutrition.recentOutcomes[${index}]`;
+    if (!isRecord(entry)) throw new PersistenceError(`${path} must be an object`);
+    const intentId = entry.intentId;
+    if (intentId !== undefined && !NUTRITION_INTENTS.includes(intentId as NutritionIntent)) {
+      throw new PersistenceError(`${path}.intentId is invalid`);
+    }
+    const result = entry.result;
+    if (result !== "matched" && result !== "missed" && result !== "unknown") {
+      throw new PersistenceError(`${path}.result is invalid`);
+    }
+    return {
+      customerId: stringValue(entry.customerId, `${path}.customerId`),
+      day: safeInteger(entry.day, `${path}.day`, 1),
+      intentId: intentId as NutritionIntent | undefined,
+      dishId: stringValue(entry.dishId, `${path}.dishId`),
+      variantId: typeof entry.variantId === "string" ? entry.variantId : undefined,
+      result: result as NutritionRequestResult,
+      profile: entry.profile === undefined
+        ? undefined
+        : parseNutritionProfile(entry.profile, `${path}.profile`),
+    };
+  });
+  return {
+    ...empty,
+    servedMeals: safeInteger(value.servedMeals ?? 0, "metrics.nutrition.servedMeals"),
+    profiledServings: safeInteger(value.profiledServings ?? 0, "metrics.nutrition.profiledServings"),
+    nonDefaultVariantServings: safeInteger(
+      value.nonDefaultVariantServings ?? 0,
+      "metrics.nutrition.nonDefaultVariantServings",
+    ),
+    intentRequests: safeInteger(value.intentRequests ?? 0, "metrics.nutrition.intentRequests"),
+    intentMatches: safeInteger(value.intentMatches ?? 0, "metrics.nutrition.intentMatches"),
+    intentMisses: safeInteger(value.intentMisses ?? 0, "metrics.nutrition.intentMisses"),
+    intentUnknowns: safeInteger(value.intentUnknowns ?? 0, "metrics.nutrition.intentUnknowns"),
+    byIntent,
+    nutrientTotals: Object.fromEntries(NUTRITION_METRICS.map((metric) => [
+      metric,
+      finite(totalsSource[metric] ?? 0, `metrics.nutrition.nutrientTotals.${metric}`, 0),
+    ])) as Record<NutritionMetric, number>,
+    nutrientKnownCounts: Object.fromEntries(NUTRITION_METRICS.map((metric) => [
+      metric,
+      safeInteger(countsSource[metric] ?? 0, `metrics.nutrition.nutrientKnownCounts.${metric}`),
+    ])) as Record<NutritionMetric, number>,
+    dishServings: Object.fromEntries(Object.entries(dishSource).map(([dishId, count]) => [
+      dishId,
+      safeInteger(count, `metrics.nutrition.dishServings.${dishId}`),
+    ])),
+    recentOutcomes,
+    today: {
+      day: safeInteger(todaySource.day ?? 0, "metrics.nutrition.today.day"),
+      servedMeals: safeInteger(
+        todaySource.servedMeals ?? 0,
+        "metrics.nutrition.today.servedMeals",
+      ),
+      profiledServings: safeInteger(
+        todaySource.profiledServings ?? 0,
+        "metrics.nutrition.today.profiledServings",
+      ),
+      intentRequests: safeInteger(
+        todaySource.intentRequests ?? 0,
+        "metrics.nutrition.today.intentRequests",
+      ),
+      intentMatches: safeInteger(
+        todaySource.intentMatches ?? 0,
+        "metrics.nutrition.today.intentMatches",
+      ),
+      intentMisses: safeInteger(
+        todaySource.intentMisses ?? 0,
+        "metrics.nutrition.today.intentMisses",
+      ),
+      intentUnknowns: safeInteger(
+        todaySource.intentUnknowns ?? 0,
+        "metrics.nutrition.today.intentUnknowns",
+      ),
+      byIntent: Object.fromEntries(NUTRITION_INTENTS.map((intent) => {
+        const source = isRecord(todayByIntentSource[intent])
+          ? todayByIntentSource[intent]
+          : {};
+        return [intent, {
+          requests: safeInteger(
+            source.requests ?? 0,
+            `metrics.nutrition.today.byIntent.${intent}.requests`,
+          ),
+          matches: safeInteger(
+            source.matches ?? 0,
+            `metrics.nutrition.today.byIntent.${intent}.matches`,
+          ),
+          misses: safeInteger(
+            source.misses ?? 0,
+            `metrics.nutrition.today.byIntent.${intent}.misses`,
+          ),
+          unknowns: safeInteger(
+            source.unknowns ?? 0,
+            `metrics.nutrition.today.byIntent.${intent}.unknowns`,
+          ),
+        } satisfies NutritionIntentMetrics];
+      })) as Record<NutritionIntent, NutritionIntentMetrics>,
+      nutrientTotals: Object.fromEntries(NUTRITION_METRICS.map((metric) => [
+        metric,
+        finite(
+          isRecord(todaySource.nutrientTotals) ? todaySource.nutrientTotals[metric] ?? 0 : 0,
+          `metrics.nutrition.today.nutrientTotals.${metric}`,
+          0,
+        ),
+      ])) as Record<NutritionMetric, number>,
+      nutrientKnownCounts: Object.fromEntries(NUTRITION_METRICS.map((metric) => [
+        metric,
+        safeInteger(
+          isRecord(todaySource.nutrientKnownCounts)
+            ? todaySource.nutrientKnownCounts[metric] ?? 0
+            : 0,
+          `metrics.nutrition.today.nutrientKnownCounts.${metric}`,
+        ),
+      ])) as Record<NutritionMetric, number>,
+      dishServings: isRecord(todaySource.dishServings)
+        ? Object.fromEntries(Object.entries(todaySource.dishServings).map(([dishId, count]) => [
+            dishId,
+            safeInteger(count, `metrics.nutrition.today.dishServings.${dishId}`),
+          ]))
+        : {},
+    } satisfies NutritionDailyMetrics,
+  };
 }
 
 function parseMastery(value: unknown): Readonly<Record<string, StallMasteryState>> {
@@ -327,6 +570,19 @@ function parseV3(value: Record<string, unknown>): PersistentGameStateV3 {
   };
 }
 
+function parseV4(value: Record<string, unknown>): PersistentGameStateV4 {
+  const old = parseV3({ ...value, schemaVersion: 3 });
+  const metrics = isRecord(value.metrics) ? value.metrics : {};
+  return {
+    ...old,
+    schemaVersion: 4,
+    metrics: {
+      ...old.metrics,
+      nutrition: parseNutritionMetrics(metrics.nutrition),
+    },
+  };
+}
+
 function parseV1(value: Record<string, unknown>): PersistentGameStateV1 {
   if (!Array.isArray(value.objects)) throw new PersistenceError("objects must be an array");
   return {
@@ -342,13 +598,21 @@ function parseV1(value: Record<string, unknown>): PersistentGameStateV1 {
   };
 }
 
-export function migratePersistentState(value: unknown): PersistentGameStateV3 {
+export function migratePersistentState(value: unknown): PersistentGameStateV4 {
   if (!isRecord(value)) throw new PersistenceError("Save data must be an object");
-  if (value.schemaVersion === 3) return parseV3(value);
+  if (value.schemaVersion === 4) return parseV4(value);
+  if (value.schemaVersion === 3) {
+    const old = parseV3(value);
+    return {
+      ...old,
+      schemaVersion: 4,
+      metrics: { ...old.metrics, nutrition: createEmptyNutritionMetrics() },
+    };
+  }
   if (value.schemaVersion === 2) {
     const old = parseV2(value);
     return {
-      schemaVersion: 3,
+      schemaVersion: 4,
       savedAtTick: old.savedAtTick,
       map: old.map,
       accessPoints: [
@@ -360,7 +624,11 @@ export function migratePersistentState(value: unknown): PersistentGameStateV3 {
       objects: old.objects,
       economy: old.economy,
       progression: old.progression,
-      metrics: { trayReturns: 0, visitRatings: [] },
+      metrics: {
+        trayReturns: 0,
+        visitRatings: [],
+        nutrition: createEmptyNutritionMetrics(),
+      },
       rngState: old.rngState,
       nextCustomerSequence: old.nextCustomerSequence,
       elapsedMs: old.elapsedMs,
@@ -401,9 +669,9 @@ export function migratePersistentState(value: unknown): PersistentGameStateV3 {
   });
 }
 
-export function persistentStateFromGame(state: GameState): PersistentGameStateV3 {
+export function persistentStateFromGame(state: GameState): PersistentGameStateV4 {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     savedAtTick: state.tick,
     map: {
       ...state.map,
@@ -428,7 +696,14 @@ export function persistentStateFromGame(state: GameState): PersistentGameStateV3
       claimedMilestoneIds: [...state.progression.claimedMilestoneIds],
       stallMastery: Object.fromEntries(Object.entries(state.progression.stallMastery).map(([id, mastery]) => [id, { ...mastery }])),
     },
-    metrics: { trayReturns: state.metrics.trayReturns, visitRatings: state.metrics.visitRatings.map((rating) => ({ ...rating, components: { ...rating.components } })) },
+    metrics: {
+      trayReturns: state.metrics.trayReturns,
+      visitRatings: state.metrics.visitRatings.map((rating) => ({
+        ...rating,
+        components: { ...rating.components },
+      })),
+      nutrition: cloneNutritionMetrics(state.metrics.nutrition),
+    },
     rngState: state.rngState,
     nextCustomerSequence: state.nextCustomerSequence,
     elapsedMs: state.elapsedMs,
@@ -446,7 +721,7 @@ export function serializeGameState(state: GameState): string {
 }
 
 function normalizeObjects(
-  save: PersistentGameStateV3,
+  save: PersistentGameStateV4,
   catalog: SimulationCatalog,
   options: DeserializeOptions,
 ): { readonly objects: readonly PlacedObject[]; readonly recovery: PersistenceRecoveryReport } {
@@ -601,7 +876,12 @@ export function deserializeGameStateWithReport(
     nextCustomerSequence: save.nextCustomerSequence,
     tick: save.savedAtTick,
     elapsedMs: save.elapsedMs,
-    metrics: { ...base.metrics, trayReturns: save.metrics.trayReturns, visitRatings: save.metrics.visitRatings },
+    metrics: {
+      ...base.metrics,
+      trayReturns: save.metrics.trayReturns,
+      visitRatings: save.metrics.visitRatings,
+      nutrition: cloneNutritionMetrics(save.metrics.nutrition),
+    },
     spawnCountdownMs: 0,
     accumulatorMs: 0,
     undoStack: [],

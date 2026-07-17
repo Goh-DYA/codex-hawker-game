@@ -21,8 +21,8 @@ test("server-renders the release game shell", async () => {
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
 
   const html = await response.text();
-  assert.match(html, /<title>Hawker Simulator/);
-  assert.match(html, /Build a place everyone can share/);
+  assert.match(html, /<title>Hawker Balance/);
+  assert.match(html, /Run the centre\. Read the plate\./);
   assert.match(html, /data-testid="game-world"/);
   assert.match(html, /data-testid="build-catalogue"/);
   assert.match(html, /Open centre/);
@@ -40,7 +40,7 @@ test("ships a versioned, update-gated offline shell", async () => {
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
   ]);
   const parsedManifest = JSON.parse(manifest);
-  assert.equal(parsedManifest.name, "Hawker Simulator");
+  assert.equal(parsedManifest.name, "Hawker Balance");
   assert.equal(parsedManifest.start_url, "/");
   assert.equal(parsedManifest.display, "standalone");
   assert.match(serviceWorker, /hawker-simulator-1\.0\.0-[a-f0-9]{12}/);

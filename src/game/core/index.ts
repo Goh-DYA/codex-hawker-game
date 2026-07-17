@@ -11,5 +11,6 @@ export * from "./validation";
 export * from "./state";
 export * from "./commands";
 export * from "./satisfaction";
+export * from "./nutrition";
 export * from "./simulation";
 export * from "./persistence";
