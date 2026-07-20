@@ -48,7 +48,7 @@ describe("code-native placeable visual recipes", () => {
   it("gives every dish a unique, recognisable real-life serving profile", () => {
     const recipes = DISHES.map(visualRecipeForDish);
 
-    assert.equal(recipes.length, 46);
+    assert.equal(recipes.length, 54);
     assert.equal(new Set(recipes.map((recipe) => recipe.contractKey)).size, DISHES.length);
     assert.equal(
       new Set(recipes.map((recipe) => recipe.presentation.semanticKey)).size,
@@ -96,14 +96,25 @@ describe("code-native placeable visual recipes", () => {
       "shaved-ice",
     );
     assert.ok(
-      recipes.get("dish.black-pepper-crab")?.presentation.ingredientCues.includes("whole-crab"),
+      recipes.get("dish.black-pepper-crab")?.presentation.ingredientCues.includes("crab-pincers"),
     );
     assert.ok(
-      recipes.get("dish.har-gow")?.presentation.detailCues.includes("bamboo-steamer"),
+      recipes.get("dish.har-gow")?.presentation.detailCues.includes("light-soup"),
     );
     assert.equal(
       recipes.get("dish.har-gow")?.presentation.vessel,
-      "bamboo-steamer",
+      "deep-ceramic-bowl",
+    );
+    assert.equal(
+      recipes.get("dish.ayam-buah-keluak")?.presentation.portionShape,
+      "braised-scoop",
+    );
+    assert.equal(
+      recipes.get("dish.chap-chye")?.presentation.portionShape,
+      "vegetable-scoop",
+    );
+    assert.ok(
+      !recipes.get("dish.babi-pongteh")?.presentation.ingredientCues.includes("rice"),
     );
     assert.ok(
       recipes.get("dish.siew-mai")?.presentation.detailCues.includes("diced-carrot"),
@@ -129,6 +140,18 @@ describe("code-native placeable visual recipes", () => {
     );
     assert.ok(
       recipes.get("dish.pulut-hitam")?.presentation.detailCues.includes("white-coconut-swirl"),
+    );
+    assert.ok(
+      recipes.get("dish.yong-tau-foo")?.presentation.ingredientCues.includes("stuffed-tofu"),
+    );
+    assert.ok(
+      recipes.get("dish.thunder-tea-rice")?.presentation.detailCues.includes("green-tea-broth"),
+    );
+    assert.ok(
+      recipes.get("dish.bak-kut-teh")?.presentation.ingredientCues.includes("pork-ribs"),
+    );
+    assert.ok(
+      recipes.get("dish.claypot-chicken-rice")?.presentation.detailCues.includes("claypot-crust"),
     );
   });
 
@@ -170,6 +193,10 @@ describe("code-native placeable visual recipes", () => {
         "murtabak",
         "briyani",
         "thosai",
+        "yong-tau-foo",
+        "ban-mian",
+        "bak-kut-teh",
+        "duck-rice",
       ]),
     );
     assert.equal(variantVisualFamilyForKey("future-variant"), "fallback");
@@ -220,6 +247,10 @@ describe("code-native placeable visual recipes", () => {
       "murtabak",
       "briyani",
       "thosai",
+      "yong-tau-foo",
+      "ban-mian",
+      "bak-kut-teh",
+      "duck-rice",
     ]) {
       assert.ok(runtimeSource.includes(`family === "${family}"`), family);
     }
@@ -302,7 +333,7 @@ describe("code-native placeable visual recipes", () => {
   it("gives every stall vendor a deterministic and materially distinct work profile", () => {
     const recipes = STALLS.map(visualRecipeForStallVendor);
 
-    assert.equal(recipes.length, 12);
+    assert.equal(recipes.length, 14);
     assert.deepEqual(recipes, STALLS.map(visualRecipeForStallVendor));
     assert.equal(new Set(recipes.map((recipe) => recipe.contractKey)).size, STALLS.length);
     assert.equal(new Set(recipes.map((recipe) => recipe.renderSignature)).size, STALLS.length);
@@ -327,6 +358,15 @@ describe("code-native placeable visual recipes", () => {
       assert.ok(recipe.emblem.length >= 5);
       assert.match(recipe.contractKey, new RegExp(`^${recipe.stallId.replace(".", "\\.")}:`));
     }
+
+    assert.equal(
+      recipes.find((recipe) => recipe.stallId === "stall.pick-and-mix")?.tool,
+      "ingredient-tongs",
+    );
+    assert.equal(
+      recipes.find((recipe) => recipe.stallId === "stall.herbal-cauldron")?.tool,
+      "claypot-ladle",
+    );
 
     const source = STALLS[0];
     assert.ok(source);

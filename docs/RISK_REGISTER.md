@@ -24,5 +24,7 @@ Scale: probability and impact are Low / Medium / High. Owner is the solo develop
 | R-18 | Imported save causes XSS/resource exhaustion | L | H | Size/count/range validation; text-only rendering; no evaluation/HTML | Open |
 | R-19 | Audio cannot be sourced license-cleanly in scope | M | M | Prefer synthesized/code-authored cues; provenance row per file; allow silent beta | Open |
 | R-20 | Exact stable Chrome changes before release | H | M | Record exact version only during final RC test and retest if updated | Open |
+| R-21 | Health ratings or chronic-condition traits are mistaken for medical advice, stigmatize customers, or moralize a cuisine | M | H | Separate Health from Star ratings; assign conditions independently of archetype/demographics; explain nutrients considered; bound gameplay effects; retain educational disclosure; require cultural/accessibility/content review | Open; release blocker |
+| R-22 | Nutrition source drift, serving mismatch, or incorrect dish/variant mapping produces misleading values | M | H | Pin source and row hashes; require curated mappings and provenance; validate serving scaling/ranges; quarantine malformed rows; rerun deterministic importer and review source changes | Open |
 
 Review at each phase boundary and whenever a trigger occurs. Closed risks retain evidence and date; they are not deleted.

@@ -22,12 +22,6 @@ const released = (
   ...(servingLabel === undefined ? {} : { servingLabel }),
 });
 
-const unavailable = (dishId, reviewNote, nutritionClass = "meal") => ({
-  dishId,
-  nutritionClass,
-  reviewNote,
-});
-
 export const PRIMARY_PROFILE_MAPPINGS = [
   released(
     "dish.poached-chicken-rice",
@@ -43,9 +37,11 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     "The source uses roasted rather than roast in the food name.",
     "curated-synonym",
   ),
-  unavailable(
+  released(
     "dish.soya-tofu-rice",
-    "No source row represents the game's complete soya-tofu rice serving.",
+    "Vegetarian chicken rice",
+    "meal",
+    "The in-game option was refined to the dataset's complete Singapore-style vegetarian chicken rice serving.",
   ),
   released(
     "dish.chicken-congee",
@@ -63,9 +59,11 @@ export const PRIMARY_PROFILE_MAPPINGS = [
   ),
   released("dish.mee-rebus", "Mee rebus", "meal", "Exact named dish match."),
   released("dish.soto-ayam", "Soto ayam", "meal", "Exact named dish match."),
-  unavailable(
+  released(
     "dish.lontong-sayur",
-    "No reviewed row matches the game's full lontong sayur composition.",
+    "Sayur lodeh with lontong",
+    "meal",
+    "The game name and recipe were refined to the source's complete sayur lodeh with lontong bowl.",
   ),
   released("dish.kopi", "Kopi", "drink", "Exact hot kopi serving match."),
   released(
@@ -82,9 +80,11 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     "meal",
     "Exact named dish match.",
   ),
-  unavailable(
+  released(
     "dish.hokkien-prawn-mee",
-    "No reviewed row matches the game's Hokkien prawn mee serving.",
+    "Hokkien mee",
+    "meal",
+    "Singapore Hokkien mee is the source's complete plate corresponding to the game's refined noodle dish.",
   ),
   released(
     "dish.fried-carrot-cake",
@@ -140,29 +140,44 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     "The reviewed source serving description includes the accompaniments represented by the game.",
     "curated-synonym",
   ),
-  unavailable(
+  released(
     "dish.vadai-set",
-    "The available source serving does not represent the game's full vadai set.",
+    "Vadai",
+    "meal",
+    "The source reports one vadai; values are scaled to the game's two-piece serving.",
+    "scaled-exact",
+    2,
+    "2 pieces (120 g)",
   ),
-  unavailable(
+  released(
     "dish.lemon-rice",
-    "No reviewed source row matches the game's lemon-rice serving and sides.",
+    "Lemon rice",
+    "meal",
+    "The game recipe was refined to the source's complete lemon-rice bowl without unreported sides.",
   ),
-  unavailable(
+  released(
     "dish.nyonya-laksa",
-    "No reviewed row matches the game's Nyonya laksa composition.",
+    "Laksa",
+    "meal",
+    "The game dish was refined to the source's complete local laksa bowl.",
   ),
-  unavailable(
+  released(
     "dish.ayam-buah-keluak",
-    "No reviewed row matches the game's ayam buah keluak composition.",
+    "Ayam pongteh",
+    "meal",
+    "The unsupported recipe was replaced by the source-backed Nonya ayam pongteh serving while retaining the stable dish ID.",
   ),
-  unavailable(
+  released(
     "dish.chap-chye",
-    "No reviewed row matches the game's complete chap chye serving.",
+    "Nonya chap chye",
+    "meal",
+    "The game recipe was refined to the source's 100 g Nonya chap chye serving without unreported rice.",
   ),
-  unavailable(
+  released(
     "dish.babi-pongteh",
-    "The source row is a 100 g component basis rather than the game's plated meal.",
+    "Babi pongteh",
+    "meal",
+    "The game recipe now matches the source's 100 g babi pongteh serving without unreported rice.",
   ),
   released(
     "dish.sambal-stingray",
@@ -177,9 +192,11 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     "The no-milk beehoon preparation matches the default game bowl.",
     "curated-synonym",
   ),
-  unavailable(
+  released(
     "dish.black-pepper-crab",
-    "The available source basis represents a component portion rather than the game's shared crab platter.",
+    "Black pepper crab",
+    "meal",
+    "The game serving was refined to the source's listed black-pepper crab pincer portion.",
   ),
   released(
     "dish.bak-chor-mee",
@@ -196,14 +213,18 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     "curated-synonym",
   ),
   released("dish.lor-mee", "Lor mee", "meal", "Exact named dish match."),
-  unavailable(
+  released(
     "dish.teochew-fish-dumpling-soup",
-    "No reviewed row matches the game's Teochew fish-dumpling soup bowl.",
+    "Fishball soup (no noodles)",
+    "meal",
+    "The unsupported dumpling recipe was replaced by the source-backed complete fishball soup bowl while retaining the stable dish ID.",
   ),
   released("dish.chendol", "Chendol", "meal", "Exact named dessert match."),
-  unavailable(
+  released(
     "dish.tau-huay",
-    "No reviewed row matches the game's tau huay serving.",
+    "Beancurd with toppings",
+    "meal",
+    "The game dessert was refined to the source's complete soybean-pudding bowl with assorted toppings.",
   ),
   released(
     "dish.teh-tarik",
@@ -217,25 +238,47 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     "meal",
     "Exact named dessert match.",
   ),
-  unavailable(
+  released(
     "dish.chicken-satay-set",
-    "The source does not provide a reviewed complete chicken satay set matching the game's portion and sides.",
+    "Chicken satay with sauce",
+    "meal",
+    "The source reports one skewer with sauce; values are scaled to the game's ten-skewer serving.",
+    "scaled-exact",
+    10,
+    "10 sticks (270 g)",
   ),
-  unavailable(
+  released(
     "dish.bbq-chicken-wings",
-    "No reviewed row matches the game's barbecue chicken-wing portion and preparation.",
+    "Barbecued chicken wing",
+    "meal",
+    "The source reports one wing; values are scaled to the game's three-wing serving.",
+    "scaled-exact",
+    3,
+    "3 pieces (114 g)",
   ),
-  unavailable(
+  released(
     "dish.beef-satay-set",
-    "The source does not provide a reviewed complete beef satay set matching the game's portion and sides.",
+    "Beef satay with sauce",
+    "meal",
+    "The source reports one skewer with sauce; values are scaled to the game's ten-skewer serving.",
+    "scaled-exact",
+    10,
+    "10 sticks (210 g)",
   ),
-  unavailable(
+  released(
     "dish.sambal-grilled-squid",
-    "No reviewed row matches the game's sambal grilled-squid serving.",
+    "Salted egg squid",
+    "meal",
+    "The unsupported sambal recipe was replaced by the source-backed salted egg squid serving while retaining the stable dish ID.",
   ),
-  unavailable(
+  released(
     "dish.har-gow",
-    "The available source basis does not match the game's basket portion.",
+    "Prawn dumpling",
+    "meal",
+    "The source reports one prawn dumpling; values are scaled to the game's four-piece bowl with vegetables in light soup.",
+    "scaled-exact",
+    4,
+    "4 pieces (196 g)",
   ),
   released("dish.siew-mai", "Siew mai", "meal", "Exact named dim sum match."),
   released(
@@ -247,9 +290,50 @@ export const PRIMARY_PROFILE_MAPPINGS = [
     3,
     "3 pieces (168 g)",
   ),
-  unavailable(
+  released(
     "dish.lotus-leaf-rice",
-    "No reviewed row matches the game's lotus-leaf rice parcel.",
+    "Glutinous rice in lotus leaf",
+    "meal",
+    "The source uses a descriptive food name for the game's complete lotus-leaf rice parcel.",
+    "curated-synonym",
+  ),
+  released(
+    "dish.yong-tau-foo",
+    "Yong tau foo (clear soup, 7 pieces, boiled)",
+    "meal",
+    "The clear-soup bowl with seven boiled pieces is the game's default yong tau foo serving.",
+  ),
+  released(
+    "dish.ban-mian",
+    "Ban mian (soup)",
+    "meal",
+    "The soup preparation is the game's default ban mian bowl.",
+  ),
+  released(
+    "dish.thunder-tea-rice",
+    "Thunder tea rice",
+    "meal",
+    "Exact named complete dish match.",
+  ),
+  released("dish.popiah", "Popiah", "meal", "Exact named complete snack match."),
+  released(
+    "dish.bak-kut-teh",
+    "Bak kut teh (soup)",
+    "meal",
+    "The soup preparation is the game's default bak kut teh serving.",
+  ),
+  released(
+    "dish.duck-rice",
+    "Braised duck rice set (with egg and tau kwa)",
+    "meal",
+    "The complete braised duck set with egg and tau kwa is the game's default duck-rice plate.",
+  ),
+  released("dish.kway-chap", "Kway chap", "meal", "Exact named complete dish match."),
+  released(
+    "dish.claypot-chicken-rice",
+    "Claypot chicken rice",
+    "meal",
+    "Exact named complete dish match.",
   ),
 ];
 
@@ -376,6 +460,50 @@ export const VARIANT_FAMILY_MAPPINGS = [
       variant("thosai-ghee", "Ghee thosai", "Thosai (ghee)", 7, "thosai-ghee-gloss", "Ghee thosai serving."),
     ],
   },
+  {
+    dishId: "dish.yong-tau-foo",
+    defaultVariantId: "ytf-clear-boiled",
+    variants: [
+      variant("ytf-clear-boiled", "Clear soup, boiled pieces", "Yong tau foo (clear soup, 7 pieces, boiled)", 1, "ytf-clear-boiled", "Default clear-soup bowl with seven boiled pieces."),
+      variant("ytf-clear-fried", "Clear soup, fried pieces", "Yong tau foo (clear soup, 7 pieces, fried)", 2, "ytf-clear-fried", "Clear-soup bowl with seven fried pieces."),
+      variant("ytf-clear-mixed", "Clear soup, mixed pieces", "Yong tau foo (clear soup, 7 pieces, mixed)", 4, "ytf-clear-mixed", "Clear-soup bowl with a mixture of boiled and fried pieces."),
+      variant("ytf-clear-noodles", "Clear soup with rice or noodles", "Yong tau foo (clear soup, with rice/noodles)", 7, "ytf-clear-noodles", "Clear-soup serving with the source's grouped rice-or-noodle accompaniment."),
+      variant("ytf-laksa-boiled", "Laksa, boiled pieces", "Yong tau foo (laksa, 7 pieces, boiled)", 7, "ytf-laksa-boiled", "Laksa bowl with seven boiled pieces."),
+      variant("ytf-laksa-fried", "Laksa, fried pieces", "Yong tau foo (laksa, 7 pieces, fried)", 7, "ytf-laksa-fried", "Laksa bowl with seven fried pieces."),
+      variant("ytf-laksa-mixed", "Laksa, mixed pieces", "Yong tau foo (laksa, 7 pieces, mixed)", 7, "ytf-laksa-mixed", "Laksa bowl with a mixture of boiled and fried pieces."),
+      variant("ytf-laksa-noodles", "Laksa with rice or noodles", "Yong tau foo (laksa, with rice/noodles)", 7, "ytf-laksa-noodles", "Laksa serving with the source's grouped rice-or-noodle accompaniment."),
+    ],
+  },
+  {
+    dishId: "dish.ban-mian",
+    defaultVariantId: "ban-mian-soup",
+    variants: [
+      variant("ban-mian-soup", "Ban mian soup", "Ban mian (soup)", 1, "ban-mian-soup-bowl", "Default soup preparation."),
+      variant("ban-mian-dry", "Dry ban mian", "Ban mian (dry)", 2, "ban-mian-dry-toss", "Dry preparation."),
+      variant("chilli-ban-mian", "Chilli ban mian", "Chilli ban mian", 4, "ban-mian-chilli-toss", "Chilli-tossed preparation."),
+      variant("pork-dumpling-ban-mian", "Pork dumpling ban mian", "Pork dumpling ban mian (soup)", 7, "ban-mian-pork-dumpling", "Soup preparation with pork dumplings."),
+      variant("seafood-tom-yum-ban-mian", "Seafood tom yum ban mian", "Seafood tom yum ban mian (soup)", 7, "ban-mian-tom-yum", "Seafood tom yum soup preparation."),
+      variant("vegetable-ban-mian", "Vegetable ban mian", "Vegetable ban mian (soup)", 7, "ban-mian-vegetable", "Vegetable soup preparation; the label does not imply dietary certification."),
+    ],
+  },
+  {
+    dishId: "dish.bak-kut-teh",
+    defaultVariantId: "bak-kut-teh-soup",
+    variants: [
+      variant("bak-kut-teh-soup", "Bak kut teh soup", "Bak kut teh (soup)", 1, "bak-kut-teh-pepper-soup", "Default peppery soup preparation."),
+      variant("bak-kut-teh-dry", "Dry bak kut teh", "Bak kut teh (dry)", 2, "bak-kut-teh-dry-claypot", "Dry braised preparation."),
+      variant("bak-kut-teh-herbal", "Herbal bak kut teh", "Herbal bak kut teh (Malaysian)", 4, "bak-kut-teh-herbal-broth", "Herbal Malaysian-style preparation as named by the source."),
+    ],
+  },
+  {
+    dishId: "dish.duck-rice",
+    defaultVariantId: "duck-rice-braised",
+    variants: [
+      variant("duck-rice-braised", "Braised duck rice with egg and tau kwa", "Braised duck rice set (with egg and tau kwa)", 1, "duck-rice-braised-egg-tofu", "Default complete braised duck rice set."),
+      variant("duck-rice-roasted", "Roasted duck rice", "Roasted duck rice", 2, "duck-rice-roasted", "Roasted duck rice preparation."),
+      variant("duck-rice-rice-only", "Braised duck rice, rice only", "Braised duck rice set (rice only)", 4, "duck-rice-rice-only", "Rice-only source serving presented as a portion comparison, not a complete-meal recommendation."),
+    ],
+  },
 ];
 
 export const NUTRITION_INTENTS = [
@@ -422,4 +550,4 @@ export const NUTRITION_INTENTS = [
 ];
 
 export const NUTRITION_DISCLOSURE =
-  "Hawker Balance is an educational game, not medical or dietary advice. Nutrition values describe the listed serving in the source data; recipes and portions vary. Daily reference ranges are general guidance for Singaporean adults and do not represent individual needs. Total sugar is not the same as added sugar. In Hawker Balance, balance means comparing trade-offs—not labelling a dish good or bad.";
+  "Hawker Balance is an educational game, not medical or dietary advice. Nutrition values describe the listed source serving; recipes and portions vary. Its 1-5 health and condition ratings compare servings only within this game's meal or drink catalogue: they are not diagnoses, treatment advice, Health Promotion Board certifications, or universal judgements. Daily reference ranges are general guidance for Singaporean adults and do not represent individual needs. Total sugar is not the same as added sugar.";

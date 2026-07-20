@@ -47,7 +47,7 @@ Persistent state:
 - Player: cash, experience, reputation, level, settings-safe preferences.
 - Map: unlocked cells and placed object instances with stable instance IDs.
 - Progression: unlocks, objectives, tutorial state, stall upgrades, active menus.
-- Nutrition: active reviewed variants plus aggregate and bounded recent-serving metrics; order-time profiles are snapshotted for historical stability.
+- Nutrition: active reviewed variants plus aggregate and bounded recent-serving metrics; order-time profiles, Health/condition ratings, and a customer's personalized result are snapshotted for historical stability.
 
 Runtime-only state:
 
@@ -57,7 +57,9 @@ Commands validate before mutation and commit all related changes atomically. Eve
 
 ## Content contracts
 
-Content definitions include stable IDs, localization keys, footprints, rotations, interaction points, depth anchors, visual/audio references, economy values, unlock requirements, and explicit nutrition profile/variant status. Nutrition source rows are joined only by authored exact mappings during a deterministic build-time import; raw CSV parsing and fuzzy matching never run in the browser. Development startup and tests perform Zod parsing, cross-reference checks, uniqueness checks, nutrition plausibility checks, localization completeness, and exact launch counts. A malformed production definition fails to a readable safe screen, never a partially loaded simulation.
+Content definitions include stable IDs, localization keys, footprints, rotations, interaction points, depth anchors, visual/audio references, economy values, unlock requirements, dish Star ratings, and explicit nutrition profile/variant status. Content `1.3.0` requires exactly 14 stalls, 54 dishes, 80 placeables, 12 customer archetypes, and 320 English localization entries. Nutrition schema version 2 requires 104 released profiles and 14 variant families; each profile carries an overall Health rating and ratings for high cholesterol, obesity, diabetes, and hypertension.
+
+Nutrition source rows are joined only by authored exact, curated-synonym, or explicitly scaled mappings during a deterministic build-time import; raw CSV parsing and fuzzy matching never run in the browser. Health ratings are generated from within-class relative nutrient fits and stored in the reviewed artifact, while Star ratings remain authored content derived from dish quality and demand. Development startup and tests perform Zod parsing, cross-reference checks, uniqueness checks, nutrition plausibility and provenance checks, localization completeness, rating bounds, and exact launch counts. A malformed production definition fails to a readable safe screen, never a partially loaded simulation.
 
 ## Persistence
 

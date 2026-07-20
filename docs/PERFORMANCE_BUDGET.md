@@ -7,7 +7,7 @@ Status: Provisional budgets; supported limits require measurement
 - Desktop Chrome stable, 1280 × 720, device pixel ratio recorded.
 - Mid-range reference hardware and one lower-end reference device must be described in PERFORMANCE_REPORT.md.
 - Standard mode targets 60 FPS; lower-end mode targets 30 FPS.
-- Benchmark scene: late-game unlocked map, mixed furniture, all 12 stalls, visible queues, normal audio, and seeded arrivals.
+- Benchmark scene: late-game unlocked map, mixed furniture, all 14 stalls, visible queues, normal audio, and seeded arrivals.
 
 ## Budgets
 

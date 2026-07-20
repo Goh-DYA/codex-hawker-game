@@ -17,11 +17,11 @@ describe("launch content", () => {
   it("ships the exact required stall, dish, and customer counts", () => {
     const report = validateContent();
 
-    assert.equal(report.counts.stalls, 12);
-    assert.equal(report.counts.dishes, 46);
+    assert.equal(report.counts.stalls, 14);
+    assert.equal(report.counts.dishes, 54);
     assert.equal(report.counts.placeables, 80);
     assert.equal(report.counts.customerArchetypes, 12);
-    assert.equal(report.counts.localizationKeys, 300);
+    assert.equal(report.counts.localizationKeys, 320);
   });
 
   it("ships four new customer personas with distinct demand roles", () => {
@@ -131,6 +131,8 @@ describe("launch content", () => {
       "dish.lemon-rice",
       "dish.chicken-satay-set",
       "dish.beef-satay-set",
+      "dish.thunder-tea-rice",
+      "dish.popiah",
     ]);
   });
 

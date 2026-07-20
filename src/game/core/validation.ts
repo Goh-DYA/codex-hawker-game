@@ -1,4 +1,5 @@
 import type { SimulationCatalog } from "./types";
+import { HEALTH_CONDITIONS } from "./nutrition";
 
 export interface ValidationIssue {
   readonly path: string;
@@ -166,6 +167,41 @@ function validateCatalogInternal(catalog: SimulationCatalog): readonly Validatio
     positiveNumber(dish.eatingMs, `${path}.eatingMs`, issues);
     if (!Number.isFinite(dish.quality) || dish.quality < 0 || dish.quality > 5) {
       issues.push({ path: `${path}.quality`, message: "must be between zero and five" });
+    }
+    if (
+      dish.starRating !== undefined &&
+      (!Number.isFinite(dish.starRating) || dish.starRating < 1 || dish.starRating > 5)
+    ) {
+      issues.push({ path: `${path}.starRating`, message: "must be between one and five" });
+    }
+    for (const [variantIndex, variant] of (dish.nutritionVariants ?? []).entries()) {
+      const profile = variant.profile;
+      if (!profile) continue;
+      const profilePath = `${path}.nutritionVariants[${variantIndex}].profile`;
+      if (
+        profile.healthRating !== undefined &&
+        (!Number.isFinite(profile.healthRating) ||
+          profile.healthRating < 1 ||
+          profile.healthRating > 5)
+      ) {
+        issues.push({
+          path: `${profilePath}.healthRating`,
+          message: "must be between one and five",
+        });
+      }
+      for (const [condition, rating] of Object.entries(profile.conditionRatings ?? {})) {
+        if (!HEALTH_CONDITIONS.includes(condition as (typeof HEALTH_CONDITIONS)[number])) {
+          issues.push({
+            path: `${profilePath}.conditionRatings.${condition}`,
+            message: "is not a supported health condition",
+          });
+        } else if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+          issues.push({
+            path: `${profilePath}.conditionRatings.${condition}`,
+            message: "must be between one and five",
+          });
+        }
+      }
     }
   }
 

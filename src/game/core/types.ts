@@ -45,6 +45,8 @@ export interface DishDefinition {
   readonly preparationMs: number;
   readonly eatingMs: number;
   readonly quality: number;
+  /** Authored taste and popularity rating in the inclusive 1-5 range. */
+  readonly starRating?: number;
   /** Authored relative appeal in the inclusive 0-1 range. */
   readonly baseDemand?: number;
   readonly preferenceTags?: readonly string[];
@@ -191,6 +193,8 @@ export interface Customer {
   readonly walkingDistanceTiles: number;
   readonly patienceRemainingMs: number;
   readonly satisfaction: number;
+  /** Visit-specific conditions assigned independently of customer archetype. */
+  readonly healthConditions: readonly HealthCondition[];
   readonly sourceEntranceId?: string;
   readonly targetExitId?: string;
   readonly servedStallDefinitionId?: string;
@@ -204,6 +208,11 @@ export interface Customer {
   readonly orderedNutritionVariantId?: string;
   readonly orderedNutritionProfile?: NutritionProfile;
   readonly nutritionRequestResult?: NutritionRequestResult;
+  /** Frozen condition-aware rating for the ordered nutrition variant. */
+  readonly personalizedHealthRating?: number;
+  /** Signed satisfaction delta applied for the ordered meal, from -0.2 to 0.2. */
+  readonly healthImpact?: number;
+  readonly healthPreferenceResult?: HealthPreferenceResult;
   readonly reservedSeatKey?: string;
   readonly targetTrayReturnId?: string;
   readonly hasTray: boolean;
@@ -264,6 +273,14 @@ export type NutritionIntent =
   | "sodium-aware"
   | "lower-total-sugar-drink";
 
+export type HealthCondition =
+  | "high-cholesterol"
+  | "obesity"
+  | "diabetes"
+  | "hypertension";
+
+export type HealthPreferenceResult = "matched" | "missed" | "unknown";
+
 export type NutritionMetric =
   | "energyKcal"
   | "proteinG"
@@ -303,6 +320,10 @@ export interface NutritionProfile {
   readonly nutrients: Readonly<Record<NutritionMetric, NutritionValue>>;
   /** Precomputed relative fits among reviewed in-game meal or drink options. */
   readonly intentFits: Partial<Readonly<Record<NutritionIntent, number>>>;
+  /** General balanced-meal rating in the inclusive 1-5 range. */
+  readonly healthRating?: number;
+  /** Condition-aware ratings in the inclusive 1-5 range. */
+  readonly conditionRatings?: Partial<Readonly<Record<HealthCondition, number>>>;
   readonly nutritionClass: NutritionClass;
 }
 

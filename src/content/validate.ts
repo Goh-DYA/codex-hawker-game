@@ -4,8 +4,8 @@ import { launchContentSchema } from "./schemas";
 import type { PlaceableCategory } from "./types";
 
 const EXPECTED_COUNTS = {
-  stalls: 12,
-  dishes: 46,
+  stalls: 14,
+  dishes: 54,
   minimumPlaceables: 80,
   customerArchetypes: 12,
 } as const;
@@ -271,8 +271,8 @@ export const validateContent = (
     `Every dish requires one primary nutrition profile; found ${primaryNutritionProfileByDishId.size}.`,
   );
   check(
-    content.nutrition.variantFamilies.length === 10,
-    "Nutrition content must ship exactly ten reviewed variant families.",
+    content.nutrition.variantFamilies.length === 14,
+    "Nutrition content must ship exactly fourteen reviewed variant families.",
   );
   check(
     nutritionIntentIds.size === content.nutrition.intents.length,
@@ -283,12 +283,13 @@ export const validateContent = (
     (profile) => profile.id === profile.dishId,
   );
   check(
-    primaryProfiles.filter((profile) => profile.status === "released").length === 28,
-    "Nutrition content must release exactly 28 primary dish profiles.",
+    primaryProfiles.length === content.dishes.length &&
+      primaryProfiles.every((profile) => profile.status === "released"),
+    "Every dish must have a released primary nutrition profile.",
   );
   check(
-    primaryProfiles.filter((profile) => profile.status === "unavailable").length === 18,
-    "Nutrition content must explicitly mark 18 primary dish profiles unavailable.",
+    content.nutrition.profiles.every((profile) => profile.status === "released"),
+    "Every selectable nutrition profile must be released.",
   );
 
   for (const profile of content.nutrition.profiles) {

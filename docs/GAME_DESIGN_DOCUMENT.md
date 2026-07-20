@@ -42,7 +42,7 @@ Arrive → Browse → Choose stall → Walk to queue → Queue → Order → Wai
 
 At every state, a missing or invalid target triggers bounded recovery: replan, choose an alternative, or leave with a clear reason. Reservations have owners and release on completion, cancellation, target movement, timeout, or despawn. Stuck detection retries a limited number of paths before a safe exit fallback.
 
-Stall score combines preference match, price, expected wait, quality, novelty, walking distance, and a bounded fit for an optional fictional nutrition intent. Nutrition intent is independent of persona and demographics and never changes satisfaction, price, quality, preparation time, cash, experience, or reputation. Seat score combines path distance, group capacity, comfort preference, cleanliness, and congestion. Player-facing reason chips expose the strongest positive and negative terms; exact hidden arithmetic is not required for casual play.
+Stall score combines preference match, price, expected wait, Star-rated taste/popularity, stall quality/popularity, novelty, walking distance, and bounded fits for an optional nutrition intent and visit-specific health condition. Nutrition intents and conditions are assigned independently of persona, appearance, and demographics. An intent affects food choice and request reporting but not satisfaction; a condition uses its own Health rating when choosing a stall and dish, then applies a small frozen satisfaction change from the ordered meal. Neither system rewrites price, Star rating, preparation time, cash, experience, or reputation. Seat score combines path distance, group capacity, comfort preference, cleanliness, and congestion. Player-facing reason chips expose the strongest positive and negative terms; exact hidden arithmetic is not required for casual play.
 
 ## Queues, service, and seating
 
@@ -54,9 +54,11 @@ Stall score combines preference match, price, expected wait, quality, novelty, w
 
 ## Satisfaction and diagnostics
 
-Satisfaction is a bounded weighted score from value, wait, food quality, walking burden, comfort, cleanliness, and ambience. A departure records a primary reason such as served, queue too long, unaffordable, no reachable seat, stall unavailable, path blocked, or centre closed. The HUD summarizes these reasons and offers corrective hints.
+Satisfaction is a bounded weighted score from value, wait, food quality, walking burden, comfort, cleanliness, ambience, and, only for a customer with a health condition, a -0.2 to +0.2 meal-fit adjustment. A departure records a primary reason such as served, queue too long, unaffordable, no reachable seat, stall unavailable, path blocked, or centre closed. The HUD summarizes these reasons and offers corrective hints.
 
-Nutrition is reported in a parallel daily Pulse. It tracks profiled servings, fictional request outcomes, and nutrient averages with separate known-value denominators. It has no composite health grade. Daily guidance is contextual only; matching uses relative comparisons among reviewed in-game servings.
+Nutrition is reported in a parallel daily Pulse. It tracks profiled servings, fictional request outcomes, and nutrient averages with separate known-value denominators. Each reviewed serving displays a general 1-to-5 Health rating, condition-specific 1-to-5 ratings, and the dish family's separate 1-to-5 Star rating. Health ratings are comparative game scores within the available meal or drink profiles, not a universal judgement or medical recommendation. Daily guidance is contextual only; matching uses relative comparisons among reviewed in-game servings.
+
+At most one of high cholesterol, obesity, diabetes, or hypertension is assigned to an eligible visit. High-cholesterol fit emphasizes saturated, trans, and total fat with fibre and energy signals; obesity fit emphasizes energy, total and saturated fat, total sugar, fibre, and protein; diabetes fit emphasizes carbohydrate, total sugar, fibre, energy, and protein; and hypertension fit emphasizes sodium with supporting energy, saturated-fat, fibre, and protein signals. The customer inspector explains the nutrients considered and states that the trait is not a diagnosis.
 
 Critical information always has text or icon/shape feedback. Customer bubbles are persistent status summaries, and the Settings icon guide provides a text equivalent.
 

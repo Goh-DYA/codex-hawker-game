@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
 import {
+  addHealthRatings,
   buildNutritionContent,
   canonicalRowHash,
   computeRelativeFits,
+  extractPreservedGuidelines,
   findQuarantineReasons,
   findUniqueFoodRow,
   NUTRIENT_COLUMNS,
+  nutritionValueForComparison,
   parseCsv,
   parseNutritionValue,
   parseServing,
@@ -128,8 +131,17 @@ describe("nutrition CSV importer", () => {
     });
     assert.deepEqual(second, first);
     assert.equal(JSON.stringify(second), JSON.stringify(first));
-    assert.equal(first.profiles.length, 80);
-    assert.equal(first.variantFamilies.length, 10);
+    assert.equal(first.schemaVersion, 2);
+    assert.equal(first.profiles.length, 104);
+    assert.equal(first.variantFamilies.length, 14);
+
+    const foodOnlyRefresh = buildNutritionContent({
+      foodText,
+      preservedGuidelines: extractPreservedGuidelines(first),
+      expectedFoodSha256: undefined,
+      expectedGuidelineSha256: undefined,
+    });
+    assert.deepEqual(foodOnlyRefresh, first);
   });
 
   it("parses a BOM, quoted commas, embedded newlines, and malformed source booleans losslessly", () => {
@@ -258,6 +270,112 @@ describe("nutrition CSV importer", () => {
 
     const lower = computeRelativeFits([{ id: "only", value: 5 }], "lower");
     assert.equal(lower.get("only"), 1);
+  });
+
+  it("ranks trace amounts as zero without changing their source state", () => {
+    const trace = { status: "trace" as const };
+    const known = { status: "known" as const, value: 1 };
+    const unavailableValue = { status: "unavailable" as const, reason: "not-reported" };
+    const comparisons = [
+      { id: "trace", value: nutritionValueForComparison(trace) },
+      { id: "known", value: nutritionValueForComparison(known) },
+    ];
+
+    assert.equal(nutritionValueForComparison(trace), 0);
+    assert.equal(nutritionValueForComparison(unavailableValue), undefined);
+    assert.equal(computeRelativeFits(comparisons, "lower").get("trace"), 1);
+    assert.equal(computeRelativeFits(comparisons, "higher").get("trace"), 0);
+    assert.deepEqual(trace, { status: "trace" });
+  });
+
+  it("computes bounded ratings in the authored beneficial and moderation directions", () => {
+    const conditionRatings = {
+      "high-cholesterol": 3,
+      obesity: 3,
+      diabetes: 3,
+      hypertension: 3,
+    };
+    const profiles = [
+      {
+        id: "lower-risk",
+        status: "released",
+        nutritionClass: "meal",
+        nutrients: nutrientFixture({
+          energyKcal: { status: "known", value: 200 },
+          proteinG: { status: "known", value: 30 },
+          totalFatG: { status: "known", value: 5 },
+          saturatedFatG: { status: "known", value: 1 },
+          transFatG: { status: "known", value: 0 },
+          carbohydrateG: { status: "known", value: 20 },
+          totalSugarG: { status: "known", value: 2 },
+          dietaryFibreG: { status: "known", value: 10 },
+          sodiumMg: { status: "known", value: 200 },
+          calciumMg: { status: "known", value: 200 },
+          ironMg: { status: "known", value: 5 },
+        }),
+        healthRating: 3,
+        conditionRatings: { ...conditionRatings },
+      },
+      {
+        id: "higher-risk",
+        status: "released",
+        nutritionClass: "meal",
+        nutrients: nutrientFixture({
+          energyKcal: { status: "known", value: 900 },
+          proteinG: { status: "known", value: 5 },
+          totalFatG: { status: "known", value: 50 },
+          saturatedFatG: { status: "known", value: 20 },
+          transFatG: { status: "known", value: 5 },
+          carbohydrateG: { status: "known", value: 100 },
+          totalSugarG: { status: "known", value: 40 },
+          dietaryFibreG: { status: "known", value: 1 },
+          sodiumMg: { status: "known", value: 2_000 },
+          calciumMg: { status: "known", value: 20 },
+          ironMg: { status: "known", value: 1 },
+        }),
+        healthRating: 3,
+        conditionRatings: { ...conditionRatings },
+      },
+    ];
+
+    addHealthRatings(profiles);
+
+    assert.equal(profiles[0].healthRating, 5);
+    assert.equal(profiles[1].healthRating, 1);
+    for (const condition of Object.keys(conditionRatings) as Array<
+      keyof typeof conditionRatings
+    >) {
+      assert.equal(profiles[0].conditionRatings[condition], 5);
+      assert.equal(profiles[1].conditionRatings[condition], 1);
+    }
+  });
+
+  it("rejects drift between preserved guideline metadata and rows", () => {
+    const guidelines = Array.from({ length: 11 }, (_, index) => ({
+      id: `guideline-${index}`,
+      nutrient: `Nutrient ${index}`,
+      lowerLimit: "lower",
+      upperLimit: "upper",
+      remarks: "Context only",
+      source: "Fixture",
+      comparison: "context-only",
+    }));
+    const preserved = {
+      sourceSnapshots: [
+        {
+          id: "guidelines-aaaaaaaaaaaa",
+          fileName: "daily_nutrition_sgadults.csv",
+          sha256: "a".repeat(64),
+          rowCount: 10,
+        },
+      ],
+      guidelines,
+    };
+
+    assert.throws(
+      () => extractPreservedGuidelines(preserved),
+      /snapshot metadata is invalid/,
+    );
   });
 
   it("hashes canonical source rows deterministically and gates source drift", () => {

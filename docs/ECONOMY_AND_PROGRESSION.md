@@ -68,7 +68,7 @@ Before release, seeded simulation plus human playtests must demonstrate:
 - A novice can reach level 3 without grinding or an unrecoverable placement.
 - At least three materially different viable layout/menu strategies exist.
 - No catalogue item creates infinite cash, reputation, or reservation loops.
-- All 80 items and 12 stalls are affordable within a reasonable complete playthrough.
+- All 80 items and 14 stalls are affordable within a reasonable complete playthrough.
 - The final expansion is aspirational but does not require idle real-world time.
 
 No economy stability claim is made yet.

@@ -50,6 +50,14 @@ const localizationKeySchema = z
   .regex(/^(stall|dish|item|customer)\.[a-z0-9]+(?:-[a-z0-9]+)*\.(name|description)$/);
 
 const qualitySchema = z.number().min(0).max(1);
+const fivePointRatingSchema = z
+  .number()
+  .min(1)
+  .max(5)
+  .refine(
+    (value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-9,
+    "Rating must use one decimal place.",
+  );
 
 export const stallUpgradeSchema = z.object({
   level: z.union([z.literal(2), z.literal(3), z.literal(4)]),
@@ -116,6 +124,7 @@ export const dishSchema = z.object({
   servingTimeMs: z.number().int().positive(),
   eatingTimeMs: z.number().int().positive(),
   quality: qualitySchema,
+  starRating: fivePointRatingSchema,
   preferenceTags: z.array(z.string().min(2)).min(2),
   dietaryTags: z.array(
     z.enum([
@@ -301,6 +310,13 @@ export const nutritionIntentIdSchema = z.enum([
   "lower-total-sugar-drink",
 ]);
 
+export const healthConditionSchema = z.enum([
+  "high-cholesterol",
+  "obesity",
+  "diabetes",
+  "hypertension",
+]);
+
 export const nutritionValueSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("known"), value: z.number().finite().nonnegative() }),
   z.object({ status: z.literal("trace") }),
@@ -355,6 +371,8 @@ export const nutritionProfileSchema = z.object({
   nutritionClass: z.enum(["meal", "drink"]),
   serving: nutritionServingSchema.optional(),
   nutrients: nutritionNutrientsSchema,
+  healthRating: fivePointRatingSchema,
+  conditionRatings: z.record(healthConditionSchema, fivePointRatingSchema),
   intentFits: z.partialRecord(
     nutritionIntentIdSchema,
     z.number().min(0).max(1),
@@ -412,11 +430,11 @@ export const nutritionGuidelineSchema = z.object({
 });
 
 export const nutritionContentSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   dataVersion: z.string().regex(/^sg-[a-f0-9]{12}-[a-f0-9]{12}$/),
   sourceSnapshots: z.array(nutritionSourceSnapshotSchema).length(2),
-  profiles: z.array(nutritionProfileSchema).min(46),
-  variantFamilies: z.array(nutritionVariantFamilySchema).length(10),
+  profiles: z.array(nutritionProfileSchema).length(104),
+  variantFamilies: z.array(nutritionVariantFamilySchema).length(14),
   intents: z.array(nutritionIntentSchema).length(5),
   guidelines: z.array(nutritionGuidelineSchema).length(11),
   disclosure: z.string().min(100),

@@ -8,7 +8,7 @@ import { STALLS } from "./stalls";
 import type { LaunchContent } from "./types";
 
 export const LAUNCH_CONTENT = {
-  version: "1.2.0",
+  version: "1.3.0",
   economy: ECONOMY,
   stalls: STALLS,
   dishes: DISHES,

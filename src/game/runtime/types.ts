@@ -14,6 +14,11 @@ import type { QueueFlowState } from "./queueInsight";
 export type QualityMode = "standard" | "lower-end";
 export type GameSpeed = 0 | 1 | 2 | 4 | 10;
 export type BuildTool = "select" | "place" | "move" | "remove" | "queue" | "access" | "route";
+export type HealthConditionId =
+  | "high-cholesterol"
+  | "obesity"
+  | "diabetes"
+  | "hypertension";
 
 export interface RuntimeObjective {
   readonly id: string;
@@ -31,9 +36,20 @@ export interface RuntimeNutritionProfileSummary {
   readonly servingLabel?: string;
   readonly energyKcal?: NutritionValue;
   readonly proteinG?: NutritionValue;
+  readonly totalFatG?: NutritionValue;
+  readonly saturatedFatG?: NutritionValue;
+  readonly transFatG?: NutritionValue;
+  readonly carbohydrateG?: NutritionValue;
   readonly dietaryFibreG?: NutritionValue;
   readonly sodiumMg?: NutritionValue;
   readonly totalSugarG?: NutritionValue;
+  readonly calciumMg?: NutritionValue;
+  readonly ironMg?: NutritionValue;
+  readonly waterG?: NutritionValue;
+  /** Overall in-game balance score for this exact listed serving. */
+  readonly healthRating?: number;
+  /** Condition-aware scores used to personalise customers' menu choices. */
+  readonly conditionRatings?: Partial<Readonly<Record<HealthConditionId, number>>>;
   readonly intentFits?: Partial<Readonly<Record<NutritionIntent, number>>>;
 }
 
@@ -50,6 +66,8 @@ export interface RuntimeNutritionVariantSummary {
 
 export interface RuntimeNutritionFamilySummary {
   readonly dishId: string;
+  /** Taste and popularity score; unlike health ratings, this is shared by every variant. */
+  readonly starRating?: number;
   readonly defaultVariantId: string;
   readonly activeVariantId: string;
   readonly variants: readonly RuntimeNutritionVariantSummary[];
@@ -88,6 +106,11 @@ export interface RuntimeCustomerNutritionSummary {
   readonly dishId?: string;
   readonly variantId?: string;
   readonly requestResult?: NutritionRequestResult;
+  readonly healthConditionIds: readonly HealthConditionId[];
+  readonly personalizedHealthRating?: number;
+  readonly healthImpact?: number;
+  readonly healthPreferenceResult?: NutritionRequestResult;
+  readonly healthDecisionReasons: readonly string[];
   readonly profile?: RuntimeNutritionProfileSummary;
 }
 

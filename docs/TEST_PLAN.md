@@ -48,8 +48,10 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 - No available stall, unaffordable dish, no seat, all exits stressed, and centre close.
 - Deterministic seeded results and agent despawn.
 - Nutrition-intent assignment is seed-reproducible, independent of persona, limited to one intent from level 2, and consumes one roll only under its documented conditions.
+- Health-condition assignment is seed-reproducible, independent of persona and appearance, limited to at most one eligible condition, and covers high cholesterol, obesity, diabetes, and hypertension without changing archetype data.
+- Star ratings affect taste/popularity appeal independently from general and condition-specific Health ratings; condition-aware customers prefer stalls and dishes using their personalized Health fit.
 - Only the configured order-time variant contributes nutrition choice weight and outcome; changing a variant during preparation cannot rewrite the order.
-- Matched, missed, and unknown outcomes update once at sale while price, quality, satisfaction, cash, XP, and reputation follow their existing paths unchanged.
+- Nutrition-intent matched, missed, and unknown outcomes update once at sale without changing satisfaction. Condition-aware meal fit is frozen at order time, produces only the documented -0.2 to +0.2 satisfaction effect, and does not rewrite price, Star rating, cash, XP, or reputation.
 
 ### Economy and progression
 
@@ -62,16 +64,17 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 
 - Zod parse and safe error for malformed definitions.
 - Unique IDs/keys and valid cross-references.
-- Exact 12 stalls, 46 dishes, 80 placeables, 12 archetypes, and 300 English localization entries.
+- Exact 14 stalls, 54 dishes, 80 placeables, 12 archetypes, and 320 English localization entries.
 - Every dish assigned, every stall has a menu item available at its unlock, every required English key present, no unlock cycles.
 - Footprint/interaction/depth anchors valid, every referenced visual/audio/animation known, and every stall/dish primary visual reference unique.
 - Catalogue duplicate policy check.
-- Exact nutrition status for all 46 dishes, 28 released mappings, 18 unavailable mappings, and ten reviewed variant families.
+- Exact 104 released nutrition profiles, 14 reviewed variant families with 64 selectable variants, and one released base profile plus Star rating for all 54 dishes.
+- Overall Health and all four condition ratings are finite and bounded from 1 to 5; high-cholesterol, obesity, diabetes, and hypertension schemes use their documented nutrient families and remain distinct from Star ratings.
 - Deterministic CSV generation, source and row hash drift, serving scaling, malformed booleans, `Trace`, unavailable values, quarantine rules, percentile ties, and incompatible daily-guideline comparisons.
 
 ### Stall graphics and animation
 
-- All 12 stall visual recipes are deterministic and materially distinct in facade layers, equipment, counter treatment, food/drink display, and vendor treatment rather than palette alone.
+- All 14 stall visual recipes are deterministic and materially distinct in facade layers, equipment, counter treatment, food/drink display, and vendor treatment rather than palette alone.
 - Every displayed food or drink prop resolves to a dish in that stall's active menu; enabling or disabling a dish updates the display deterministically and never leaks another stall's menu item.
 - Vendor animation recipes consume each stall's authored idle, preparation/cooking, and serving references; full-motion poses vary by tick while reduced-motion poses have zero body, arm, utensil, prop, and steam offsets and remain tick-invariant.
 - Closed stalls render an opaque shutter state that hides the vendor and service props; open/closed changes do not alter simulation state beyond the existing operational command.
@@ -94,7 +97,7 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 - Offline navigation shell responds after first successful load.
 - Waiting-worker update does not activate before a safe reload.
 - React error/loading states, modal focus, settings persistence, and reset confirmation.
-- Nutrition Lens value semantics, Variant Lab focus return, customer inspector departure, responsive Focus route, per-nutrient Pulse denominators, disclosure, and no color-only or composite health grade.
+- Nutrition Lens value semantics, distinct text-labelled Health and Star ratings, condition-specific explanations, Variant Lab focus return, customer inspector departure, responsive Focus route, per-nutrient Pulse denominators, disclosure, and no color-only rating or delta.
 
 ## Browser end-to-end scenarios
 
@@ -104,7 +107,7 @@ Only scripts present in package.json may be reported as run. Missing scripts are
 4. Paint a preferred guest lane with pointer and keyboard controls; verify predicted-path shift, clear, undo, save/reload, and Escape speed restoration.
 5. Configure a menu, compare a reviewed variant, and open the centre.
 6. Observe one customer complete order, seat, eat, tray/clear, and exit.
-7. Confirm cash/XP/reputation change, inspect the reason breakdown and fictional nutrition intent, and verify the Nutrition Pulse updates without changing satisfaction.
+7. Confirm cash/XP/reputation change, inspect the reason breakdown, fictional nutrition intent, optional health condition, Health/Star ratings, and Nutrition Pulse. Verify nutrition intents do not change satisfaction and any condition-aware meal effect stays within the documented bound.
 8. Move an active target and verify recovery.
 9. Save, reload, and compare persistent map/progression/economy state.
 10. Change text scale, reduced motion, audio, and quality mode; reload.
@@ -116,7 +119,7 @@ Run at 1280 × 720 and 1024 × 640, plus zoom levels in ACCESSIBILITY.md.
 
 ### Stall graphics browser matrix
 
-1. Place all 12 stall identities in a deterministic gallery and capture each open facade at useful game zoom. Verify roof, fascia, sign, wall, window, counter, equipment, trim, props, and vendor form a readable layered scene and no two stalls are distinguishable by palette alone.
+1. Place all 14 stall identities in a deterministic gallery and capture each open facade at useful game zoom. Verify roof, fascia, sign, wall, window, counter, equipment, trim, props, and vendor form a readable layered scene and no two stalls are distinguishable by palette alone.
 2. For every stall, compare the visible display with its active menu, disable at least one displayed dish, enable another valid dish, and verify the food/drink props update without showing an unavailable or cross-stall item.
 3. Close and reopen the centre. Verify every closed shutter completely masks the vendor and work props, every reopened scene returns, and labels/queue overlays remain readable in both states.
 4. Cover compact 3 x 2 and large 5 x 3 stalls, including representative 0-, 90-, 180-, and 270-degree placements. Check clipping, counter-facing placement, service-point clarity, vendor containment, and prop overlap.

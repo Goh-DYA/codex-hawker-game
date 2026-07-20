@@ -3,6 +3,7 @@ import { NUTRITION_CONTENT, STALLS } from "../src/content";
 import {
   customerAtRenderedGridPoint,
   customerDecisionReasons,
+  customerHealthDecisionReasons,
   decodeRuntimeSave,
   defaultDishVariants,
   resolveDishVariants,
@@ -90,6 +91,24 @@ describe("runtime nutrition persistence", () => {
     expect(reasons).toHaveLength(2);
     expect(reasons[0]).toBe("Familiar flavour preference");
     expect(["Visit intent fit", "Nutrition trade-off"]).toContain(reasons[1]);
+  });
+
+  it("explains each condition-aware rating using the nutrient family considered", () => {
+    const reviewedProfile = NUTRITION_CONTENT.profiles.find(
+      (profile) =>
+        profile.status === "released" &&
+        typeof profile.conditionRatings?.hypertension === "number",
+    );
+    expect(reviewedProfile).toBeDefined();
+
+    const reasons = customerHealthDecisionReasons({
+      healthConditions: ["hypertension", "diabetes"],
+      orderedNutritionProfile: reviewedProfile,
+    });
+
+    expect(reasons.some((reason) => reason.includes("Managing hypertension"))).toBe(true);
+    expect(reasons.some((reason) => reason.includes("sodium"))).toBe(true);
+    expect(reasons.some((reason) => reason.includes("carbohydrate, total sugar"))).toBe(true);
   });
 
   it("migrates raw core and runtime V1 envelopes without inventing variant selections", () => {

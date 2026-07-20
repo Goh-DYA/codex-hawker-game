@@ -22,6 +22,9 @@ All notable project changes are recorded here. The project is pre-release; seman
 
 ### Changed
 
+- Expanded content `1.3.0` from 12 to 14 fictional stalls, from 46 to 54 dishes, and from 300 to 320 English localization entries, adding Pick & Mix and Herbal Cauldron with dataset-backed yong tau foo, ban mian, thunder tea rice, popiah, bak kut teh, duck rice, kway chap, and claypot chicken rice options.
+- Replaced partial nutrition coverage with 104 released source profiles: every base dish is profiled, 14 reviewed variant families expose 64 selectable preparations, and every profile carries an overall Health rating plus condition-specific ratings for high cholesterol, obesity, diabetes, and hypertension.
+- Added a distinct Star rating to every dish for taste and popularity, while customers with independently assigned health conditions use their relevant Health rating when choosing stalls and dishes and receive a small bounded satisfaction effect from the meal selected.
 - Added a keyboard-accessible customer-status legend to Settings, covering all nine speech bubbles and the patience ring with matching shapes and text explanations.
 - Expanded the customer-persona roster from 8 to 12 behavior archetypes and 300 English localization entries, adding Afternoon Treat Stopper, Plant-Forward Planner, Quiet Break Regular, and Night-Shift Recharger while reframing Senior Comfort Seeker as the neutral Comfort-Seeking Regular.
 - Expanded the launch roster from 8 to 12 fictional stalls and from 30 to 46 dishes, with unique primary stall/food visual references and dedicated real-food renderer treatments for the new menu.

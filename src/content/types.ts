@@ -100,6 +100,8 @@ export interface DishDefinition {
   readonly servingTimeMs: number;
   readonly eatingTimeMs: number;
   readonly quality: number;
+  /** Taste and popularity rating, independent from nutritional suitability. */
+  readonly starRating: number;
   readonly preferenceTags: readonly string[];
   readonly dietaryTags: readonly DietaryTag[];
   readonly unlockRequirement: UnlockRequirement;
@@ -286,6 +288,12 @@ export type NutritionProfileStatus =
 
 export type NutritionClass = "meal" | "drink";
 
+export type HealthCondition =
+  | "high-cholesterol"
+  | "obesity"
+  | "diabetes"
+  | "hypertension";
+
 export type NutritionIntentId =
   | "lighter-energy"
   | "protein-forward"
@@ -320,6 +328,10 @@ export interface NutritionProfile {
   readonly nutritionClass: NutritionClass;
   readonly serving?: NutritionServing;
   readonly nutrients: NutritionNutrients;
+  /** Comparative, per-serving game rating within the same nutrition class. */
+  readonly healthRating: number;
+  /** Comparative game ratings using condition-specific nutrient weightings. */
+  readonly conditionRatings: Readonly<Record<HealthCondition, number>>;
   readonly intentFits: Readonly<Partial<Record<NutritionIntentId, number>>>;
   readonly provenance?: NutritionProvenance;
   readonly unavailableReason?: NutritionUnavailableReason;
@@ -369,7 +381,7 @@ export interface NutritionGuideline {
 }
 
 export interface NutritionContent {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly dataVersion: string;
   readonly sourceSnapshots: readonly NutritionSourceSnapshot[];
   readonly profiles: readonly NutritionProfile[];
