@@ -10,6 +10,7 @@ import { compareIds } from "./ordering";
 import {
   cloneNutritionMetrics,
   createEmptyNutritionMetrics,
+  HEALTH_CONDITIONS,
   NUTRITION_INTENTS,
   NUTRITION_METRICS,
 } from "./nutrition";
@@ -36,6 +37,7 @@ import type {
   NutritionProfile,
   NutritionRequestResult,
   NutritionValue,
+  HealthCondition,
 } from "./types";
 
 export const PERSISTENT_SCHEMA_VERSION = 4 as const;
@@ -80,6 +82,12 @@ function finite(value: unknown, path: string, minimum = Number.NEGATIVE_INFINITY
 
 function boundedPercentage(value: unknown, path: string): number {
   return Math.min(100, finite(value, path, 0));
+}
+
+function healthRating(value: unknown, path: string): number {
+  const parsed = finite(value, path, 1);
+  if (parsed > 5) throw new PersistenceError(`${path} must be between one and five`);
+  return parsed;
 }
 
 function safeInteger(
@@ -302,6 +310,20 @@ function parseNutritionProfile(value: unknown, path: string): NutritionProfile {
     if (fit === undefined) continue;
     intentFits[intent] = Math.min(1, finite(fit, `${path}.intentFits.${intent}`, 0));
   }
+  const conditionRatingsSource = isRecord(value.conditionRatings)
+    ? value.conditionRatings
+    : undefined;
+  const conditionRatings: Partial<Record<HealthCondition, number>> = {};
+  if (conditionRatingsSource) {
+    for (const condition of HEALTH_CONDITIONS) {
+      const rating = conditionRatingsSource[condition];
+      if (rating === undefined) continue;
+      conditionRatings[condition] = healthRating(
+        rating,
+        `${path}.conditionRatings.${condition}`,
+      );
+    }
+  }
   return {
     id: stringValue(value.id, `${path}.id`),
     dishId: stringValue(value.dishId, `${path}.dishId`),
@@ -320,6 +342,10 @@ function parseNutritionProfile(value: unknown, path: string): NutritionProfile {
       ]),
     ) as Record<NutritionMetric, NutritionValue>,
     intentFits,
+    healthRating: value.healthRating === undefined
+      ? undefined
+      : healthRating(value.healthRating, `${path}.healthRating`),
+    conditionRatings: conditionRatingsSource ? conditionRatings : undefined,
     nutritionClass: value.nutritionClass,
   };
 }

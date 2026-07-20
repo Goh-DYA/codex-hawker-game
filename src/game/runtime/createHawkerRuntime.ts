@@ -56,6 +56,7 @@ import {
 import type {
   BuildTool,
   GameSpeed,
+  HealthConditionId,
   RuntimeController,
   RuntimeEvent,
   RuntimeOptions,
@@ -249,6 +250,10 @@ function coreNutritionProfile(
     ) as Readonly<Record<NutritionMetric, CoreNutritionValue>>,
     intentFits: { ...source.intentFits } as Partial<Record<NutritionIntent, number>>,
     nutritionClass: source.nutritionClass,
+    healthRating: source.healthRating,
+    conditionRatings: source.conditionRatings
+      ? { ...source.conditionRatings }
+      : undefined,
   };
 }
 
@@ -261,11 +266,57 @@ function runtimeNutritionProfile(
     servingLabel: profile.serving?.label,
     energyKcal: profile.nutrients.energyKcal,
     proteinG: profile.nutrients.proteinG,
+    totalFatG: profile.nutrients.totalFatG,
+    saturatedFatG: profile.nutrients.saturatedFatG,
+    transFatG: profile.nutrients.transFatG,
+    carbohydrateG: profile.nutrients.carbohydrateG,
     dietaryFibreG: profile.nutrients.dietaryFibreG,
     sodiumMg: profile.nutrients.sodiumMg,
     totalSugarG: profile.nutrients.totalSugarG,
+    calciumMg: profile.nutrients.calciumMg,
+    ironMg: profile.nutrients.ironMg,
+    waterG: profile.nutrients.waterG,
+    healthRating: profile.healthRating,
+    conditionRatings: profile.conditionRatings
+      ? { ...profile.conditionRatings }
+      : undefined,
     intentFits: { ...profile.intentFits },
   };
+}
+
+const HEALTH_CONDITION_LABELS: Readonly<Record<HealthConditionId, string>> = {
+  "high-cholesterol": "Managing high cholesterol",
+  obesity: "Managing obesity",
+  diabetes: "Managing diabetes",
+  hypertension: "Managing hypertension",
+};
+
+const HEALTH_CONDITION_NUTRIENTS: Readonly<Record<HealthConditionId, string>> = {
+  "high-cholesterol": "total, saturated and trans fat, fibre, and energy",
+  obesity: "energy, total and saturated fat, sugar, fibre, and protein",
+  diabetes: "carbohydrate, total sugar, fibre, energy, and protein",
+  hypertension: "sodium, energy, saturated fat, fibre, and protein",
+};
+
+interface CustomerHealthDecisionSource {
+  readonly healthConditions?: readonly HealthConditionId[];
+  readonly orderedNutritionProfile?: CoreNutritionProfile;
+}
+
+/** Explains the condition-specific score without turning it into medical advice. */
+export function customerHealthDecisionReasons(
+  customer: CustomerHealthDecisionSource,
+): readonly string[] {
+  const profile = customer.orderedNutritionProfile;
+  if (!profile || profile.status !== "released") return [];
+
+  return [...new Set(customer.healthConditions ?? [])].flatMap((condition) => {
+    const rating = profile.conditionRatings?.[condition];
+    if (typeof rating !== "number" || !Number.isFinite(rating)) return [];
+    return [
+      `${HEALTH_CONDITION_LABELS[condition]} fit ${rating.toFixed(1)}/5 is led by ${HEALTH_CONDITION_NUTRIENTS[condition]}`,
+    ];
+  });
 }
 
 export function customerDecisionReasons(
@@ -335,6 +386,7 @@ function buildCatalog(): {
         preparationMs: dish.preparationTimeMs,
         eatingMs: dish.eatingTimeMs,
         quality: dish.quality,
+        starRating: dish.starRating,
         baseDemand: dish.baseDemand,
         preferenceTags: dish.preferenceTags,
         unlockLevel: dish.unlockRequirement.level,
@@ -1069,9 +1121,11 @@ export async function createHawkerRuntime(
           .map((stall) => snapshot.progression.stallMastery[stall.id]?.rank ?? 1),
       );
       const dish = catalog.dishes[family.dishId];
+      const starRating = dish?.starRating;
       const activeVariantId = activeDishVariants[family.dishId] ?? family.defaultVariantId;
       return {
         dishId: family.dishId,
+        starRating,
         defaultVariantId: family.defaultVariantId,
         activeVariantId,
         variants: family.variants.map((variant) => {
@@ -1207,6 +1261,14 @@ export async function createHawkerRuntime(
             dishId: selectedCustomer.orderedDishId,
             variantId: selectedCustomer.orderedNutritionVariantId,
             requestResult: selectedCustomer.nutritionRequestResult,
+            healthConditionIds: selectedCustomer.healthConditions ?? [],
+            personalizedHealthRating: selectedCustomer.personalizedHealthRating,
+            healthImpact: selectedCustomer.healthImpact,
+            healthPreferenceResult: selectedCustomer.healthPreferenceResult,
+            healthDecisionReasons: customerHealthDecisionReasons({
+              healthConditions: selectedCustomer.healthConditions,
+              orderedNutritionProfile: selectedCustomer.orderedNutritionProfile,
+            }),
             profile: runtimeNutritionProfile(selectedCustomer.orderedNutritionProfile),
           }
         : undefined,
@@ -1921,6 +1983,26 @@ export async function createHawkerRuntime(
       graphics.fillTriangle(x, y - 8 * scale, x - 8 * scale, y, x, y + 8 * scale);
       graphics.fillStyle(0xfff5dc, 0.92);
       graphics.fillCircle(x, y, 3 * scale);
+    } else if (emblem === "ingredient-grid") {
+      for (let cell = 0; cell < 4; cell += 1) {
+        graphics.fillRoundedRect(
+          x - 7 * scale + (cell % 2) * 8 * scale,
+          y - 7 * scale + Math.floor(cell / 2) * 8 * scale,
+          6 * scale,
+          6 * scale,
+          scale,
+        );
+      }
+    } else if (emblem === "claypot-steam") {
+      graphics.fillRoundedRect(x - 7 * scale, y - scale, 14 * scale, 8 * scale, 3 * scale);
+      graphics.lineStyle(Math.max(1, scale), accent, 1);
+      graphics.lineBetween(x - 8 * scale, y + scale, x - 11 * scale, y - scale);
+      graphics.lineBetween(x + 8 * scale, y + scale, x + 11 * scale, y - scale);
+      for (let plume = -1; plume <= 1; plume += 1) {
+        graphics.beginPath();
+        graphics.arc(x + plume * 4 * scale, y - 4 * scale, 2.4 * scale, 0.3, Math.PI * 1.6);
+        graphics.strokePath();
+      }
     } else {
       for (let wave = -1; wave <= 1; wave += 1) {
         const waveY = y + wave * 4 * scale;
@@ -2096,6 +2178,20 @@ export async function createHawkerRuntime(
       graphics.lineBetween(handX, handY, endX + 5 * scale, endY + 3 * scale);
       graphics.fillCircle(endX + 6 * scale, endY - 2 * scale, 1.3 * scale);
       graphics.fillCircle(endX + 6 * scale, endY + 3 * scale, 1.3 * scale);
+    } else if (recipe.tool === "ingredient-tongs") {
+      graphics.lineStyle(Math.max(1, 1.4 * scale), 0xaebfba, 1);
+      graphics.lineBetween(handX, handY, endX + 6 * scale, endY - 3 * scale);
+      graphics.lineBetween(handX, handY, endX + 6 * scale, endY + 3 * scale);
+      graphics.fillStyle(0x668079, 1);
+      graphics.fillRoundedRect(endX + 4 * scale, endY - 5 * scale, 4 * scale, 3 * scale, scale);
+      graphics.fillRoundedRect(endX + 4 * scale, endY + 2 * scale, 4 * scale, 3 * scale, scale);
+    } else if (recipe.tool === "claypot-ladle") {
+      graphics.fillStyle(0x8f6848, 1);
+      graphics.fillCircle(endX, endY, 4.8 * scale);
+      graphics.lineStyle(Math.max(1, 1.3 * scale), 0x4f382a, 1);
+      graphics.strokeCircle(endX, endY, 4.8 * scale);
+      graphics.fillStyle(0xc4a36d, 1);
+      graphics.fillCircle(endX - scale, endY - scale, 2.2 * scale);
     } else {
       graphics.fillStyle(lighten(recipe.apron, 0.54), 0.94);
       graphics.fillTriangle(
@@ -4495,6 +4591,106 @@ export async function createHawkerRuntime(
       if (has("ghee-gloss")) {
         graphics.lineStyle(Math.max(1, 2 * scale), 0xffe69a, 0.95);
         graphics.lineBetween(x - 7 * scale, y - 2 * scale, x + 7 * scale, y + scale);
+      }
+      return;
+    }
+
+    if (family === "yong-tau-foo") {
+      graphics.fillStyle(has("laksa") ? 0xd26f32 : 0xc8b477, 0.82);
+      graphics.fillEllipse(x, y, 20 * scale, 10 * scale);
+      const pieceColour = has("fried") ? 0xb87435 : 0xe2c275;
+      graphics.fillStyle(pieceColour, 1);
+      graphics.fillRoundedRect(x - 8 * scale, y - 4 * scale, 6 * scale, 5 * scale, scale);
+      graphics.fillTriangle(
+        x,
+        y - 5 * scale,
+        x + 5 * scale,
+        y - scale,
+        x - scale,
+        y + 2 * scale,
+      );
+      graphics.fillStyle(0x5d9957, 1);
+      graphics.fillEllipse(x + 6 * scale, y + 2 * scale, 6 * scale, 4 * scale);
+      if (has("noodles")) {
+        graphics.lineStyle(lineWidth, 0xe6cf82, 1);
+        for (let strand = -1; strand <= 1; strand += 1) {
+          graphics.lineBetween(
+            x - 7 * scale,
+            y + strand * 2 * scale,
+            x + 7 * scale,
+            y - strand * scale,
+          );
+        }
+      }
+      return;
+    }
+
+    if (family === "ban-mian") {
+      if (has("soup", "tom-yum")) {
+        graphics.fillStyle(has("tom-yum") ? 0xd36d3f : 0xc8b477, 0.84);
+        graphics.fillEllipse(x, y, 20 * scale, 10 * scale);
+      }
+      graphics.lineStyle(lineWidth, has("chilli") ? 0xb94c32 : 0xe5c775, 1);
+      for (let strand = -2; strand <= 2; strand += 1) {
+        graphics.lineBetween(
+          x - 8 * scale,
+          y + strand * 1.5 * scale,
+          x + 8 * scale,
+          y - strand * 1.2 * scale,
+        );
+      }
+      graphics.fillStyle(has("vegetable") ? 0x559351 : 0xb96d4b, 1);
+      const toppingCount = has("pork-dumpling") ? 3 : 2;
+      for (let topping = 0; topping < toppingCount; topping += 1) {
+        graphics.fillCircle(
+          x + (topping - (toppingCount - 1) / 2) * 5 * scale,
+          y - 3 * scale,
+          1.8 * scale,
+        );
+      }
+      return;
+    }
+
+    if (family === "bak-kut-teh") {
+      if (has("dry-claypot")) {
+        graphics.fillStyle(0x6f4431, 0.96);
+        graphics.fillRoundedRect(x - 10 * scale, y - 6 * scale, 20 * scale, 12 * scale, 3 * scale);
+      } else {
+        graphics.fillStyle(has("herbal") ? 0x76543b : 0xb89b70, 0.88);
+        graphics.fillEllipse(x, y, 20 * scale, 10 * scale);
+      }
+      graphics.fillStyle(0x9b6546, 1);
+      for (let rib = -1; rib <= 1; rib += 1) {
+        graphics.fillRoundedRect(
+          x + rib * 5 * scale - 2 * scale,
+          y - 4 * scale + Math.abs(rib) * 2 * scale,
+          5 * scale,
+          7 * scale,
+          scale,
+        );
+      }
+      return;
+    }
+
+    if (family === "duck-rice") {
+      graphics.fillStyle(0xb87b43, 1);
+      for (let slice = -2; slice <= 2; slice += 1) {
+        graphics.fillRoundedRect(
+          x + slice * 3 * scale - 2 * scale,
+          y - 5 * scale + Math.abs(slice) * scale,
+          5 * scale,
+          8 * scale,
+          scale,
+        );
+      }
+      if (has("braised-egg-tofu")) {
+        graphics.fillStyle(0xf0dfb8, 1);
+        graphics.fillCircle(x + 8 * scale, y + 3 * scale, 3 * scale);
+        graphics.fillStyle(0xc79455, 1);
+        graphics.fillRect(x - 10 * scale, y + scale, 5 * scale, 5 * scale);
+      } else if (has("roasted")) {
+        graphics.lineStyle(Math.max(1, 1.8 * scale), 0x6e3628, 1);
+        graphics.lineBetween(x - 7 * scale, y - 4 * scale, x + 7 * scale, y + 2 * scale);
       }
       return;
     }

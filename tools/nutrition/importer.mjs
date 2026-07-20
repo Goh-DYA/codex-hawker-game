@@ -51,6 +51,58 @@ const sha256 = (input) =>
   createHash("sha256").update(input).digest("hex");
 
 const round = (value) => Math.round((value + Number.EPSILON) * 10_000) / 10_000;
+const roundRating = (value) => Math.round((value + Number.EPSILON) * 10) / 10;
+
+export const HEALTH_RATING_SCHEMES = {
+  overall: [
+    ["energyKcal", "lower", 0.16],
+    ["proteinG", "higher", 0.12],
+    ["totalFatG", "lower", 0.08],
+    ["saturatedFatG", "lower", 0.1],
+    ["transFatG", "lower", 0.08],
+    ["totalSugarG", "lower", 0.12],
+    ["dietaryFibreG", "higher", 0.14],
+    ["sodiumMg", "lower", 0.12],
+    ["calciumMg", "higher", 0.04],
+    ["ironMg", "higher", 0.04],
+  ],
+  "high-cholesterol": [
+    ["saturatedFatG", "lower", 0.35],
+    ["transFatG", "lower", 0.2],
+    ["totalFatG", "lower", 0.2],
+    ["dietaryFibreG", "higher", 0.15],
+    ["energyKcal", "lower", 0.1],
+  ],
+  obesity: [
+    ["energyKcal", "lower", 0.35],
+    ["totalFatG", "lower", 0.18],
+    ["saturatedFatG", "lower", 0.07],
+    ["totalSugarG", "lower", 0.15],
+    ["dietaryFibreG", "higher", 0.15],
+    ["proteinG", "higher", 0.1],
+  ],
+  diabetes: [
+    ["carbohydrateG", "lower", 0.3],
+    ["totalSugarG", "lower", 0.3],
+    ["dietaryFibreG", "higher", 0.2],
+    ["energyKcal", "lower", 0.12],
+    ["proteinG", "higher", 0.08],
+  ],
+  hypertension: [
+    ["sodiumMg", "lower", 0.65],
+    ["energyKcal", "lower", 0.1],
+    ["saturatedFatG", "lower", 0.1],
+    ["dietaryFibreG", "higher", 0.1],
+    ["proteinG", "higher", 0.05],
+  ],
+};
+
+const NEUTRAL_CONDITION_RATINGS = {
+  "high-cholesterol": 3,
+  obesity: 3,
+  diabetes: 3,
+  hypertension: 3,
+};
 
 const UNGROUPED_NUMERIC_PATTERN = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/;
 const GROUPED_NUMERIC_PATTERN = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?$/;
@@ -306,6 +358,8 @@ const buildReleasedProfile = ({
     nutritionClass: mapping.nutritionClass,
     ...(serving === undefined ? {} : { serving }),
     nutrients,
+    healthRating: 3,
+    conditionRatings: { ...NEUTRAL_CONDITION_RATINGS },
     intentFits: {},
     provenance,
     reviewNote: mapping.reviewNote,
@@ -319,6 +373,8 @@ const buildUnavailableProfile = (mapping) => ({
   status: "unavailable",
   nutritionClass: mapping.nutritionClass,
   nutrients: unavailableNutrients("unmapped"),
+  healthRating: 3,
+  conditionRatings: { ...NEUTRAL_CONDITION_RATINGS },
   intentFits: {},
   unavailableReason: "unmapped",
   reviewNote: mapping.reviewNote,
@@ -352,26 +408,110 @@ export const computeRelativeFits = (entries, direction) => {
   return fits;
 };
 
+/**
+ * Keeps the source-facing `trace` state intact while giving it the lowest
+ * numeric amount for relative comparisons. Unavailable values stay excluded.
+ */
+export const nutritionValueForComparison = (nutrient) => {
+  if (nutrient.status === "known") return nutrient.value;
+  if (nutrient.status === "trace") return 0;
+  return undefined;
+};
+
 const addIntentFits = (profiles) => {
   for (const intent of NUTRITION_INTENTS) {
-    const candidates = profiles.filter((profile) => {
-      if (profile.status !== "released" || profile.nutritionClass !== intent.nutritionClass) {
-        return false;
-      }
-      return profile.nutrients[intent.metric].status === "known";
-    });
+    const candidates = profiles
+      .filter(
+        (profile) =>
+          profile.status === "released" &&
+          profile.nutritionClass === intent.nutritionClass,
+      )
+      .map((profile) => ({
+        profile,
+        value: nutritionValueForComparison(profile.nutrients[intent.metric]),
+      }))
+      .filter((candidate) => candidate.value !== undefined);
     if (candidates.length === 0) continue;
 
     const fits = computeRelativeFits(
-      candidates.map((profile) => ({
-        id: profile.id,
-        value: profile.nutrients[intent.metric].value,
+      candidates.map((candidate) => ({
+        id: candidate.profile.id,
+        value: candidate.value,
       })),
       intent.direction,
     );
-    for (const profile of candidates) {
+    for (const { profile } of candidates) {
       profile.intentFits[intent.id] = fits.get(profile.id);
     }
+  }
+};
+
+export const addHealthRatings = (profiles) => {
+  const profileFits = new Map();
+  const directionsByMetric = new Map();
+  for (const scheme of Object.values(HEALTH_RATING_SCHEMES)) {
+    for (const [metric, direction] of scheme) {
+      const previous = directionsByMetric.get(metric);
+      if (previous && previous !== direction) {
+        throw new Error(`Nutrition metric ${metric} has conflicting rating directions.`);
+      }
+      directionsByMetric.set(metric, direction);
+    }
+  }
+
+  for (const nutritionClass of ["meal", "drink"]) {
+    const classProfiles = profiles.filter(
+      (profile) =>
+        profile.status === "released" && profile.nutritionClass === nutritionClass,
+    );
+    for (const [metric, direction] of directionsByMetric) {
+      const candidates = classProfiles
+        .map((profile) => ({
+          profile,
+          value: nutritionValueForComparison(profile.nutrients[metric]),
+        }))
+        .filter((candidate) => candidate.value !== undefined);
+      const fits = computeRelativeFits(
+        candidates.map((candidate) => ({
+          id: candidate.profile.id,
+          value: candidate.value,
+        })),
+        direction,
+      );
+      for (const { profile } of candidates) {
+        const existing = profileFits.get(profile.id) ?? {};
+        existing[metric] = fits.get(profile.id);
+        profileFits.set(profile.id, existing);
+      }
+    }
+  }
+
+  const rate = (profile, scheme) => {
+    const fits = profileFits.get(profile.id) ?? {};
+    let weightedFit = 0;
+    let availableWeight = 0;
+    for (const [metric, , weight] of scheme) {
+      const fit = fits[metric];
+      if (fit === undefined) continue;
+      weightedFit += fit * weight;
+      availableWeight += weight;
+    }
+    const normalizedFit = availableWeight === 0 ? 0.5 : weightedFit / availableWeight;
+    return roundRating(1 + 4 * normalizedFit);
+  };
+
+  for (const profile of profiles) {
+    if (profile.status !== "released") {
+      profile.healthRating = 3;
+      profile.conditionRatings = { ...NEUTRAL_CONDITION_RATINGS };
+      continue;
+    }
+    profile.healthRating = rate(profile, HEALTH_RATING_SCHEMES.overall);
+    profile.conditionRatings = Object.fromEntries(
+      Object.entries(HEALTH_RATING_SCHEMES)
+        .filter(([id]) => id !== "overall")
+        .map(([id, scheme]) => [id, rate(profile, scheme)]),
+    );
   }
 };
 
@@ -411,9 +551,78 @@ export const verifySourceHash = (label, actual, expected, acceptSourceUpdate) =>
   }
 };
 
+export const extractPreservedGuidelines = (content) => {
+  if (!content || typeof content !== "object") {
+    throw new Error("Preserved guideline content must be a generated nutrition object.");
+  }
+  const snapshots = Array.isArray(content.sourceSnapshots)
+    ? content.sourceSnapshots
+    : [];
+  const snapshot = snapshots.find(
+    (candidate) =>
+      candidate &&
+      typeof candidate === "object" &&
+      typeof candidate.id === "string" &&
+      candidate.id.startsWith("guidelines-"),
+  );
+  if (!Array.isArray(content.guidelines) || content.guidelines.length !== 11) {
+    throw new Error("Preserved guideline content must contain exactly 11 rows.");
+  }
+  if (
+    !snapshot ||
+    typeof snapshot.fileName !== "string" ||
+    /[\\/]/.test(snapshot.fileName) ||
+    typeof snapshot.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(snapshot.sha256) ||
+    snapshot.id !== `guidelines-${snapshot.sha256.slice(0, 12)}` ||
+    !Number.isInteger(snapshot.rowCount) ||
+    snapshot.rowCount !== content.guidelines.length
+  ) {
+    throw new Error("Preserved guideline snapshot metadata is invalid.");
+  }
+  const guidelines = structuredClone(content.guidelines);
+  for (const guideline of guidelines) {
+    if (
+      !guideline ||
+      typeof guideline !== "object" ||
+      typeof guideline.id !== "string" ||
+      typeof guideline.nutrient !== "string" ||
+      typeof guideline.lowerLimit !== "string" ||
+      typeof guideline.upperLimit !== "string" ||
+      typeof guideline.remarks !== "string" ||
+      typeof guideline.source !== "string" ||
+      !["context-only", "not-comparable"].includes(guideline.comparison)
+    ) {
+      throw new Error("Preserved guideline row structure is invalid.");
+    }
+  }
+  return { snapshot: structuredClone(snapshot), guidelines };
+};
+
+/**
+ * @param {{
+ *   foodText: string;
+ *   guidelineText?: string;
+ *   preservedGuidelines?: {
+ *     snapshot: {
+ *       id: string;
+ *       fileName: string;
+ *       sha256: string;
+ *       rowCount: number;
+ *     };
+ *     guidelines: Array<Record<string, unknown>>;
+ *   };
+ *   foodFileName?: string;
+ *   guidelineFileName?: string;
+ *   expectedFoodSha256?: string;
+ *   expectedGuidelineSha256?: string;
+ *   acceptSourceUpdate?: boolean;
+ * }} options
+ */
 export const buildNutritionContent = ({
   foodText,
-  guidelineText,
+  guidelineText = undefined,
+  preservedGuidelines = undefined,
   foodFileName = "food_nutrition_sgfoodid_combined_nutrition_subset.csv",
   guidelineFileName = "daily_nutrition_sgadults.csv",
   expectedFoodSha256,
@@ -421,7 +630,15 @@ export const buildNutritionContent = ({
   acceptSourceUpdate = false,
 }) => {
   const foodSha256 = sha256(foodText);
-  const guidelineSha256 = sha256(guidelineText);
+  if ((guidelineText === undefined) === (preservedGuidelines === undefined)) {
+    throw new Error(
+      "Provide either guidelineText or preservedGuidelines, but not both.",
+    );
+  }
+  const guidelineSha256 =
+    guidelineText === undefined
+      ? preservedGuidelines.snapshot.sha256
+      : sha256(guidelineText);
   if (expectedFoodSha256) {
     verifySourceHash("Food source", foodSha256, expectedFoodSha256, acceptSourceUpdate);
   }
@@ -435,7 +652,8 @@ export const buildNutritionContent = ({
   }
 
   const parsedFood = parseCsv(foodText);
-  const parsedGuidelines = parseCsv(guidelineText);
+  const parsedGuidelines =
+    guidelineText === undefined ? undefined : parseCsv(guidelineText);
   const requiredFoodHeaders = [
     "Food Name",
     "Default Serving Size",
@@ -448,15 +666,17 @@ export const buildNutritionContent = ({
       throw new Error(`Food source is missing required column "${header}".`);
     }
   }
-  for (const header of [
-    "Nutrient",
-    "Recommended Daily Range (Lower Limit)",
-    "Recommended Daily Range (Upper Limit)",
-    "Remarks (if any)",
-    "Source",
-  ]) {
-    if (!parsedGuidelines.headers.includes(header)) {
-      throw new Error(`Guideline source is missing required column "${header}".`);
+  if (parsedGuidelines) {
+    for (const header of [
+      "Nutrient",
+      "Recommended Daily Range (Lower Limit)",
+      "Recommended Daily Range (Upper Limit)",
+      "Remarks (if any)",
+      "Source",
+    ]) {
+      if (!parsedGuidelines.headers.includes(header)) {
+        throw new Error(`Guideline source is missing required column "${header}".`);
+      }
     }
   }
 
@@ -466,12 +686,14 @@ export const buildNutritionContent = ({
     sha256: foodSha256,
     rowCount: parsedFood.rows.length,
   };
-  const guidelineSnapshot = {
-    id: `guidelines-${guidelineSha256.slice(0, 12)}`,
-    fileName: path.basename(guidelineFileName),
-    sha256: guidelineSha256,
-    rowCount: parsedGuidelines.rows.length,
-  };
+  const guidelineSnapshot = parsedGuidelines
+    ? {
+        id: `guidelines-${guidelineSha256.slice(0, 12)}`,
+        fileName: path.basename(guidelineFileName),
+        sha256: guidelineSha256,
+        rowCount: parsedGuidelines.rows.length,
+      }
+    : structuredClone(preservedGuidelines.snapshot);
 
   const profiles = PRIMARY_PROFILE_MAPPINGS.map((mapping) =>
     mapping.foodName
@@ -531,15 +753,18 @@ export const buildNutritionContent = ({
   });
 
   addIntentFits(profiles);
+  addHealthRatings(profiles);
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     dataVersion: `sg-${foodSha256.slice(0, 12)}-${guidelineSha256.slice(0, 12)}`,
     sourceSnapshots: [foodSnapshot, guidelineSnapshot],
     profiles,
     variantFamilies,
     intents: NUTRITION_INTENTS,
-    guidelines: buildGuidelines(parsedGuidelines),
+    guidelines: parsedGuidelines
+      ? buildGuidelines(parsedGuidelines)
+      : structuredClone(preservedGuidelines.guidelines),
     disclosure: NUTRITION_DISCLOSURE,
   };
 };
@@ -550,13 +775,20 @@ const parseArguments = (argumentsList) => {
     const argument = argumentsList[index];
     if (argument === "--food") options.foodPath = argumentsList[++index];
     else if (argument === "--guidelines") options.guidelinePath = argumentsList[++index];
+    else if (argument === "--preserve-guidelines-from") {
+      options.preservedGuidelinesPath = argumentsList[++index];
+    }
     else if (argument === "--output") options.outputPath = path.resolve(argumentsList[++index]);
     else if (argument === "--accept-source-update") options.acceptSourceUpdate = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
-  if (!options.foodPath || !options.guidelinePath) {
+  if (
+    !options.foodPath ||
+    (options.guidelinePath === undefined) ===
+      (options.preservedGuidelinesPath === undefined)
+  ) {
     throw new Error(
-      "Usage: node tools/nutrition/importer.mjs --food <food.csv> --guidelines <guidelines.csv> [--output <json>] [--accept-source-update]",
+      "Usage: node tools/nutrition/importer.mjs --food <food.csv> (--guidelines <guidelines.csv> | --preserve-guidelines-from <generated.json>) [--output <json>] [--accept-source-update]",
     );
   }
   return options;
@@ -564,13 +796,21 @@ const parseArguments = (argumentsList) => {
 
 export const runImporter = async (argumentsList) => {
   const options = parseArguments(argumentsList);
-  const [foodText, guidelineText] = await Promise.all([
+  const [foodText, guidelineSourceText] = await Promise.all([
     readFile(options.foodPath, "utf8"),
-    readFile(options.guidelinePath, "utf8"),
+    readFile(
+      options.guidelinePath ?? options.preservedGuidelinesPath,
+      "utf8",
+    ),
   ]);
+  const guidelineText = options.guidelinePath ? guidelineSourceText : undefined;
+  const preservedGuidelines = options.preservedGuidelinesPath
+    ? extractPreservedGuidelines(JSON.parse(guidelineSourceText))
+    : undefined;
   const content = buildNutritionContent({
     foodText,
     guidelineText,
+    preservedGuidelines,
     foodFileName: options.foodPath,
     guidelineFileName: options.guidelinePath,
     expectedFoodSha256: EXPECTED_FOOD_FILE_SHA256,

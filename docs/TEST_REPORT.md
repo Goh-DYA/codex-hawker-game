@@ -1,20 +1,28 @@
 # Test Report
 
-Report date: 2026-07-16
-Build/commit: Expanded 12-stall / 46-dish working source validated with bundled Node.js `v24.14.0`; commit/publication record pending
+Report date: 2026-07-20
+Build/commit: Content `1.3.0` working source validated with bundled Node.js `v24.14.0`; commit/publication record pending
 Release verdict: **NO-GO pending exact-production browser/offline QA and required human reviews**
+
+Scope note: this report records the content `1.3.0` working-source gate and retains the earlier content `1.2.0` evidence below as a labelled historical baseline. Working-source builds and a targeted development-browser pass are not exact-production, offline, performance, or human-review evidence.
+
+## Content `1.3.0` working-source validation
+
+On 2026-07-20, the supported bundled Node.js `v24.14.0` runtime passed typecheck, lint, 29 Vitest files / 181 tests, the five-environment Sites/Vinext build, 2/2 rendered-output/offline-shell assertions, and the native Next.js Vercel build. The deterministic generated nutrition snapshot contains 104 released profiles across 14 variant families, and the generated service-worker build ID is `7d3da6d67b11`.
+
+A targeted 1280 x 720 development-browser pass inspected the Nutrition Lens, separate Health and Star badges, all 12 nutrient fields including `Trace`, four condition-specific ratings, six Nasi Lemak variants and their trade-off summaries, and a selected high-cholesterol guest with personalized fit and a `+0.06` satisfaction effect. The browser recorded no warning or error console messages. This pass did not cover every stall or dish presentation, 1024 x 640, secondary browsers, offline restart/update, storage faults, accessibility assistive technology, performance profiling, or human cultural review.
 
 ## Evidence status
 
-The expanded source integrates the queue, preferred-route editor, expansion, graphics, food, animation, and utility changes alongside 12 stalls, 46 dishes, 80 placeables, 12 archetypes, and 300 English localization entries. Every stall and dish has a unique primary visual reference. Current local-browser passes inspected the expandable 12-persona roster, seven live mixed visitors, and the route editor at 1024 × 640 with no client-console errors. A fresh 1280 × 720 stall pass also inspected compact and 5 × 3 facades, four simultaneously operating vendors, closed shutters, active-menu food changes, reduced motion, high contrast, and standard/lower-end quality without game console warnings or errors. These are targeted development-runtime checks, not exhaustive human or exact-production review.
+The content `1.2.0` source snapshot integrated the queue, preferred-route editor, expansion, graphics, food, animation, and utility changes alongside 12 stalls, 46 dishes, 80 placeables, 12 archetypes, and 300 English localization entries. Every stall and dish in that snapshot had a unique primary visual reference. Its local-browser passes inspected the expandable 12-persona roster, seven live mixed visitors, and the route editor at 1024 × 640 with no client-console errors. A 1280 × 720 stall pass also inspected compact and 5 × 3 facades, four simultaneously operating vendors, closed shutters, active-menu food changes, reduced motion, high contrast, and standard/lower-end quality without game console warnings or errors. These are targeted development-runtime checks, not exhaustive human or exact-production review.
 
 The route-efficiency correction was also checked in a deterministic 360-second production starter-layout run. The retained 50 ratings averaged 88.2, ranged from 75.83 to 95.83, and contained no score below 50; average travelled distance was 34.16 tiles. This run separately exposed that the 120-second visit cap can interrupt served guests during eating or tray return, which remains an open balance issue rather than part of the route score.
 
-Current supported-runtime evidence: the complete release-equivalent gate passed on bundled Node.js `v24.14.0`, including typecheck, lint, 24 Vitest files / 131 tests, the five-environment Sites/Vinext build, and 2/2 rendered-output/offline-shell tests. The native Next.js Vercel build also passed. The generated service-worker build ID is `c5ed3679ba56`. These automated results do not establish exact-production browser/offline behavior or human visual, accessibility, cultural, security, or legal approval.
+Recorded content `1.2.0` supported-runtime evidence: the complete release-equivalent gate passed on bundled Node.js `v24.14.0`, including typecheck, lint, 24 Vitest files / 131 tests, the five-environment Sites/Vinext build, and 2/2 rendered-output/offline-shell tests. The native Next.js Vercel build also passed. The generated service-worker build ID was `c5ed3679ba56`. These automated results do not validate content `1.3.0` or establish exact-production browser/offline behavior or human visual, accessibility, cultural, security, or legal approval.
 
 ## Gate record
 
-| Gate | Current result | Evidence / required update |
+| Gate | Recorded `1.2.0` result | Evidence / required update |
 |---|---|---|
 | Typecheck | **Pass** | `npm run test:release` on bundled Node.js `v24.14.0`, exit 0 |
 | Vitest unit/integration/content/performance/hosting | **Pass** | 24 files / 131 tests passed |
@@ -26,7 +34,7 @@ Current supported-runtime evidence: the complete release-equivalent gate passed 
 | Deterministic lifecycle and target recovery | **Pass** | Full visit lifecycle, fixed-step chunking, low-end cap, stall/tray/seat target removal, route-efficiency scoring, and invariant checks are covered |
 | Build/economy/progression | **Pass** | Place/move/rotate/remove/refund/undo/expansion, operated-stall undo safety, path blocking, thresholds, sales, XP, and reputation are covered |
 | Seeded simulation benchmark | **Pass, automated scope** | `benchmark-80-agents` completed 1,200 fixed steps with a peak of 80 active agents within budget; this does not establish Phaser FPS or the required two-hour browser soak |
-| Development-browser visual pass | **Current targeted pass** | The persona inspector, Settings guide, and route editor passed earlier targeted checks; the stall upgrade was checked at 1280 × 720 with compact and large stalls, live menu changes, full/open and opaque-closed scenes, reduced motion, high contrast, and both quality modes. All 12 stalls and 46 dishes still require an exact-production gallery and human review; see `GRAPHICS_VERIFICATION.md` |
+| Development-browser visual pass | **Content `1.2.0` targeted pass** | The persona inspector, Settings guide, and route editor passed targeted checks; the stall upgrade was checked at 1280 × 720 with compact and large stalls, live menu changes, full/open and opaque-closed scenes, reduced motion, high contrast, and both quality modes. This evidence predates the 14-stall / 54-dish `1.3.0` gallery; see `GRAPHICS_VERIFICATION.md` |
 | Lint | **Pass** | `npm run test:release` on bundled Node.js `v24.14.0`, exit 0 |
 | Production build | **Pass** | Sites/Vinext completed all five environments; generated service-worker build ID `c5ed3679ba56` |
 | Vercel build | **Pass** | `npm run build:vercel` completed the native Next.js 16 build |
@@ -40,9 +48,9 @@ Current supported-runtime evidence: the complete release-equivalent gate passed 
 | Accessibility matrix | **Not run in an exact production browser** | Keyboard, focus, zoom/reflow, contrast, reduced motion, audio equivalents, screen reader, and human audit required |
 | Cultural/legal/security review | **Not performed** | Required external review records remain release blockers |
 
-## Automated suites in current source
+## Automated suites in recorded source snapshot
 
-The expanded source contains the suites below. Content, spawn weighting, and visual-recipe coverage include the complete 12-persona roster in the recorded full-gate execution.
+The content `1.2.0` source snapshot contained the suites below. Content, spawn weighting, and visual-recipe coverage included the complete 12-persona roster in the recorded full-gate execution.
 
 - `tests/content.test.ts`: exact expanded launch counts, category minimums, reciprocal links, opening-dish availability, unique primary stall/food references, localization completeness, duplicate IDs, missing references, unreachable unlocks, and prerequisite cycles.
 - `tests/core/grid-pathfinding.test.ts`: grid conversion, rotations/footprints, invalid placement, deterministic A*, and unreachable routes.
@@ -60,9 +68,9 @@ The expanded source contains the suites below. Content, spawn weighting, and vis
 - `tests/performance.test.ts`: repeatable 80-agent Node simulation budget with queue reservations active.
 - `tests/queue-insight.test.ts`: geometry-aware queue-flow messaging, route-capacity warnings, demand imbalance, and calm-state recovery.
 
-## Current supported-runtime execution
+## Recorded supported-runtime execution
 
-Executed from the expanded source with the bundled Node.js `v24.14.0` binary using the release-script equivalents:
+Executed from the content `1.2.0` source snapshot with the bundled Node.js `v24.14.0` binary using the release-script equivalents:
 
 ```powershell
 node node_modules/typescript/bin/tsc --noEmit
@@ -77,4 +85,4 @@ Both release targets exited 0. Typecheck and lint passed; Vitest reported 24 fil
 
 For the exact-production browser tests, record browser/OS version, viewport, DPR/zoom, production URL, scenario results, screenshots, console/network findings, save/reload, and offline/update steps.
 
-See `TEST_PLAN.md` for the full matrix, `GRAPHICS_VERIFICATION.md` for the current visual evidence, `PERFORMANCE_REPORT.md` for benchmark evidence, and `KNOWN_ISSUES.md` for the remaining gates.
+See `TEST_PLAN.md` for the current matrix, `GRAPHICS_VERIFICATION.md` for the retained visual evidence and current target, `PERFORMANCE_REPORT.md` for benchmark evidence, and `KNOWN_ISSUES.md` for the remaining gates.

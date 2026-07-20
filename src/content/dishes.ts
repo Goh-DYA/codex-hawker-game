@@ -18,13 +18,23 @@ interface DishInput extends LocalizedSeed {
   readonly dietaryTags: readonly DietaryTag[];
   readonly level: number;
   readonly reputation: number;
-  readonly container: "plate" | "bowl" | "cup" | "glass" | "leaf-lined-plate" | "platter";
+  readonly container:
+    | "plate"
+    | "bowl"
+    | "cup"
+    | "glass"
+    | "leaf-lined-plate"
+    | "platter"
+    | "clay-pot";
   readonly colour: string;
   readonly steam: "none" | "light" | "full";
 }
 
 type DishSeed = Omit<DishDefinition, "nameKey" | "descriptionKey"> &
   LocalizedSeed;
+
+const deriveStarRating = (quality: number, demand: number): number =>
+  Math.round((1 + 4 * (quality * 0.65 + demand * 0.35)) * 10) / 10;
 
 const dishInputs = [
   {
@@ -70,16 +80,16 @@ const dishInputs = [
   {
     id: "dish.soya-tofu-rice",
     stallId: "stall.sunrise-roost",
-    name: "Soya Tofu Rice",
+    name: "Vegetarian Chicken Rice",
     description:
-      "Braised tofu and mushrooms over fragrant rice with cucumber and a light soy dressing; this stall's meat-free recipe.",
+      "A Singapore-style meat-free plate of mock chicken with seasoned rice, presented as the dataset's complete vegetarian chicken rice serving.",
     category: "rice",
     price: 6,
     demand: 0.61,
     preparationSeconds: 22,
     eatingSeconds: 42,
     quality: 0.7,
-    preferenceTags: ["tofu", "rice", "mild", "vegetable-forward"],
+    preferenceTags: ["mock-chicken", "rice", "mild", "vegetarian-menu"],
     dietaryTags: ["plant-based-recipe"],
     level: 3,
     reputation: 15,
@@ -170,9 +180,9 @@ const dishInputs = [
   {
     id: "dish.lontong-sayur",
     stallId: "stall.coconut-lime",
-    name: "Lontong Sayur",
+    name: "Sayur Lodeh with Lontong",
     description:
-      "Compressed rice cakes, cabbage, long beans, and tofu in a gently spiced coconut vegetable gravy.",
+      "Vegetables and dried beancurd in a spiced coconut gravy, served with compressed rice cake and a hard-boiled egg.",
     category: "soup",
     price: 7,
     demand: 0.65,
@@ -180,7 +190,7 @@ const dishInputs = [
     eatingSeconds: 52,
     quality: 0.75,
     preferenceTags: ["coconut", "vegetable-forward", "rice-cake", "gravy"],
-    dietaryTags: ["plant-based-recipe", "spicy"],
+    dietaryTags: ["contains-egg", "spicy"],
     level: 4,
     reputation: 22,
     container: "bowl",
@@ -270,9 +280,9 @@ const dishInputs = [
   {
     id: "dish.hokkien-prawn-mee",
     stallId: "stall.cinder-wok",
-    name: "Hokkien Prawn Mee",
+    name: "Hokkien Mee",
     description:
-      "Yellow noodles and thick rice vermicelli simmered in prawn stock with prawns, squid, egg, chives, lime, and sambal.",
+      "Yellow noodles and thick rice vermicelli fried with prawns, squid, pork, and egg, then served with lime.",
     category: "noodles",
     price: 10,
     demand: 0.85,
@@ -280,7 +290,7 @@ const dishInputs = [
     eatingSeconds: 55,
     quality: 0.82,
     preferenceTags: ["seafood", "noodles", "stock-rich", "wok"],
-    dietaryTags: ["contains-egg", "contains-seafood", "spicy"],
+    dietaryTags: ["contains-egg", "contains-pork", "contains-seafood", "spicy"],
     level: 4,
     reputation: 21,
     container: "plate",
@@ -450,9 +460,9 @@ const dishInputs = [
   {
     id: "dish.vadai-set",
     stallId: "stall.tamarind-leaf",
-    name: "Vadai Set",
+    name: "Vadai Duo",
     description:
-      "Crisp savoury lentil fritters with sambar and coconut chutney, plated as a light meal or shared snack.",
+      "Two crisp Indian-style savoury doughnut rings fried with spring onion, green chilli, and onion.",
     category: "small-plate",
     price: 6,
     demand: 0.64,
@@ -470,9 +480,9 @@ const dishInputs = [
   {
     id: "dish.lemon-rice",
     stallId: "stall.tamarind-leaf",
-    name: "Lemon Rice Set",
+    name: "Lemon Rice",
     description:
-      "Turmeric rice brightened with lemon, mustard seed, curry leaves, and peanuts, served with vegetable sides.",
+      "South Indian rice brightened with lemon juice, peanuts, mustard seed, curry leaves, and aromatic spices.",
     category: "rice",
     price: 7,
     demand: 0.69,
@@ -490,9 +500,9 @@ const dishInputs = [
   {
     id: "dish.nyonya-laksa",
     stallId: "stall.straits-hearth",
-    name: "Nyonya Laksa",
+    name: "Laksa",
     description:
-      "Thick rice noodles in a fragrant coconut-spice broth with prawns, fish cake, tofu puff, and herbs.",
+      "Thick rice vermicelli in a rich coconut-milk soup with beancurd, cockles, and fish cake.",
     category: "noodles",
     price: 11,
     demand: 0.87,
@@ -510,17 +520,17 @@ const dishInputs = [
   {
     id: "dish.ayam-buah-keluak",
     stallId: "stall.straits-hearth",
-    name: "Ayam Buah Keluak",
+    name: "Ayam Pongteh",
     description:
-      "Chicken slowly braised in a dark, earthy buah keluak gravy, served with rice in a carefully prepared house portion.",
-    category: "rice",
+      "A Nonya chicken-and-potato stew gently braised in a savoury fermented-soybean gravy.",
+    category: "small-plate",
     price: 14,
     demand: 0.68,
     preparationSeconds: 52,
     eatingSeconds: 62,
     quality: 0.91,
-    preferenceTags: ["braised", "chicken", "earthy", "heritage"],
-    dietaryTags: ["spicy"],
+    preferenceTags: ["braised", "chicken", "savoury", "heritage"],
+    dietaryTags: [],
     level: 10,
     reputation: 52,
     container: "plate",
@@ -530,16 +540,16 @@ const dishInputs = [
   {
     id: "dish.chap-chye",
     stallId: "stall.straits-hearth",
-    name: "Chap Chye with Rice",
+    name: "Nonya Chap Chye",
     description:
-      "Cabbage, mushrooms, tofu skin, and glass noodles slowly braised in a savoury bean-paste gravy, served with rice.",
-    category: "rice",
+      "A Nonya vegetable dish of cabbage, carrots, baby corn, and black fungus stir-fried until tender.",
+    category: "small-plate",
     price: 9,
     demand: 0.63,
     preparationSeconds: 38,
     eatingSeconds: 51,
     quality: 0.84,
-    preferenceTags: ["braised", "vegetable-forward", "comfort", "rice"],
+    preferenceTags: ["vegetable-forward", "comfort", "heritage", "light"],
     dietaryTags: ["plant-based-recipe"],
     level: 11,
     reputation: 57,
@@ -552,14 +562,14 @@ const dishInputs = [
     stallId: "stall.straits-hearth",
     name: "Babi Pongteh",
     description:
-      "Pork and potato braised until tender in a mellow fermented-soybean gravy, served with steamed rice.",
-    category: "rice",
+      "Nyonya pork braised until tender in a mellow fermented-soybean gravy, served as a savoury scoop.",
+    category: "small-plate",
     price: 13,
     demand: 0.7,
     preparationSeconds: 48,
     eatingSeconds: 60,
     quality: 0.89,
-    preferenceTags: ["pork", "braised", "sweet-savoury", "rice"],
+    preferenceTags: ["pork", "braised", "sweet-savoury", "heritage"],
     dietaryTags: ["contains-pork"],
     level: 12,
     reputation: 62,
@@ -612,7 +622,7 @@ const dishInputs = [
     stallId: "stall.harbour-ember",
     name: "Black Pepper Crab",
     description:
-      "Crab wok-tossed in a glossy black-pepper sauce and served as a premium shared platter with toasted buns.",
+      "A substantial crab pincer stir-fried in a glossy, peppery black-pepper sauce.",
     category: "seafood",
     price: 24,
     demand: 0.72,
@@ -690,17 +700,17 @@ const dishInputs = [
   {
     id: "dish.teochew-fish-dumpling-soup",
     stallId: "stall.mee-pok-junction",
-    name: "Teochew Fish Dumpling Soup",
+    name: "Fishball Soup",
     description:
-      "Handmade fish-paste dumplings filled with seasoned pork, served in a clear broth with lettuce, fishballs, and fried shallot.",
+      "Seven springy fishballs boiled in a clear fish broth with spring onion, white pepper, and salt, served without noodles.",
     category: "soup",
     price: 9,
     demand: 0.7,
     preparationSeconds: 34,
     eatingSeconds: 55,
     quality: 0.82,
-    preferenceTags: ["soup", "seafood", "light", "handmade"],
-    dietaryTags: ["contains-pork", "contains-seafood"],
+    preferenceTags: ["soup", "seafood", "light", "springy"],
+    dietaryTags: ["contains-seafood"],
     level: 7,
     reputation: 36,
     container: "bowl",
@@ -730,9 +740,9 @@ const dishInputs = [
   {
     id: "dish.tau-huay",
     stallId: "stall.sweet-monsoon",
-    name: "Tau Huay",
+    name: "Beancurd with Toppings",
     description:
-      "Silken soy pudding spooned into a bowl with light ginger syrup, its soft ivory curds served gently warm.",
+      "Silken soybean pudding served with assorted toppings such as grass jelly, pearls, fresh fruit, or flavoured syrup.",
     category: "dessert",
     price: 4,
     demand: 0.68,
@@ -740,7 +750,7 @@ const dishInputs = [
     eatingSeconds: 36,
     quality: 0.73,
     preferenceTags: ["soy", "silky", "light", "dessert"],
-    dietaryTags: ["plant-based-recipe"],
+    dietaryTags: [],
     level: 6,
     reputation: 30,
     container: "bowl",
@@ -790,9 +800,9 @@ const dishInputs = [
   {
     id: "dish.chicken-satay-set",
     stallId: "stall.satay-meridian",
-    name: "Chicken Satay Set",
+    name: "Ten Chicken Satay with Sauce",
     description:
-      "Charcoal-grilled chicken skewers with smoky caramelised edges, served with peanut sauce, cucumber, onion, and pressed rice cake.",
+      "Ten marinated skinless chicken skewers barbecued over charcoal and served with peanut satay sauce.",
     category: "small-plate",
     price: 10,
     demand: 0.86,
@@ -810,9 +820,9 @@ const dishInputs = [
   {
     id: "dish.bbq-chicken-wings",
     stallId: "stall.satay-meridian",
-    name: "Barbecued Chicken Wings",
+    name: "Three Barbecued Chicken Wings",
     description:
-      "Whole chicken wings lacquered over charcoal until bronze and sticky, with cucumber and a sharp calamansi chilli dip.",
+      "Three whole chicken wings grilled over charcoal until bronze, smoky, and lightly crisp at the edges.",
     category: "small-plate",
     price: 9,
     demand: 0.8,
@@ -830,9 +840,9 @@ const dishInputs = [
   {
     id: "dish.beef-satay-set",
     stallId: "stall.satay-meridian",
-    name: "Beef Satay Set",
+    name: "Ten Beef Satay with Sauce",
     description:
-      "Tender beef skewers marinated with lemongrass and warm spices, grilled over charcoal and plated with peanut sauce and ketupat.",
+      "Ten marinated beef skewers grilled over charcoal and served with a rich peanut satay sauce.",
     category: "small-plate",
     price: 12,
     demand: 0.75,
@@ -850,17 +860,17 @@ const dishInputs = [
   {
     id: "dish.sambal-grilled-squid",
     stallId: "stall.satay-meridian",
-    name: "Sambal Grilled Squid",
+    name: "Salted Egg Squid",
     description:
-      "Scored squid grilled until lightly charred, brushed with brick-red sambal, and finished with onion, cucumber, and calamansi.",
+      "Deep-fried squid coated in a rich, savoury salted-egg sauce and served as a crisp seafood plate.",
     category: "seafood",
     price: 15,
     demand: 0.78,
     preparationSeconds: 50,
     eatingSeconds: 57,
     quality: 0.85,
-    preferenceTags: ["seafood", "grilled", "spicy", "shareable"],
-    dietaryTags: ["contains-seafood", "spicy"],
+    preferenceTags: ["seafood", "crisp", "salted-egg", "shareable"],
+    dietaryTags: ["contains-egg", "contains-seafood"],
     level: 9,
     reputation: 47,
     container: "leaf-lined-plate",
@@ -870,9 +880,9 @@ const dishInputs = [
   {
     id: "dish.har-gow",
     stallId: "stall.bamboo-basket",
-    name: "Har Gow",
+    name: "Four Prawn Dumplings",
     description:
-      "Translucent pleated dumplings wrapped around juicy prawn filling, steamed in a bamboo basket and served in a set of four.",
+      "Four steamed dumplings filled with minced prawns and bamboo shoots, served with vegetables in light soup.",
     category: "small-plate",
     price: 8,
     demand: 0.8,
@@ -883,7 +893,7 @@ const dishInputs = [
     dietaryTags: ["contains-seafood"],
     level: 8,
     reputation: 41,
-    container: "platter",
+    container: "bowl",
     colour: "#E9DDD2",
     steam: "full",
   },
@@ -932,7 +942,7 @@ const dishInputs = [
     stallId: "stall.bamboo-basket",
     name: "Lotus Leaf Rice",
     description:
-      "Glutinous rice steamed inside a lotus leaf with chicken, mushroom, dried shrimp, and Chinese sausage until deeply aromatic.",
+      "Glutinous rice with lap cheong and diced char siew, wrapped in lotus leaf and steamed until deeply aromatic.",
     category: "rice",
     price: 10,
     demand: 0.74,
@@ -945,6 +955,166 @@ const dishInputs = [
     reputation: 56,
     container: "leaf-lined-plate",
     colour: "#75633B",
+    steam: "full",
+  },
+  {
+    id: "dish.yong-tau-foo",
+    stallId: "stall.pick-and-mix",
+    name: "Yong Tau Foo",
+    description:
+      "Seven assorted stuffed tofu and vegetable pieces served in clear soup, with boiled, fried, mixed, noodle, and laksa variants available.",
+    category: "soup",
+    price: 8,
+    demand: 0.8,
+    preparationSeconds: 34,
+    eatingSeconds: 52,
+    quality: 0.79,
+    preferenceTags: ["customisable", "soup", "tofu", "seafood"],
+    dietaryTags: ["contains-seafood"],
+    level: 6,
+    reputation: 29,
+    container: "bowl",
+    colour: "#D6C89E",
+    steam: "full",
+  },
+  {
+    id: "dish.ban-mian",
+    stallId: "stall.pick-and-mix",
+    name: "Ban Mian",
+    description:
+      "Hand-torn wheat noodles served in a comforting soup, with dry, chilli, dumpling, seafood, and vegetable preparations available.",
+    category: "noodles",
+    price: 8,
+    demand: 0.82,
+    preparationSeconds: 37,
+    eatingSeconds: 54,
+    quality: 0.8,
+    preferenceTags: ["noodles", "soup", "comfort", "customisable"],
+    dietaryTags: ["contains-egg", "contains-pork", "contains-seafood"],
+    level: 7,
+    reputation: 35,
+    container: "bowl",
+    colour: "#E4C77B",
+    steam: "full",
+  },
+  {
+    id: "dish.thunder-tea-rice",
+    stallId: "stall.pick-and-mix",
+    name: "Thunder Tea Rice",
+    description:
+      "Rice topped with chopped vegetables, tofu, preserved radish, and peanuts, served with a fragrant green herb-and-tea broth.",
+    category: "rice",
+    price: 9,
+    demand: 0.67,
+    preparationSeconds: 32,
+    eatingSeconds: 49,
+    quality: 0.81,
+    preferenceTags: ["vegetable-forward", "rice", "herbal", "light"],
+    dietaryTags: ["contains-peanuts", "plant-based-recipe"],
+    level: 8,
+    reputation: 40,
+    container: "bowl",
+    colour: "#7E9B55",
+    steam: "light",
+  },
+  {
+    id: "dish.popiah",
+    stallId: "stall.pick-and-mix",
+    name: "Popiah",
+    description:
+      "A soft wheat wrapper rolled around cooked turnip, vegetables, egg, peanuts, and savoury condiments for a fresh local snack.",
+    category: "small-plate",
+    price: 5,
+    demand: 0.72,
+    preparationSeconds: 24,
+    eatingSeconds: 34,
+    quality: 0.77,
+    preferenceTags: ["fresh", "vegetable-forward", "snack", "value"],
+    dietaryTags: ["contains-egg", "contains-peanuts"],
+    level: 9,
+    reputation: 46,
+    container: "plate",
+    colour: "#B99B62",
+    steam: "none",
+  },
+  {
+    id: "dish.bak-kut-teh",
+    stallId: "stall.herbal-cauldron",
+    name: "Bak Kut Teh",
+    description:
+      "Pork ribs cooked in a peppery clear broth, with dry and herbal Malaysian-style preparations available as later variants.",
+    category: "soup",
+    price: 12,
+    demand: 0.84,
+    preparationSeconds: 46,
+    eatingSeconds: 58,
+    quality: 0.86,
+    preferenceTags: ["pork", "soup", "peppery", "heritage"],
+    dietaryTags: ["contains-pork"],
+    level: 11,
+    reputation: 55,
+    container: "bowl",
+    colour: "#98704E",
+    steam: "full",
+  },
+  {
+    id: "dish.duck-rice",
+    stallId: "stall.herbal-cauldron",
+    name: "Duck Rice",
+    description:
+      "Braised duck rice served with egg and tau kwa by default, with roasted duck and rice-only dataset variants available.",
+    category: "rice",
+    price: 10,
+    demand: 0.81,
+    preparationSeconds: 39,
+    eatingSeconds: 52,
+    quality: 0.84,
+    preferenceTags: ["duck", "rice", "braised", "savoury"],
+    dietaryTags: ["contains-egg"],
+    level: 12,
+    reputation: 62,
+    container: "plate",
+    colour: "#8F5138",
+    steam: "full",
+  },
+  {
+    id: "dish.kway-chap",
+    stallId: "stall.herbal-cauldron",
+    name: "Kway Chap",
+    description:
+      "Broad rice-noodle sheets in a dark aromatic broth with braised pork cuts, tofu, and egg in a traditional serving.",
+    category: "soup",
+    price: 10,
+    demand: 0.73,
+    preparationSeconds: 42,
+    eatingSeconds: 56,
+    quality: 0.82,
+    preferenceTags: ["pork", "braised", "noodles", "heritage"],
+    dietaryTags: ["contains-egg", "contains-pork"],
+    level: 13,
+    reputation: 68,
+    container: "bowl",
+    colour: "#6E4A34",
+    steam: "full",
+  },
+  {
+    id: "dish.claypot-chicken-rice",
+    stallId: "stall.herbal-cauldron",
+    name: "Claypot Chicken Rice",
+    description:
+      "Rice cooked in a claypot with chicken, Chinese sausage, mushrooms, and dark soy until a crisp bottom crust forms.",
+    category: "rice",
+    price: 12,
+    demand: 0.85,
+    preparationSeconds: 50,
+    eatingSeconds: 60,
+    quality: 0.87,
+    preferenceTags: ["chicken", "rice", "claypot", "comfort"],
+    dietaryTags: ["contains-pork"],
+    level: 14,
+    reputation: 74,
+    container: "clay-pot",
+    colour: "#9B6845",
     steam: "full",
   },
 ] as const satisfies readonly DishInput[];
@@ -961,6 +1131,7 @@ const dishSeeds: readonly DishSeed[] = dishInputs.map((dish) => ({
   servingTimeMs: Math.max(1_200, Math.round(dish.preparationSeconds * 70)),
   eatingTimeMs: dish.eatingSeconds * 1_000,
   quality: dish.quality,
+  starRating: deriveStarRating(dish.quality, dish.demand),
   preferenceTags: dish.preferenceTags,
   dietaryTags: dish.dietaryTags,
   unlockRequirement: {

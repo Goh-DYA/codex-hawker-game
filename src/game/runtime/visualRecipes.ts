@@ -227,7 +227,9 @@ export type DishPortionShape =
   | "pudding"
   | "whole-seafood"
   | "leaf-parcel"
-  | "buns";
+  | "buns"
+  | "braised-scoop"
+  | "vegetable-scoop";
 
 export interface DishPresentationProfile {
   readonly source: "catalogue" | "inferred";
@@ -271,6 +273,10 @@ export type DishVariantVisualFamily =
   | "murtabak"
   | "briyani"
   | "thosai"
+  | "yong-tau-foo"
+  | "ban-mian"
+  | "bak-kut-teh"
+  | "duck-rice"
   | "fallback";
 
 export function variantVisualFamilyForKey(visualKey: string): DishVariantVisualFamily {
@@ -283,6 +289,10 @@ export function variantVisualFamilyForKey(visualKey: string): DishVariantVisualF
   if (visualKey.startsWith("murtabak-")) return "murtabak";
   if (visualKey.startsWith("briyani-")) return "briyani";
   if (visualKey.startsWith("thosai-")) return "thosai";
+  if (visualKey.startsWith("ytf-")) return "yong-tau-foo";
+  if (visualKey.startsWith("ban-mian-")) return "ban-mian";
+  if (visualKey.startsWith("bak-kut-teh-")) return "bak-kut-teh";
+  if (visualKey.startsWith("duck-rice-")) return "duck-rice";
   return "fallback";
 }
 
@@ -305,7 +315,7 @@ function dishProfile(
 const DISH_PRESENTATIONS: Readonly<Record<string, DishPresentationSeed>> = {
   "poached-chicken-rice": dishProfile("poached-chicken-slices-beside-rice", "rice-mound", ["fragrant-rice", "poached-chicken", "cucumber"], ["dark-soy", "chilli-cup"]),
   "roast-chicken-rice": dishProfile("roast-chicken-slices-over-rice", "rice-mound", ["fragrant-rice", "roast-chicken", "cucumber"], ["crisp-skin", "dark-soy"]),
-  "soya-tofu-rice": dishProfile("tofu-cubes-and-greens-over-rice", "rice-mound", ["rice", "braised-tofu", "leafy-greens"], ["soy-glaze", "spring-onion"]),
+  "soya-tofu-rice": dishProfile("vegetarian-chicken-and-greens-over-rice", "rice-mound", ["rice", "plant-based-chicken", "leafy-greens"], ["soy-glaze", "spring-onion"]),
   "chicken-congee": dishProfile("silky-congee-with-chicken-shreds", "porridge", ["rice-porridge", "shredded-chicken", "ginger"], ["fried-shallot", "spring-onion"]),
   "nasi-lemak": dishProfile("coconut-rice-with-clustered-sides", "rice-mound", ["coconut-rice", "egg", "anchovy", "peanut", "cucumber"], ["banana-leaf", "sambal"]),
   "mee-rebus": dishProfile("yellow-noodles-in-thick-gravy", "noodle-tangle", ["yellow-noodles", "egg", "bean-sprout"], ["spiced-gravy", "lime"]),
@@ -324,31 +334,39 @@ const DISH_PRESENTATIONS: Readonly<Record<string, DishPresentationSeed>> = {
   "nasi-briyani": dishProfile("spiced-rice-with-large-chicken-piece", "rice-mound", ["briyani-rice", "chicken", "cucumber"], ["fried-onion", "curry-gravy"]),
   "masala-thosai": dishProfile("rolled-thosai-with-potato-filling", "flatbread", ["thosai", "masala-potato", "sambar"], ["rolled-crepe", "chutney-cups"]),
   "idli-sambar": dishProfile("three-idli-cakes-in-sambar", "dumplings", ["idli", "sambar", "coconut-chutney"], ["three-white-cakes", "curry-leaf"]),
-  "vadai-set": dishProfile("crisp-vadai-rings-with-dips", "fritters", ["lentil-vadai", "sambar", "coconut-chutney"], ["ring-shape", "curry-leaf"]),
+  "vadai-set": dishProfile("two-crisp-vadai-rings-with-dips", "fritters", ["two-lentil-vadai", "sambar", "coconut-chutney"], ["ring-shape", "curry-leaf"]),
   "lemon-rice": dishProfile("yellow-lemon-rice-with-peanuts", "rice-mound", ["lemon-rice", "peanut", "mustard-seed"], ["curry-leaf", "lemon-wedge"]),
   "nyonya-laksa": dishProfile("noodles-in-orange-coconut-laksa", "broth", ["rice-noodles", "prawn", "fish-cake", "egg"], ["coconut-laksa", "laksa-leaf"]),
-  "ayam-buah-keluak": dishProfile("dark-braised-chicken-with-keluak", "rice-mound", ["rice", "braised-chicken", "buah-keluak"], ["dark-gravy", "heritage-braise"]),
-  "chap-chye": dishProfile("mixed-braised-vegetables-beside-rice", "rice-mound", ["rice", "cabbage", "mushroom", "bean-curd"], ["light-braise", "glass-noodle"]),
-  "babi-pongteh": dishProfile("pork-and-potato-in-fermented-soy-gravy", "rice-mound", ["rice", "braised-pork", "potato"], ["fermented-soy-gravy", "coriander"]),
+  "ayam-buah-keluak": dishProfile("ayam-pongteh-plated-stew-scoop", "braised-scoop", ["braised-chicken", "potato"], ["fermented-soy-gravy", "coriander"]),
+  "chap-chye": dishProfile("nonya-vegetable-plated-scoop", "vegetable-scoop", ["cabbage", "carrot", "baby-corn", "black-fungus"], ["tender-stir-fry", "mixed-vegetable-colours"]),
+  "babi-pongteh": dishProfile("babi-pongteh-plated-braise-scoop", "braised-scoop", ["braised-pork", "potato", "mushroom"], ["fermented-soy-gravy", "coriander"]),
   "sambal-stingray": dishProfile("stingray-fillet-on-banana-leaf", "whole-seafood", ["stingray", "sambal"], ["banana-leaf", "lime-wedge"]),
   "sliced-fish-soup": dishProfile("fish-slices-and-greens-in-clear-soup", "broth", ["fish-slices", "leafy-greens", "clear-broth"], ["tomato", "spring-onion"]),
-  "black-pepper-crab": dishProfile("whole-crab-in-black-pepper-sauce", "whole-seafood", ["whole-crab", "black-pepper"], ["visible-claws", "pepper-sauce"]),
+  "black-pepper-crab": dishProfile("crab-pincers-in-black-pepper-sauce", "whole-seafood", ["crab-pincers", "black-pepper"], ["visible-claws", "pepper-sauce"]),
   "bak-chor-mee": dishProfile("mee-pok-with-minced-pork-and-mushroom", "noodle-tangle", ["mee-pok", "minced-pork", "mushroom", "fishball"], ["chilli-vinegar", "spring-onion"]),
   "fishball-mee-pok": dishProfile("flat-noodles-with-round-fishballs", "noodle-tangle", ["mee-pok", "fishball", "leafy-greens"], ["fishball-cluster", "light-soy"]),
   "lor-mee": dishProfile("thick-noodles-in-dark-starchy-gravy", "noodle-tangle", ["thick-noodles", "braised-egg", "fish-cake"], ["dark-lor-gravy", "garlic-vinegar"]),
-  "teochew-fish-dumpling-soup": dishProfile("fish-dumplings-in-clear-teochew-broth", "broth", ["fish-dumpling", "fishball", "clear-broth"], ["lettuce", "spring-onion"]),
-  "chicken-satay-set": dishProfile("chicken-satay-skewers-with-peanut-sauce", "skewers", ["chicken-satay", "cucumber", "rice-cake"], ["bamboo-skewers", "peanut-sauce"]),
-  "bbq-chicken-wings": dishProfile("charred-chicken-wings-in-a-row", "grilled-pieces", ["chicken-wing", "charred-glaze"], ["grill-marks", "lime-wedge"]),
-  "beef-satay-set": dishProfile("beef-satay-skewers-with-peanut-sauce", "skewers", ["beef-satay", "cucumber", "rice-cake"], ["bamboo-skewers", "peanut-sauce"]),
-  "sambal-grilled-squid": dishProfile("scored-squid-coated-in-sambal", "whole-seafood", ["grilled-squid", "sambal"], ["scored-body", "charred-edge"]),
-  "har-gow": dishProfile("translucent-har-gow-in-bamboo-basket", "dumplings", ["shrimp-dumpling", "wheat-starch-wrapper"], ["pleated-wrapper", "bamboo-steamer"]),
+  "teochew-fish-dumpling-soup": dishProfile("round-fishballs-in-clear-broth", "broth", ["fishball", "lettuce", "clear-broth"], ["fishball-cluster", "spring-onion"]),
+  "chicken-satay-set": dishProfile("ten-chicken-satay-skewers-with-peanut-sauce", "skewers", ["ten-chicken-satay", "cucumber", "rice-cake"], ["bamboo-skewers", "peanut-sauce"]),
+  "bbq-chicken-wings": dishProfile("three-charred-chicken-wings-in-a-row", "grilled-pieces", ["three-chicken-wings", "charred-glaze"], ["grill-marks", "lime-wedge"]),
+  "beef-satay-set": dishProfile("ten-beef-satay-skewers-with-peanut-sauce", "skewers", ["ten-beef-satay", "cucumber", "rice-cake"], ["bamboo-skewers", "peanut-sauce"]),
+  "sambal-grilled-squid": dishProfile("salted-egg-squid-pieces", "whole-seafood", ["squid", "salted-egg-sauce"], ["golden-crumb", "curry-leaf"]),
+  "har-gow": dishProfile("four-prawn-dumplings-with-vegetables-in-light-soup", "broth", ["four-prawn-dumplings", "bamboo-shoot", "vegetables"], ["light-soup", "pleated-wrapper", "ceramic-bowl"]),
   "siew-mai": dishProfile("open-topped-siew-mai-in-bamboo-basket", "dumplings", ["pork-dumpling", "prawn"], ["open-wrapper", "diced-carrot", "bamboo-steamer"]),
   "char-siew-bao": dishProfile("white-char-siew-buns-in-bamboo-basket", "buns", ["steamed-bun", "char-siew"], ["split-top", "bamboo-steamer"]),
-  "lotus-leaf-rice": dishProfile("opened-lotus-leaf-rice-parcel", "leaf-parcel", ["glutinous-rice", "chicken", "mushroom"], ["lotus-leaf-wrap", "parcel-folds"]),
+  "lotus-leaf-rice": dishProfile("opened-lotus-leaf-rice-parcel", "leaf-parcel", ["glutinous-rice", "lap-cheong", "char-siew", "mushroom"], ["lotus-leaf-wrap", "parcel-folds"]),
   chendol: dishProfile("green-chendol-jelly-in-coconut-ice", "shaved-ice", ["chendol-jelly", "coconut-milk", "shaved-ice"], ["palm-sugar", "red-bean"]),
-  "tau-huay": dishProfile("silky-tofu-pudding-with-syrup", "pudding", ["tofu-pudding", "sugar-syrup"], ["silky-surface", "ceramic-bowl"]),
+  "tau-huay": dishProfile("silky-beancurd-with-toppings", "pudding", ["beancurd", "syrup", "toppings"], ["silky-surface", "ceramic-bowl"]),
   "teh-tarik": dishProfile("frothy-pulled-tea-in-glass", "liquid", ["black-tea", "condensed-milk"], ["foam-cap", "pulled-tea-bubbles"]),
   "pulut-hitam": dishProfile("black-glutinous-rice-with-coconut-swirl", "pudding", ["black-glutinous-rice", "coconut-milk"], ["white-coconut-swirl", "thick-pudding"]),
+  "yong-tau-foo": dishProfile("assorted-stuffed-tofu-and-vegetables-in-broth", "broth", ["stuffed-tofu", "fish-paste", "bitter-gourd", "leafy-greens"], ["pick-and-mix-pieces", "clear-broth"]),
+  "ban-mian": dishProfile("hand-torn-noodles-with-minced-pork-and-egg", "noodle-tangle", ["flat-noodles", "minced-pork", "egg", "leafy-greens"], ["anchovy", "spring-onion"]),
+  "thunder-tea-rice": dishProfile("herbed-rice-with-green-tea-soup", "rice-mound", ["brown-rice", "chopped-greens", "tofu", "peanut"], ["green-tea-broth", "separated-toppings"]),
+  popiah: dishProfile("fresh-popiah-roll-cut-in-two", "flatbread", ["thin-wrapper", "turnip", "carrot", "egg"], ["sweet-sauce", "cut-roll"]),
+  "bak-kut-teh": dishProfile("pork-ribs-in-peppery-herbal-broth", "broth", ["pork-ribs", "garlic", "herbal-broth"], ["claypot-bowl", "pepper-specks"]),
+  "duck-rice": dishProfile("braised-duck-slices-over-dark-rice", "rice-mound", ["braised-duck", "seasoned-rice", "cucumber"], ["dark-braising-sauce", "chilli-cup"]),
+  "kway-chap": dishProfile("broad-rice-sheets-in-dark-broth", "broth", ["broad-rice-sheets", "braised-pork", "tofu", "egg"], ["dark-herbal-broth", "fried-garlic"]),
+  "claypot-chicken-rice": dishProfile("chicken-rice-in-charred-claypot", "rice-mound", ["rice", "chicken", "chinese-sausage", "mushroom"], ["claypot-crust", "dark-soy"]),
 };
 
 function parseHexColour(value: string, fallback: number) {
@@ -689,7 +707,9 @@ export type StallVendorTool =
   | "batter-cup"
   | "steamer-cloth"
   | "braising-ladle"
-  | "fish-turner";
+  | "fish-turner"
+  | "ingredient-tongs"
+  | "claypot-ladle";
 
 export type StallVendorWorkAction =
   | "chop"
@@ -703,7 +723,9 @@ export type StallVendorWorkAction =
   | "spread-batter"
   | "lift-steamer"
   | "stir-braise"
-  | "chargrill";
+  | "chargrill"
+  | "pick-pieces"
+  | "tend-claypot";
 
 export type StallVendorEmblem =
   | "sunburst"
@@ -717,7 +739,9 @@ export type StallVendorEmblem =
   | "tamarind-leaf"
   | "bamboo-knot"
   | "hearth-tile"
-  | "harbour-wave";
+  | "harbour-wave"
+  | "ingredient-grid"
+  | "claypot-steam";
 
 /** A stable, renderer-ready identity for the worker assigned to a stall. */
 export interface StallVendorRecipe {
@@ -934,6 +958,30 @@ const STALL_VENDOR_PROFILES: Readonly<Record<string, StallVendorProfileSeed>> = 
     workAction: "chargrill",
     emblem: "harbour-wave",
   },
+  "stall.pick-and-mix": {
+    skinIndex: 1,
+    hairIndex: 2,
+    shirtIndex: 7,
+    apronIndex: 12,
+    hairStyle: "tied-back",
+    apronStyle: "utility",
+    headwear: "visor",
+    tool: "ingredient-tongs",
+    workAction: "pick-pieces",
+    emblem: "ingredient-grid",
+  },
+  "stall.herbal-cauldron": {
+    skinIndex: 3,
+    hairIndex: 0,
+    shirtIndex: 3,
+    apronIndex: 13,
+    hairStyle: "cropped",
+    apronStyle: "bib",
+    headwear: "chef-cap",
+    tool: "claypot-ladle",
+    workAction: "tend-claypot",
+    emblem: "claypot-steam",
+  },
 };
 
 const VENDOR_HAIR_STYLES = [
@@ -966,6 +1014,8 @@ const VENDOR_EMBLEMS = [
   "bamboo-knot",
   "hearth-tile",
   "harbour-wave",
+  "ingredient-grid",
+  "claypot-steam",
 ] as const satisfies readonly StallVendorEmblem[];
 
 const VENDOR_ACTION_RULES: readonly (readonly [RegExp, StallVendorTool, StallVendorWorkAction])[] = [
@@ -1101,7 +1151,11 @@ export function vendorAnimationPoseForStall(
   }
 
   const liftingAction = recipe.workAction === "pour" || recipe.workAction === "lift-steamer";
-  const sweepingAction = recipe.workAction === "spread-batter" || recipe.workAction === "stir-braise";
+  const sweepingAction =
+    recipe.workAction === "spread-batter" ||
+    recipe.workAction === "stir-braise" ||
+    recipe.workAction === "pick-pieces" ||
+    recipe.workAction === "tend-claypot";
   return {
     activity,
     bob: crossWave * 0.45,

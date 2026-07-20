@@ -190,6 +190,7 @@ describe("weighted guest route guidance", () => {
       walkingDistanceTiles: 3,
       patienceRemainingMs: archetype.patienceMs,
       satisfaction: 3,
+      healthConditions: [],
       sourceEntranceId: "entrance-1",
       targetExitId: "exit-1",
       hasTray: false,

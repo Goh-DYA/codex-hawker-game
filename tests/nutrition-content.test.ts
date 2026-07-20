@@ -14,58 +14,6 @@ import {
   validateContent,
 } from "../src/content/index";
 
-const RELEASED_PRIMARY_DISHES = [
-  "dish.poached-chicken-rice",
-  "dish.roast-chicken-rice",
-  "dish.chicken-congee",
-  "dish.nasi-lemak",
-  "dish.mee-rebus",
-  "dish.soto-ayam",
-  "dish.kopi",
-  "dish.sugarcane-juice",
-  "dish.ice-kacang",
-  "dish.char-kway-teow",
-  "dish.fried-carrot-cake",
-  "dish.oyster-omelette",
-  "dish.roti-prata",
-  "dish.mee-goreng-mamak",
-  "dish.chicken-murtabak",
-  "dish.nasi-briyani",
-  "dish.masala-thosai",
-  "dish.idli-sambar",
-  "dish.sambal-stingray",
-  "dish.sliced-fish-soup",
-  "dish.bak-chor-mee",
-  "dish.fishball-mee-pok",
-  "dish.lor-mee",
-  "dish.chendol",
-  "dish.teh-tarik",
-  "dish.pulut-hitam",
-  "dish.siew-mai",
-  "dish.char-siew-bao",
-].sort();
-
-const UNAVAILABLE_PRIMARY_DISHES = [
-  "dish.soya-tofu-rice",
-  "dish.lontong-sayur",
-  "dish.hokkien-prawn-mee",
-  "dish.vadai-set",
-  "dish.lemon-rice",
-  "dish.nyonya-laksa",
-  "dish.ayam-buah-keluak",
-  "dish.chap-chye",
-  "dish.babi-pongteh",
-  "dish.black-pepper-crab",
-  "dish.teochew-fish-dumpling-soup",
-  "dish.tau-huay",
-  "dish.chicken-satay-set",
-  "dish.bbq-chicken-wings",
-  "dish.beef-satay-set",
-  "dish.sambal-grilled-squid",
-  "dish.har-gow",
-  "dish.lotus-leaf-rice",
-].sort();
-
 const VARIANT_FAMILY_DISHES = [
   "dish.kopi",
   "dish.teh-tarik",
@@ -77,6 +25,10 @@ const VARIANT_FAMILY_DISHES = [
   "dish.chicken-murtabak",
   "dish.nasi-briyani",
   "dish.masala-thosai",
+  "dish.yong-tau-foo",
+  "dish.ban-mian",
+  "dish.bak-kut-teh",
+  "dish.duck-rice",
 ];
 
 const VARIANT_IDS: Readonly<Record<string, readonly string[]>> = {
@@ -90,6 +42,10 @@ const VARIANT_IDS: Readonly<Record<string, readonly string[]>> = {
   "dish.chicken-murtabak": ["murtabak-chicken", "murtabak-chicken-mushroom-cheese", "murtabak-mutton", "murtabak-vegetable"],
   "dish.nasi-briyani": ["briyani-chicken", "briyani-fish-prawn", "briyani-mutton", "briyani-vegetable"],
   "dish.masala-thosai": ["thosai-masala", "thosai-plain", "thosai-egg", "thosai-ghee"],
+  "dish.yong-tau-foo": ["ytf-clear-boiled", "ytf-clear-fried", "ytf-clear-mixed", "ytf-clear-noodles", "ytf-laksa-boiled", "ytf-laksa-fried", "ytf-laksa-mixed", "ytf-laksa-noodles"],
+  "dish.ban-mian": ["ban-mian-soup", "ban-mian-dry", "chilli-ban-mian", "pork-dumpling-ban-mian", "seafood-tom-yum-ban-mian", "vegetable-ban-mian"],
+  "dish.bak-kut-teh": ["bak-kut-teh-soup", "bak-kut-teh-dry", "bak-kut-teh-herbal"],
+  "dish.duck-rice": ["duck-rice-braised", "duck-rice-roasted", "duck-rice-rice-only"],
 };
 
 describe("nutrition content", () => {
@@ -99,17 +55,18 @@ describe("nutrition content", () => {
     );
     assert.equal(
       createHash("sha256").update(bytes).digest("hex"),
-      "f37653ed09f033d197e6fa4a58146825bad1e25e5d2d66478e0a7f1419806249",
+      "f733b693e44a7767074bd84d263e357fcfd2ac7212e30ad388afc4cc7c5e580c",
     );
   });
 
-  it("mounts deterministic nutrition content in launch content 1.2.0", () => {
+  it("mounts deterministic schema-v2 nutrition content", () => {
     const report = validateContent();
 
-    assert.equal(LAUNCH_CONTENT.version, "1.2.0");
+    assert.equal(LAUNCH_CONTENT.version, "1.3.0");
     assert.equal(LAUNCH_CONTENT.nutrition, NUTRITION_CONTENT);
-    assert.equal(report.counts.nutritionProfiles, 80);
-    assert.equal(report.counts.nutritionVariantFamilies, 10);
+    assert.equal(NUTRITION_CONTENT.schemaVersion, 2);
+    assert.equal(report.counts.nutritionProfiles, 104);
+    assert.equal(report.counts.nutritionVariantFamilies, 14);
     assert.equal(NUTRITION_CONTENT.dataVersion, "sg-1bc212db6eda-c87987b4281c");
     assert.deepEqual(
       NUTRITION_CONTENT.sourceSnapshots.map((snapshot) => snapshot.rowCount),
@@ -125,37 +82,24 @@ describe("nutrition content", () => {
     assert.doesNotMatch(JSON.stringify(NUTRITION_CONTENT), /H:\\\\|My Drive/i);
   });
 
-  it("gives all 46 dishes the exact reviewed primary status", () => {
+  it("gives all 54 dishes and every variant a released source profile", () => {
     const primary = NUTRITION_CONTENT.profiles.filter(
       (profile) => profile.id === profile.dishId,
     );
-    assert.equal(primary.length, 46);
+    assert.equal(primary.length, 54);
     assert.deepEqual(
       primary.map((profile) => profile.dishId).sort(),
       DISHES.map((dish) => dish.id).sort(),
     );
-    assert.deepEqual(
-      primary
-        .filter((profile) => profile.status === "released")
-        .map((profile) => profile.dishId)
-        .sort(),
-      RELEASED_PRIMARY_DISHES,
-    );
-    assert.deepEqual(
-      primary
-        .filter((profile) => profile.status === "unavailable")
-        .map((profile) => profile.dishId)
-        .sort(),
-      UNAVAILABLE_PRIMARY_DISHES,
-    );
-    assert.equal(
-      NUTRITION_CONTENT.profiles.filter((profile) => profile.status === "quarantined")
-        .length,
-      0,
+    assert.ok(primary.every((profile) => profile.status === "released"));
+    assert.ok(
+      NUTRITION_CONTENT.profiles.every(
+        (profile) => profile.status === "released",
+      ),
     );
   });
 
-  it("ships the ten approved variant families with deterministic mastery ranks", () => {
+  it("ships fourteen approved variant families with deterministic mastery ranks", () => {
     assert.deepEqual(
       NUTRITION_CONTENT.variantFamilies.map((family) => family.dishId),
       VARIANT_FAMILY_DISHES,
@@ -185,7 +129,39 @@ describe("nutrition content", () => {
           family.variants.map((variant) => variant.visualKey),
         ),
       ).size,
-      44,
+      64,
+    );
+  });
+
+  it("assigns bounded ratings and condition-sensitive variant trade-offs", () => {
+    for (const dish of DISHES) {
+      assert.ok(dish.starRating >= 1 && dish.starRating <= 5);
+      assert.equal(dish.starRating * 10, Math.round(dish.starRating * 10));
+    }
+    for (const profile of NUTRITION_CONTENT.profiles) {
+      assert.ok(profile.healthRating >= 1 && profile.healthRating <= 5);
+      assert.deepEqual(Object.keys(profile.conditionRatings).sort(), [
+        "diabetes",
+        "high-cholesterol",
+        "hypertension",
+        "obesity",
+      ]);
+      for (const rating of Object.values(profile.conditionRatings)) {
+        assert.ok(rating >= 1 && rating <= 5);
+      }
+    }
+
+    const kopi = getNutritionProfile("dish.kopi");
+    const kopiKosong = getNutritionProfile("dish.kopi", "kopi-o-kosong");
+    assert.equal(kopi?.nutrients.totalSugarG.status, "known");
+    assert.equal(kopiKosong?.nutrients.totalSugarG.status, "known");
+    assert.ok(
+      (kopiKosong?.nutrients.totalSugarG.value ?? Infinity) <
+        (kopi?.nutrients.totalSugarG.value ?? -Infinity),
+    );
+    assert.ok(
+      (kopiKosong?.conditionRatings.diabetes ?? 0) >
+        (kopi?.conditionRatings.diabetes ?? 5),
     );
   });
 
@@ -227,7 +203,10 @@ describe("nutrition content", () => {
         const intent = intentById.get(intentId as never);
         assert.ok(intent);
         assert.equal(intent.nutritionClass, profile.nutritionClass);
-        assert.equal(profile.nutrients[intent.metric].status, "known");
+        assert.ok(
+          profile.nutrients[intent.metric].status === "known" ||
+            profile.nutrients[intent.metric].status === "trace",
+        );
         assert.ok(fit >= 0 && fit <= 1);
       }
       if (profile.status !== "released") assert.deepEqual(profile.intentFits, {});

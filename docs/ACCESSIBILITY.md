@@ -37,7 +37,7 @@ Layered stall facades, food displays, and vendor characters are supplemental can
 
 - Normal text target contrast is at least 4.5:1; large text and essential graphics at least 3:1.
 - State uses icon, label/pattern, and color together.
-- Nutrition comparisons use the words higher, lower, same, trace, and unavailable; no red/green health grade or color-only delta is permitted.
+- Nutrition comparisons use the words higher, lower, same, trace, and unavailable. Health and Star ratings have distinct text labels, numeric values, and explanations; condition-specific ratings name both the condition and nutrients considered. No rating, match state, or delta may rely on red/green colour alone.
 - Stall identities and displayed food use silhouette, vessel, ingredient, equipment, and facade cues in addition to palette; high contrast must preserve the separation between vendor, counter, props, shutter, and background.
 - UI text scale supports 100%, 125%, 150%, and 200% without clipped essential controls.
 - Reference viewport: 1280 × 720; minimum target: 1024 × 640. Browser zoom at 80%, 100%, 125%, 150%, and 200% is manually checked.
@@ -75,10 +75,10 @@ Layered stall facades, food displays, and vendor characters are supplemental can
 - 200% browser zoom and each in-game text scale.
 - Reduced motion at OS and in-game levels.
 - Contrast analyzer and forced-colors/high-contrast inspection.
-- All 12 stall facades at full and reduced motion, including an in-place toggle while open and paused; verify the vendor freezes immediately without disappearing or conveying unique state through motion.
+- All 14 stall facades at full and reduced motion, including an in-place toggle while open and paused; verify the vendor freezes immediately without disappearing or conveying unique state through motion.
 - Normal/high-contrast comparison of compact and large stalls with active food displays and closed shutters; verify distinct shapes, readable layering, and text-equivalent menu/open state.
 - Color-vision simulation for placement, satisfaction, and overlays.
-- Keyboard and screen-reader checks for the Nutrition Lens, Variant Lab radio cards, customer inspector, Focus sheet, disclosure, and Pulse empty/data states.
+- Keyboard and screen-reader checks for the Nutrition Lens, distinct Health/Star ratings, four condition-specific rating explanations, Variant Lab radio cards, customer inspector, Focus sheet, disclosure, and Pulse empty/data states.
 - Pointer target and drag-alternative review.
 
 Human accessibility review and assistive-technology results remain pending and are release gates.

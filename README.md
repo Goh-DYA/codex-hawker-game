@@ -30,13 +30,13 @@ The Route editor lets players paint preferred walking lanes across clear floor t
 
 ## Launch content
 
-- 12 original operational stalls
-- 46 named dishes
-- 28 reviewed base-dish nutrition profiles and 10 reviewed variant families
+- 14 original operational stalls
+- 54 named dishes, each with a released source nutrition profile and separate Health and Star ratings
+- 104 released nutrition profiles across 14 reviewed variant families
 - 80 meaningfully distinct placeable catalogue items
 - 12 customer archetypes
 - 1 top-down neighbourhood-hall map theme
-- 300 English localization entries
+- 320 English localization entries
 
 The validator counts catalogue entries by distinct gameplay definition, not by recolour. It checks links, IDs, assets, localization, collisions, rotations, unlocks, affordability, and behavioural uniqueness.
 
@@ -134,7 +134,7 @@ Start with:
 
 ## Release status
 
-The expanded 12-stall / 46-dish source passes the automated release gate on bundled Node.js `v24.14.0`, including both Sites/Vinext and Vercel production builds. The project must not be described as production-approved until the current artifact record and exact Chrome/Edge/Firefox, offline restart/update, render performance, long-soak, accessibility, cultural, security, and qualified legal/privacy review evidence are complete. The Node benchmark does not measure the renderer's full-frame redraw and per-frame text recreation, and no human or external approval is implied by the internal checklists.
+The working content `1.3.0` source expands the catalogue to 14 stalls and 54 dishes, with 104 released nutrition profiles, 14 variant families, and condition-aware Health ratings alongside taste-and-popularity Star ratings. Its supported-runtime working-source gate and both local production builds pass. The project must not be described as production-approved until the current source/artifact publication record and exact Chrome/Edge/Firefox, offline restart/update, render performance, long-soak, accessibility, cultural, security, and qualified legal/privacy review evidence are complete. The Node benchmark does not measure the renderer's full-frame redraw and per-frame text recreation, and no human or external approval is implied by the internal checklists.
 
 ## License and provenance
 

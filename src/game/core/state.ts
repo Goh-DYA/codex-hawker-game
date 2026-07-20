@@ -270,6 +270,7 @@ export function cloneCustomer(customer: Customer): Customer {
     ...customer,
     position: { ...customer.position },
     path: customer.path.map((point) => ({ ...point })),
+    healthConditions: [...customer.healthConditions],
     orderedNutritionProfile: cloneNutritionProfile(customer.orderedNutritionProfile),
   };
 }

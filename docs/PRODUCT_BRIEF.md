@@ -1,8 +1,8 @@
 # Hawker Balance — Product Brief
 
 Status: Release-candidate product baseline
-Last updated: 2026-07-12
-Release readiness: NO-GO pending real-browser/offline QA and required human reviews
+Last updated: 2026-07-20
+Release readiness: NO-GO pending exact-production browser/offline QA, publication evidence, and required human reviews
 
 ## Product statement
 
@@ -18,7 +18,7 @@ The game is for casual and simulation players aged 13+, launches free, requires 
 4. Low-friction play: undo, recoverable economy, short feedback loops, and no irreversible traps.
 5. Living atmosphere: purposeful movement, queues, eating, reactions, light motion, and restrained audio.
 6. Respectful specificity: recognizable communal dining and food practices without copying real businesses or flattening cultures.
-7. Practical nutrition literacy: compare listed servings and respond to fictional visit intents without health grades, demographic assumptions, or medical advice.
+7. Practical nutrition literacy: compare listed servings, distinguish Health ratings from taste-and-popularity Star ratings, and understand condition-specific nutrient trade-offs without demographic assumptions or medical advice.
 
 ## Launch scope
 
@@ -26,8 +26,9 @@ The game is for casual and simulation players aged 13+, launches free, requires 
 - Mouse, trackpad, and keyboard are required. Touch is optional.
 - One coherent map theme, orthographic top-down square-grid construction, pan, and zoom.
 - Place, move, rotate, store, sell, remove, and undo placeable objects and stalls.
-- Twelve fictional stalls, 46 playable dishes, 80 meaningfully distinct placeables, and twelve behavior archetypes.
-- Explicit nutrition-data status for all 46 dishes, 28 reviewed base profiles, and ten reviewed recipe-variant families.
+- Fourteen fictional stalls, 54 playable dishes, 80 meaningfully distinct placeables, and twelve behavior archetypes.
+- A released source profile and Star rating for every dish, with 104 released nutrition profiles across 14 reviewed recipe-variant families.
+- Overall Health ratings plus distinct high-cholesterol, obesity, diabetes, and hypertension ratings; optional visit conditions remain independent of customer archetype and demographics.
 - Customer spawning, choice, pathfinding, queueing, ordering, preparation abstraction, seat reservation, eating, reactions, tray return where applicable, and departure.
 - Cash, experience, reputation, unlocks, upgrades, objectives, and map expansion.
 - Tutorial, settings, accessibility options, audio controls, local saves, and offline application shell.
@@ -44,14 +45,14 @@ Accounts, cloud saves, multiplayer, chat, leaderboards, social visits, user-gene
 The release must pass the acceptance checklist in RELEASE_CHECKLIST.md. In particular:
 
 - The complete customer lifecycle and build-mode recovery cases pass automated and browser tests.
-- Content validators prove 12 / 46 / 80 / 12 counts and no missing runtime references.
+- Content validators prove 14 / 54 / 80 / 12 counts, 320 English localization entries, 104 released profiles, 14 variant families, and no missing runtime references.
 - IndexedDB recovery, save migrations, cache updates, and offline reload are verified.
 - Measured performance meets an approved supported-customer cap in both quality tiers.
 - Essential UI actions work by keyboard and do not rely on color or audio alone.
 - Current stable desktop Chrome is tested and its exact version recorded.
 - Human Singapore cultural review, qualified legal/privacy review, and independent security review are complete or explicitly waived by the accountable human owner.
 
-None of those external review gates is complete as of this document date.
+The content `1.3.0` source contract, complete automated working-source gate, and both local production builds are recorded. Exact-production browser/offline validation, publication evidence, and all external review gates remain incomplete as of this document date.
 
 ## Product assumptions
 

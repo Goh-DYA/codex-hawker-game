@@ -12,9 +12,18 @@ export interface NutritionProfileView {
   readonly servingLabel?: string;
   readonly energyKcal?: NutritionValueView;
   readonly proteinG?: NutritionValueView;
+  readonly totalFatG?: NutritionValueView;
+  readonly saturatedFatG?: NutritionValueView;
+  readonly transFatG?: NutritionValueView;
+  readonly carbohydrateG?: NutritionValueView;
   readonly dietaryFibreG?: NutritionValueView;
   readonly sodiumMg?: NutritionValueView;
   readonly totalSugarG?: NutritionValueView;
+  readonly calciumMg?: NutritionValueView;
+  readonly ironMg?: NutritionValueView;
+  readonly waterG?: NutritionValueView;
+  readonly healthRating?: number;
+  readonly conditionRatings?: Readonly<Record<string, number | undefined>>;
   readonly intentFits?: Readonly<Record<string, number | undefined>>;
 }
 
@@ -30,6 +39,7 @@ export interface NutritionVariantView {
 
 export interface NutritionFamilyView {
   readonly dishId: string;
+  readonly starRating?: number;
   readonly defaultVariantId: string;
   readonly activeVariantId: string;
   readonly variants: readonly NutritionVariantView[];
@@ -67,6 +77,11 @@ export interface CustomerNutritionView {
   readonly dishId?: string;
   readonly variantId?: string;
   readonly requestResult?: "matched" | "missed" | "unknown";
+  readonly healthConditionIds?: readonly string[];
+  readonly personalizedHealthRating?: number;
+  readonly healthImpact?: number;
+  readonly healthPreferenceResult?: "matched" | "missed" | "unknown";
+  readonly healthDecisionReasons?: readonly string[];
   readonly profile?: NutritionProfileView;
 }
 
@@ -97,18 +112,56 @@ const INTENT_TRADE_OFF_COPY: Readonly<Record<string, string>> = {
 const METRIC_COPY = {
   energyKcal: { label: "Energy", unit: "kcal", digits: 0 },
   proteinG: { label: "Protein", unit: "g", digits: 1 },
+  totalFatG: { label: "Total fat", unit: "g", digits: 1 },
+  saturatedFatG: { label: "Saturated fat", unit: "g", digits: 1 },
+  transFatG: { label: "Trans fat", unit: "g", digits: 2 },
+  carbohydrateG: { label: "Carbohydrate", unit: "g", digits: 1 },
   dietaryFibreG: { label: "Fibre", unit: "g", digits: 1 },
   sodiumMg: { label: "Sodium", unit: "mg", digits: 0 },
   totalSugarG: { label: "Total sugar", unit: "g", digits: 1 },
+  calciumMg: { label: "Calcium", unit: "mg", digits: 0 },
+  ironMg: { label: "Iron", unit: "mg", digits: 1 },
+  waterG: { label: "Water", unit: "g", digits: 1 },
 } as const;
 
 type ProfileMetric = keyof typeof METRIC_COPY;
+const PRIMARY_PROFILE_METRICS = [
+  "energyKcal",
+  "proteinG",
+  "totalFatG",
+  "carbohydrateG",
+  "totalSugarG",
+  "dietaryFibreG",
+  "sodiumMg",
+] as const satisfies readonly ProfileMetric[];
+const ADDITIONAL_PROFILE_METRICS = [
+  "saturatedFatG",
+  "transFatG",
+  "calciumMg",
+  "ironMg",
+  "waterG",
+] as const satisfies readonly ProfileMetric[];
+const COMPARISON_METRICS = [
+  "energyKcal",
+  "totalFatG",
+  "carbohydrateG",
+  "totalSugarG",
+  "dietaryFibreG",
+  "sodiumMg",
+] as const satisfies readonly ProfileMetric[];
 const PULSE_METRICS = [
   "energyKcal",
   "proteinG",
   "dietaryFibreG",
   "sodiumMg",
 ] as const satisfies readonly ProfileMetric[];
+
+const HEALTH_CONDITION_LABELS: Readonly<Record<string, string>> = {
+  "high-cholesterol": "Managing high cholesterol",
+  obesity: "Managing obesity",
+  diabetes: "Managing diabetes",
+  hypertension: "Managing hypertension",
+};
 
 export type DialogFocusAction = "close" | "container" | "first" | "last" | undefined;
 
@@ -159,11 +212,77 @@ export function intentLabel(intentId: string | undefined) {
   return INTENT_LABELS[intentId] ?? intentId.replaceAll("-", " ");
 }
 
+function ratingText(value: number | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${Math.max(0, Math.min(5, value)).toFixed(1)}/5`
+    : "Not rated";
+}
+
+export function DishRatingSummary({
+  healthRating,
+  starRating,
+  healthLabel = "Health rating",
+}: {
+  readonly healthRating?: number;
+  readonly starRating?: number;
+  readonly healthLabel?: string;
+}) {
+  return (
+    <div className="dish-rating-summary" aria-label="Dish health and star ratings">
+      <span
+        className="dish-rating-badge is-health"
+        aria-label={`${healthLabel}: ${ratingText(healthRating)}`}
+      >
+        <i aria-hidden="true">♥</i>
+        <span><small>{healthLabel}</small><strong>{ratingText(healthRating)}</strong></span>
+      </span>
+      <span
+        className="dish-rating-badge is-star"
+        aria-label={`Star rating for taste and popularity: ${ratingText(starRating)}`}
+      >
+        <i aria-hidden="true">★</i>
+        <span><small>Star rating</small><strong>{ratingText(starRating)}</strong></span>
+      </span>
+    </div>
+  );
+}
+
+function ConditionRatingDetails({
+  ratings,
+}: {
+  readonly ratings?: Readonly<Record<string, number | undefined>>;
+}) {
+  const entries = Object.entries(ratings ?? {}).filter(
+    (entry): entry is [string, number] =>
+      typeof entry[1] === "number" && Number.isFinite(entry[1]),
+  );
+  if (entries.length === 0) return null;
+  return (
+    <details className="condition-rating-details">
+      <summary>Health rating by condition</summary>
+      <dl aria-label="Condition-specific health ratings">
+        {entries.map(([condition, rating]) => (
+          <div key={condition}>
+            <dt>{HEALTH_CONDITION_LABELS[condition] ?? condition.replaceAll("-", " ")}</dt>
+            <dd>{ratingText(rating)}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
 export function NutritionProfileSummary({
   profile,
+  starRating,
+  healthRating,
+  healthLabel,
   labelledBy,
 }: {
   readonly profile?: NutritionProfileView;
+  readonly starRating?: number;
+  readonly healthRating?: number;
+  readonly healthLabel?: string;
   readonly labelledBy?: string;
 }) {
   const dataState = !profile || profile.status === "unavailable"
@@ -173,16 +292,33 @@ export function NutritionProfileSummary({
       : undefined;
   return (
     <div className="nutrition-summary" aria-labelledby={labelledBy}>
+      <DishRatingSummary
+        healthRating={healthRating ?? profile?.healthRating}
+        starRating={starRating}
+        healthLabel={healthLabel}
+      />
       <p>Serving · {profile?.servingLabel ?? dataState ?? "Not available"}</p>
       {dataState ? <p className="nutrition-data-state">{dataState}</p> : null}
-      <dl>
-        {(Object.keys(METRIC_COPY) as ProfileMetric[]).map((metric) => (
+      <dl aria-label="Key nutrition per listed serving">
+        {PRIMARY_PROFILE_METRICS.map((metric) => (
           <div key={metric}>
             <dt>{METRIC_COPY[metric].label}</dt>
             <dd>{dataState ?? nutritionValueText(profile?.[metric], metric)}</dd>
           </div>
         ))}
       </dl>
+      <details className="nutrition-more-details">
+        <summary>More nutrition details</summary>
+        <dl aria-label="Additional nutrition per listed serving">
+          {ADDITIONAL_PROFILE_METRICS.map((metric) => (
+            <div key={metric}>
+              <dt>{METRIC_COPY[metric].label}</dt>
+              <dd>{dataState ?? nutritionValueText(profile?.[metric], metric)}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+      <ConditionRatingDetails ratings={profile?.conditionRatings} />
     </div>
   );
 }
@@ -207,12 +343,12 @@ export function NutritionPulseCard({
   const leadingIntent = intentLabel(pulse.leadingUnmetIntent);
   return (
     <section className={compact ? "nutrition-pulse-card is-compact" : "nutrition-pulse-card"}>
-      <div className="section-heading">
-        <div>
-          <span>Today&apos;s menu read</span>
-          <h2>Nutrition pulse</h2>
+      <div className="nutrition-pulse-heading">
+        <div className="nutrition-pulse-heading-meta">
+          <span className="nutrition-pulse-kicker">Today&apos;s menu read</span>
+          <span className="nutrition-neutral-badge">Health ≠ popularity</span>
         </div>
-        <span className="nutrition-neutral-badge">No grades</span>
+        <h2>Nutrition pulse</h2>
       </div>
       {pulse.servedMeals === 0 ? (
         <div className="nutrition-empty-state">
@@ -367,8 +503,8 @@ export function VariantLabDialog({
           <button type="button" aria-label="Close Variant Lab" onClick={onClose}>×</button>
         </header>
         <p className="nutrition-lab-intro">
-          Choose the version this stall will serve. Nutrition values are estimates for the listed
-          serving; game service timing and prices stay with the dish family.
+          Choose the version this stall will serve. Every variant has its own nutrition and health
+          ratings; the dish&apos;s taste-and-popularity star rating stays the same.
         </p>
         <div className="nutrition-variant-list" role="radiogroup" aria-label={`${dishName} version`}>
           {family.variants.map((variant) => {
@@ -390,10 +526,10 @@ export function VariantLabDialog({
                     <small>{variant.unlocked ? (variant.selected ? "Currently served" : "Available now") : `Unlocks at mastery rank ${variant.unlockRank}`}</small>
                   </span>
                 </label>
-                <NutritionProfileSummary profile={profile} />
+                <NutritionProfileSummary profile={profile} starRating={family.starRating} />
                 {current && current.id !== variant.id ? (
                   <dl className="nutrition-delta-list" aria-label={`Compared with ${current.label}`}>
-                    {(Object.keys(METRIC_COPY) as ProfileMetric[]).map((metric) => (
+                    {COMPARISON_METRICS.map((metric) => (
                       <div key={metric}>
                         <dt>{METRIC_COPY[metric].label}</dt>
                         <dd>{comparisonText(current.profile?.[metric], profile?.[metric])}</dd>
@@ -417,6 +553,7 @@ export function VariantLabDialog({
 export function CustomerNutritionInspector({
   customer,
   dishLabel,
+  starRating,
   variantLabel,
   personaLabel,
   onClose,
@@ -424,6 +561,7 @@ export function CustomerNutritionInspector({
 }: {
   readonly customer: CustomerNutritionView;
   dishLabel(dishId: string): string;
+  starRating?(dishId: string): number | undefined;
   variantLabel(dishId: string, variantId: string): string | undefined;
   personaLabel(archetypeId: string): string;
   onClose(): void;
@@ -444,6 +582,9 @@ export function CustomerNutritionInspector({
   const selectedVariantLabel = customer.dishId && customer.variantId
     ? variantLabel(customer.dishId, customer.variantId)
     : undefined;
+  const healthConditions = customer.healthConditionIds ?? [];
+  const healthDecisionReasons = customer.healthDecisionReasons ?? [];
+  const orderedStarRating = customer.dishId ? starRating?.(customer.dishId) : undefined;
   const resultCopy = customer.requestResult === "matched"
     ? `Matched · ${INTENT_MATCH_COPY[customer.intentId ?? ""] ?? "Visit intent"}`
     : customer.requestResult === "missed"
@@ -451,6 +592,16 @@ export function CustomerNutritionInspector({
       : customer.requestResult === "unknown"
         ? "Data note · Comparison not available"
         : undefined;
+  const healthResultCopy = customer.healthPreferenceResult === "matched"
+    ? "Health preference matched"
+    : customer.healthPreferenceResult === "missed"
+      ? "Health trade-off"
+      : customer.healthPreferenceResult === "unknown"
+        ? "Health comparison unavailable"
+        : undefined;
+  const healthImpactCopy = typeof customer.healthImpact === "number"
+    ? `${customer.healthImpact >= 0 ? "+" : ""}${customer.healthImpact.toFixed(2)} satisfaction`
+    : undefined;
   return (
     <section
       ref={inspectorRef}
@@ -476,7 +627,39 @@ export function CustomerNutritionInspector({
       <div className="customer-reason-chips">
         {intent ? <span>Intent · {intent}</span> : <span>No nutrition intent this visit</span>}
         {resultCopy ? <span data-result={customer.requestResult}>{resultCopy}</span> : null}
+        {healthResultCopy ? (
+          <span data-result={customer.healthPreferenceResult}>{healthResultCopy}</span>
+        ) : null}
       </div>
+      <div className="customer-health-context">
+        <strong>Health needs affecting this visit</strong>
+        {healthConditions.length > 0 ? (
+          <ul aria-label="Customer simulated health conditions">
+            {healthConditions.map((condition) => (
+              <li key={condition}>
+                {HEALTH_CONDITION_LABELS[condition] ?? condition.replaceAll("-", " ")}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No simulated chronic condition affects this visit.</p>
+        )}
+        {healthImpactCopy ? (
+          <p className="customer-health-impact">
+            <strong>Customer stat effect</strong> · {healthImpactCopy}
+          </p>
+        ) : null}
+      </div>
+      {healthDecisionReasons.length > 0 ? (
+        <div className="customer-decision-reasons is-health">
+          <strong>Why this personal health fit</strong>
+          <ul>
+            {healthDecisionReasons.slice(0, 4).map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {customer.decisionReasons.length > 0 ? (
         <div className="customer-decision-reasons">
           <strong>Why this choice</strong>
@@ -493,9 +676,14 @@ export function CustomerNutritionInspector({
           {selectedVariantLabel ? <small>{selectedVariantLabel}</small> : null}
         </div>
       ) : null}
-      <NutritionProfileSummary profile={customer.profile} />
+      <NutritionProfileSummary
+        profile={customer.profile}
+        starRating={orderedStarRating}
+        healthRating={customer.personalizedHealthRating}
+        healthLabel={healthConditions.length > 0 ? "Personal health fit" : "Health rating"}
+      />
       <p className="nutrition-fiction-note">
-        Nutrition intents are fictional preferences for this visit, not health conditions.
+        Health conditions and stat effects are simplified game traits, not a diagnosis or advice.
       </p>
     </section>
   );
@@ -507,10 +695,12 @@ export function NutritionDisclosure() {
       <summary>Nutrition data &amp; education note</summary>
       <p>
         Hawker Balance is an educational game, not medical or dietary advice. Nutrition values
-        describe the listed serving in the source data; recipes and portions vary. Daily reference
-        ranges are general guidance for Singaporean adults and do not represent individual needs.
-        Total sugar is not the same as added sugar. In Hawker Balance, balance means comparing
-        trade-offs—not labelling a dish good or bad.
+        describe the listed serving in the supplied CSV data; recipes and portions vary. The Health
+        rating is a comparative in-game balance score derived from that serving and can change by
+        variant. The Star rating separately represents taste and popularity. A customer&apos;s personal
+        health fit also reflects their fictional condition and can slightly affect satisfaction.
+        These scores are game mechanics—not a diagnosis, health certification, or personal medical
+        advice. Total sugar is not the same as added sugar.
       </p>
     </details>
   );

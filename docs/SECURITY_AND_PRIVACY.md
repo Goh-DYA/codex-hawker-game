@@ -10,6 +10,8 @@ No player name is required. If a centre name is supported, store plain text loca
 
 Nutrition source CSVs are build-time operator inputs only. Raw files, machine-specific paths, and source data are not read by the browser or included in player saves. Generated profiles contain bounded numeric values and provenance hashes, and use the same schema validation and import-size protections as other launch content.
 
+High cholesterol, obesity, diabetes, and hypertension appear only as fictional simulation traits assigned to customers independently of archetype and appearance. They are not player inputs, inferred player attributes, diagnoses, or remotely collected health data.
+
 The public-facing notice is PRIVACY.md. It describes behavior, not legal compliance.
 
 ## Threat model

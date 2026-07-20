@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   customerVariantLabel,
   CustomerNutritionInspector,
+  DishRatingSummary,
   dialogFocusAction,
   NutritionProfileSummary,
   NutritionPulseCard,
@@ -27,9 +28,23 @@ describe("Hawker Balance nutrition education UI", () => {
       profile: { status: "unavailable" },
     }));
     expect(unavailable).toContain("Serving · Not available");
-    for (const label of ["Energy", "Protein", "Fibre", "Sodium", "Total sugar"]) {
+    for (const label of [
+      "Energy",
+      "Protein",
+      "Total fat",
+      "Saturated fat",
+      "Trans fat",
+      "Carbohydrate",
+      "Total sugar",
+      "Fibre",
+      "Sodium",
+      "Calcium",
+      "Iron",
+      "Water",
+    ]) {
       expect(unavailable).toContain(label);
     }
+    expect(unavailable).toContain("More nutrition details");
 
     const quarantined = renderToStaticMarkup(createElement(NutritionProfileSummary, {
       profile: { status: "quarantined" },
@@ -37,7 +52,7 @@ describe("Hawker Balance nutrition education UI", () => {
     expect(quarantined).toContain("Data under review");
   });
 
-  it("renders Pulse empty states and per-metric known denominators without a grade", () => {
+  it("renders Pulse empty states and separates health from popularity", () => {
     const empty = renderToStaticMarkup(createElement(NutritionPulseCard, {
       pulse: {
         servedMeals: 0,
@@ -52,7 +67,7 @@ describe("Hawker Balance nutrition education UI", () => {
       dishLabel: (dishId: string) => dishId,
     }));
     expect(empty).toContain("No servings yet today");
-    expect(empty).toContain("No grades");
+    expect(empty).toContain("Health ≠ popularity");
 
     const populated = renderToStaticMarkup(createElement(NutritionPulseCard, {
       pulse: {
@@ -75,6 +90,31 @@ describe("Hawker Balance nutrition education UI", () => {
     expect(populated).toContain("2 known");
     expect(populated).toContain("Kopi is today");
     expect(populated).toContain("Sodium-aware is the leading unmet visit intent");
+  });
+
+  it("renders distinct accessible Health and Star ratings with condition detail", () => {
+    const ratings = renderToStaticMarkup(createElement(DishRatingSummary, {
+      healthRating: 4.2,
+      starRating: 4.7,
+    }));
+    expect(ratings).toContain("Health rating: 4.2/5");
+    expect(ratings).toContain("Star rating for taste and popularity: 4.7/5");
+
+    const profile = renderToStaticMarkup(createElement(NutritionProfileSummary, {
+      profile: {
+        status: "released",
+        servingLabel: "1 plate",
+        healthRating: 4.2,
+        conditionRatings: {
+          diabetes: 4.4,
+          hypertension: 3.8,
+        },
+      },
+      starRating: 4.7,
+    }));
+    expect(profile).toContain("Health rating by condition");
+    expect(profile).toContain("Managing diabetes");
+    expect(profile).toContain("Managing hypertension");
   });
 
   it("renders rank locks, decision reasons, and neutral outcome wording", () => {
@@ -122,14 +162,28 @@ describe("Hawker Balance nutrition education UI", () => {
         dishId: "dish.kopi",
         variantId: "kopi-default",
         requestResult: "missed",
+        healthConditionIds: ["hypertension"],
+        personalizedHealthRating: 2.8,
+        healthImpact: -0.02,
+        healthPreferenceResult: "missed",
+        healthDecisionReasons: [
+          "Managing hypertension fit 2.8/5 is led by sodium and other nutrients",
+        ],
       },
       dishLabel: () => "Kopi",
+      starRating: () => 4.5,
       variantLabel: () => "Kopi",
       personaLabel: () => "Regular",
       onClose: () => undefined,
     }));
     expect(inspector).toContain("Trade-off · More sodium");
     expect(inspector).toContain("Why this choice");
+    expect(inspector).toContain("Managing hypertension");
+    expect(inspector).toContain("Personal health fit");
+    expect(inspector).toContain("Star rating for taste and popularity: 4.5/5");
+    expect(inspector).toContain("Customer stat effect");
+    expect(inspector).toContain("-0.02 satisfaction");
+    expect(inspector).toContain("Why this personal health fit");
     expect(inspector).not.toContain("Ignored");
   });
 
@@ -192,7 +246,7 @@ describe("Hawker Balance nutrition education UI", () => {
     ]);
 
     expect(simulator).toContain("Nutrition Lens");
-    expect(simulator).toContain("Compare values per listed serving.");
+    expect(simulator).toContain("Compare health, popularity, and every nutrient per listed serving.");
     expect(simulator).toContain("Tune recipe");
     expect(simulator).toContain("aria-labelledby={dishTitleId}");
     expect(simulator).toContain("View nutrition for");
@@ -203,14 +257,17 @@ describe("Hawker Balance nutrition education UI", () => {
     expect(nutritionUi).toContain("Trace amount");
     expect(nutritionUi).toContain("Data under review");
     expect(nutritionUi).toContain('label: "Total sugar"');
-    expect(nutritionUi).toContain("Nutrition intents are fictional preferences for this visit");
+    expect(nutritionUi).toContain('label: "Saturated fat"');
+    expect(nutritionUi).toContain('label: "Carbohydrate"');
+    expect(nutritionUi).toContain("Health conditions and stat effects are simplified game traits");
+    expect(nutritionUi).toContain("Star rating separately represents");
     expect(nutritionUi).toContain("Why this choice");
+    expect(nutritionUi).toContain("Why this personal health fit");
     expect(nutritionUi).toContain('"sodium-aware": "More sodium"');
     expect(nutritionUi).toContain("Trade-off ·");
     expect(nutritionUi).toContain("onRestoreFocus");
     expect(nutritionUi).toContain("dialogFocusAction");
-    expect(nutritionUi).toMatch(/balance means comparing\s+trade-offs/);
-    expect(nutritionUi).not.toContain("healthy dish");
+    expect(nutritionUi).toContain("not a diagnosis");
   });
 
   it("keeps objectives reachable and uses labelled mobile management sheets", async () => {
@@ -235,9 +292,14 @@ describe("Hawker Balance nutrition education UI", () => {
 
   it("contains the compact desktop Pulse within the left rail", async () => {
     const css = await readFile(new URL("app/globals.css", root), "utf8");
+    const nutritionUi = await readFile(new URL("app/game/NutritionEducation.tsx", root), "utf8");
 
     expect(css).toMatch(/\.left-rail\s*\{[^}]*overflow-y:\s*auto/);
+    expect(nutritionUi).toContain('className="nutrition-pulse-heading-meta"');
     expect(css).toContain(".nutrition-pulse-card.is-compact");
+    expect(css).toMatch(
+      /\.nutrition-pulse-card\.is-compact \.nutrition-pulse-kicker\s*\{[^}]*white-space:\s*nowrap/,
+    );
     expect(css).toMatch(
       /\.nutrition-pulse-card\.is-compact \.nutrition-average-list,[\s\S]*?display:\s*none/,
     );

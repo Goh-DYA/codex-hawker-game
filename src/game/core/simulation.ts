@@ -20,9 +20,18 @@ import { walkingSatisfactionScore } from "./satisfaction";
 import {
   activeNutritionVariant,
   bestEnabledNutritionIntentFit,
+  bestEnabledPersonalizedHealthRating,
   cloneNutritionMetrics,
   cloneNutritionProfile,
   createEmptyNutritionDayMetrics,
+  dishStarRating,
+  HEALTH_CONDITIONS,
+  healthConditionFromRoll,
+  healthConditionRating,
+  healthDishChoiceBonus,
+  healthImpactFromRating,
+  healthPreferenceResultForRating,
+  healthStallChoiceBonus,
   NUTRITION_INTENTS,
   NUTRITION_METRICS,
   nutritionIntentFit,
@@ -30,6 +39,7 @@ import {
   nutritionDishChoiceBonus,
   nutritionRequestResult,
   nutritionStallChoiceBonus,
+  personalizedHealthRating,
 } from "./nutrition";
 import {
   awardStallMastery,
@@ -52,6 +62,7 @@ import type {
   DishDefinition,
   GameState,
   GridPoint,
+  HealthCondition,
   PlaceableDefinition,
   PlacedObject,
   SimulationEvent,
@@ -427,6 +438,34 @@ function eligibleNutritionIntents(draft: Draft): readonly NutritionIntent[] {
   return NUTRITION_INTENTS.filter((intent) => eligible.has(intent));
 }
 
+function eligibleHealthConditions(draft: Draft): readonly HealthCondition[] {
+  const eligible = new Set<HealthCondition>();
+  for (const stall of openStalls(draft)) {
+    const definitionId = stall.object.definitionId;
+    const masteryRank = draft.progression.stallMastery[definitionId]?.rank ?? 1;
+    const dishIds = stall.definition.stall?.allDishIds ?? stall.definition.stall?.dishIds ?? [];
+    for (const dishId of dishIds) {
+      const dish = draft.source.catalog.dishes[dishId];
+      if (
+        !dish ||
+        draft.progression.level < (dish.unlockLevel ?? 1) ||
+        draft.progression.reputation < (dish.unlockReputation ?? 0)
+      ) {
+        continue;
+      }
+      for (const variant of dish.nutritionVariants ?? []) {
+        if (variant.unlockRank > masteryRank) continue;
+        for (const condition of HEALTH_CONDITIONS) {
+          if (healthConditionRating(variant.profile, condition) !== undefined) {
+            eligible.add(condition);
+          }
+        }
+      }
+    }
+  }
+  return HEALTH_CONDITIONS.filter((condition) => eligible.has(condition));
+}
+
 function recordIntentRequest(draft: Draft, intent: NutritionIntent | undefined): void {
   if (!intent) return;
   const current = draft.metrics.nutrition;
@@ -519,7 +558,19 @@ function spawnCustomer(draft: Draft): void {
   }
   if (!selected) return;
   const eligibleIntents = eligibleNutritionIntents(draft);
+  const eligibleConditions = eligibleHealthConditions(draft);
   let nutritionIntentId: NutritionIntent | undefined;
+  let healthConditions: readonly HealthCondition[] = [];
+  if (eligibleConditions.length > 0) {
+    const healthRoll = nextFloat(draft.rngState);
+    draft.rngState = healthRoll.state;
+    const healthCondition = healthConditionFromRoll(
+      draft.progression.level,
+      eligibleConditions,
+      healthRoll.value,
+    );
+    healthConditions = healthCondition ? [healthCondition] : [];
+  }
   if (draft.progression.level >= 2 && eligibleIntents.length > 0) {
     const nutritionRoll = nextFloat(draft.rngState);
     draft.rngState = nutritionRoll.state;
@@ -551,6 +602,7 @@ function spawnCustomer(draft: Draft): void {
     walkingDistanceTiles: 0,
     patienceRemainingMs: selected.archetype.patienceMs,
     satisfaction: 3,
+    healthConditions,
     nutritionIntentId,
     sourceEntranceId: entrance.id,
     hasTray: false,
@@ -592,7 +644,7 @@ function chooseStall(draft: Draft, source: Customer): Customer {
       ...dishes.map((dish) => {
         const preferenceMatches = (dish.preferenceTags ?? []).filter((tag) => preferredTags.has(tag)).length;
         return (
-          dish.quality * archetype.qualitySensitivity +
+          dishStarRating(dish) * archetype.qualitySensitivity +
           boundedDishDemandAppeal(dish) +
           preferenceMatches * 2.25 -
           dish.price * archetype.priceSensitivity
@@ -602,6 +654,10 @@ function chooseStall(draft: Draft, source: Customer): Customer {
     const nutritionBonus = nutritionStallChoiceBonus(
       bestEnabledNutritionIntentFit(dishes, source.nutritionIntentId),
     );
+    const healthBonus = healthStallChoiceBonus(
+      bestEnabledPersonalizedHealthRating(dishes, source.healthConditions),
+      source.healthConditions,
+    );
     const random = nextFloat(draft.rngState);
     draft.rngState = random.state;
     const novelty = random.value * (archetype.noveltyPreference ?? 0.35) * 2.5;
@@ -610,6 +666,7 @@ function chooseStall(draft: Draft, source: Customer): Customer {
     const score =
       menuAppeal +
       nutritionBonus +
+      healthBonus +
       config.popularity * 1.25 +
       config.quality * archetype.qualitySensitivity +
       novelty -
@@ -643,12 +700,17 @@ function chooseDish(draft: Draft, stall: StallRuntime, customer: Customer): Dish
     const nutritionBonus = nutritionDishChoiceBonus(
       nutritionIntentFit(dish, customer.nutritionIntentId),
     );
+    const healthBonus = healthDishChoiceBonus(
+      personalizedHealthRating(variant?.profile, customer.healthConditions),
+      customer.healthConditions,
+    );
     const score =
-      dish.quality * archetype.qualitySensitivity +
+      dishStarRating(dish) * archetype.qualitySensitivity +
       boundedDishDemandAppeal(dish) +
       matches * 2 -
       dish.price * archetype.priceSensitivity +
       nutritionBonus +
+      healthBonus +
       random.value * 0.001;
     if (!best || score > best.score || (score === best.score && dish.id < best.dish.id)) {
       best = { dish, variant, score };
@@ -709,6 +771,17 @@ function activePreparationCount(draft: Draft, stallId: string): number {
 function completeSale(draft: Draft, source: Customer, dish: DishDefinition): Customer {
   const servedStall = source.targetStallId ? draft.objects[source.targetStallId] : undefined;
   const stallDefinition = servedStall ? draft.source.catalog.placeables[servedStall.definitionId]?.stall : undefined;
+  const tasteRating = dishStarRating(dish);
+  const healthRating = source.personalizedHealthRating ?? personalizedHealthRating(
+    source.orderedNutritionProfile,
+    source.healthConditions,
+  );
+  const healthImpact = source.healthConditions.length > 0
+    ? healthImpactFromRating(healthRating)
+    : undefined;
+  const healthPreferenceResult = source.healthConditions.length > 0
+    ? healthPreferenceResultForRating(healthRating)
+    : undefined;
   const update = applySale(
     draft.economy,
     draft.progression,
@@ -843,10 +916,27 @@ function completeSale(draft: Draft, source: Customer, dish: DishDefinition): Cus
     hasTray: true,
     served: true,
     spent: source.spent + dish.price,
-    satisfaction: Math.min(5, source.satisfaction + normalizeQuality(dish.quality) / 100),
+    personalizedHealthRating: healthRating,
+    healthImpact,
+    healthPreferenceResult,
+    satisfaction: Math.max(
+      0,
+      Math.min(
+        5,
+        source.satisfaction + normalizeQuality(tasteRating) / 100 + (healthImpact ?? 0),
+      ),
+    ),
     ratingFactors: {
       ...source.ratingFactors,
-      foodQuality: Math.min(100, normalizeQuality(dish.quality) * 0.7 + normalizeQuality(stallDefinition?.quality ?? dish.quality) * 0.3),
+      foodQuality: Math.max(
+        0,
+        Math.min(
+          100,
+          normalizeQuality(tasteRating) * 0.7 +
+            normalizeQuality(stallDefinition?.quality ?? dish.quality) * 0.3 +
+            (healthImpact ?? 0) * 20,
+        ),
+      ),
       value: Math.max(25, Math.min(100, 120 - (dish.price / Math.max(1, getArchetype(draft, source).budget)) * 70)),
     },
   };
@@ -937,6 +1027,10 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
       if (customer.stateElapsedMs < (stall.definition.stall?.orderMs ?? 0)) return customer;
       const choice = chooseDish(draft, stall, customer);
       if (!choice) return beginExit(draft, customer, true);
+      const healthRating = personalizedHealthRating(
+        choice.variant?.profile,
+        customer.healthConditions,
+      );
       // Ordering occupies the queue head; preparation occupies a capacity slot.
       // Releasing here lets the next customer advance while this meal is prepared.
       removeFromAllQueues(draft, customer.id);
@@ -946,6 +1040,11 @@ function processCustomer(draft: Draft, source: Customer, deltaMs: number): Custo
         orderedNutritionVariantId: choice.variant?.id,
         orderedNutritionProfile: cloneNutritionProfile(choice.variant?.profile),
         nutritionRequestResult: undefined,
+        personalizedHealthRating: healthRating,
+        healthImpact: undefined,
+        healthPreferenceResult: customer.healthConditions.length > 0
+          ? healthPreferenceResultForRating(healthRating)
+          : undefined,
       };
     }
 

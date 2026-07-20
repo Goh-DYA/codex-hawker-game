@@ -19,6 +19,8 @@ The game needs a network connection for the first load and for downloading appli
 
 The game does not require a real name, email address, location, date of birth, contacts, account identifier, or payment information. If a custom centre name is offered, it is stored locally and should not be used for sensitive personal information.
 
+Customer health conditions in the simulation are fictional, visit-specific game traits generated independently of customer archetype and appearance. The game does not ask for, infer, or store the player's health conditions, diagnoses, nutrition intake, or dietary history.
+
 ## Your controls
 
 You can reset game data from settings after confirmation. Browser controls can also clear this site’s stored data and cache. The release UI must explain that deletion is local to the current browser profile.

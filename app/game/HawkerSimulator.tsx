@@ -57,6 +57,7 @@ import type {
 import {
   customerVariantLabel,
   CustomerNutritionInspector,
+  DishRatingSummary,
   dialogFocusAction,
   NutritionDisclosure,
   NutritionProfileSummary,
@@ -456,6 +457,8 @@ function dishPresentation(recipe: ReturnType<typeof visualRecipeForDish>) {
     "whole-seafood": "seafood",
     "leaf-parcel": "leaf-parcel",
     buns: "dumplings",
+    "braised-scoop": "braised-scoop",
+    "vegetable-scoop": "vegetable-scoop",
   }[presentation.portionShape];
 }
 
@@ -481,14 +484,27 @@ function nutritionProfileView(
 ): NutritionProfileView | undefined {
   const profile = getNutritionProfile(dishId, variantId);
   if (!profile) return undefined;
+  const ratedProfile = profile as typeof profile & {
+    readonly healthRating?: number;
+    readonly conditionRatings?: Readonly<Record<string, number>>;
+  };
   return {
     status: profile.status,
     servingLabel: profile.serving?.label,
     energyKcal: profile.nutrients.energyKcal,
     proteinG: profile.nutrients.proteinG,
+    totalFatG: profile.nutrients.totalFatG,
+    saturatedFatG: profile.nutrients.saturatedFatG,
+    transFatG: profile.nutrients.transFatG,
+    carbohydrateG: profile.nutrients.carbohydrateG,
     dietaryFibreG: profile.nutrients.dietaryFibreG,
     sodiumMg: profile.nutrients.sodiumMg,
     totalSugarG: profile.nutrients.totalSugarG,
+    calciumMg: profile.nutrients.calciumMg,
+    ironMg: profile.nutrients.ironMg,
+    waterG: profile.nutrients.waterG,
+    healthRating: ratedProfile.healthRating,
+    conditionRatings: ratedProfile.conditionRatings,
     intentFits: profile.intentFits,
   };
 }
@@ -496,6 +512,13 @@ function nutritionProfileView(
 function dishLabel(dishId: string) {
   const dish = DISHES.find((candidate) => candidate.id === dishId);
   return dish ? localize(dish.nameKey) : dishId.replace(/^dish\./, "").replaceAll("-", " ");
+}
+
+function dishStarRating(dishId: string) {
+  const dish = DISHES.find((candidate) => candidate.id === dishId) as
+    | (DishDefinition & { readonly starRating?: number })
+    | undefined;
+  return dish?.starRating;
 }
 
 function personaLabel(archetypeId: string) {
@@ -1831,7 +1854,7 @@ export function HawkerSimulator() {
                     onChange={(event) => setNutritionLens(event.target.checked)}
                   />
                 </label>
-                <p>Compare values per listed serving.</p>
+                <p>Compare health, popularity, and every nutrient per listed serving.</p>
               </div>
               {STALLS.filter((stall) => stall.id === menuStallId).map((stall) => {
                 const activeMenu = snapshot.stallMenus[stall.id] ?? [];
@@ -1873,6 +1896,7 @@ export function HawkerSimulator() {
                       );
                       const profile = activeVariant?.profile
                         ?? nutritionProfileView(dish.id, activeVariant?.id);
+                      const starRating = nutritionFamily?.starRating ?? dishStarRating(dish.id);
                       return (
                         <article
                           key={dish.id}
@@ -1902,7 +1926,17 @@ export function HawkerSimulator() {
                             </small>
                             {activeVariant ? <small>Serving: {activeVariant.label}</small> : null}
                           </div>
-                          {nutritionLens ? <NutritionProfileSummary profile={profile} /> : null}
+                          {nutritionLens ? (
+                            <NutritionProfileSummary
+                              profile={profile}
+                              starRating={starRating}
+                            />
+                          ) : (
+                            <DishRatingSummary
+                              healthRating={profile?.healthRating}
+                              starRating={starRating}
+                            />
+                          )}
                           <div className="dish-menu-actions">
                             <button
                               type="button"
@@ -2152,6 +2186,7 @@ export function HawkerSimulator() {
             <CustomerNutritionInspector
               customer={selectedCustomerNutrition}
               dishLabel={dishLabel}
+              starRating={dishStarRating}
               personaLabel={personaLabel}
               variantLabel={(dishId, variantId) =>
                 customerVariantLabel(nutritionFamilies, dishId, variantId)}
@@ -2324,12 +2359,12 @@ export function HawkerSimulator() {
             <div className="nutrition-tour-copy">
               <span>Nutrition tour · {nutritionTourStep + 1} of 2</span>
               <h2 id="nutrition-tour-title">
-                {nutritionTourStep === 0 ? "Read the menu, not a grade" : "Meet each visit intent"}
+                {nutritionTourStep === 0 ? "Two ratings, one serving" : "Meet each guest’s health needs"}
               </h2>
               <p>
                 {nutritionTourStep === 0
-                  ? "Open Menu planning to compare listed servings. The Nutrition Lens shows energy, protein, fibre, and sodium without calling a dish good or bad. Reviewed families can be tuned in the Variant Lab."
-                  : "Select a guest to see their fictional nutrition intent and the trade-off behind their order. Taste, price, queues, and distance still matter, so a request may be missed."}
+                  ? "Open Menu planning to compare every listed nutrient. Health ratings show in-game balance; Star ratings separately show taste and popularity. Variants can change nutrition and health without changing popularity."
+                  : "Some guests fictionally manage a chronic condition. Select one to see their personal health fit, the nutrients considered, and the small satisfaction effect. Taste, price, queues, and distance still matter."}
               </p>
               <div className="tutorial-actions">
                 <button type="button" className="text-button" onClick={() => void finishNutritionTour()}>
@@ -2344,7 +2379,7 @@ export function HawkerSimulator() {
                     else setNutritionTourStep(1);
                   }}
                 >
-                  {nutritionTourStep === 1 ? "Start balancing" : "Show customer intents"}
+                  {nutritionTourStep === 1 ? "Start balancing" : "Show guest health needs"}
                   <span aria-hidden="true"> →</span>
                 </button>
               </div>
@@ -2434,8 +2469,8 @@ export function HawkerSimulator() {
               <article><kbd>Esc</kbd><strong>Cancel</strong><p>Leave build mode without spending anything.</p></article>
               <article><kbd>Space</kbd><strong>Pause</strong><p>The simulation clamps time after a suspended tab.</p></article>
               <article><kbd>U</kbd><strong>Undo</strong><p>Restore the most recent build change safely.</p></article>
-              <article><kbd>Menu</kbd><strong>Compare trade-offs</strong><p>Use Nutrition Lens and Variant Lab for reviewed listed servings.</p></article>
-              <article><kbd>Guest</kbd><strong>Inspect a visit</strong><p>Select a guest to read their fictional intent and order result.</p></article>
+              <article><kbd>Menu</kbd><strong>Compare two ratings</strong><p>Health reflects nutrition balance; Stars reflect taste and popularity.</p></article>
+              <article><kbd>Guest</kbd><strong>Inspect a visit</strong><p>See fictional health needs, personal fit, reasons, and stat effects.</p></article>
             </div>
             <NutritionDisclosure />
             <footer>

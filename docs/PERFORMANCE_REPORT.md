@@ -1,14 +1,35 @@
 # Performance Report
 
-Report date: 2026-07-16
-Build/commit: Expanded working source validated with bundled Node.js `v24.14.0`; commit/publication record pending
-Verdict: **Current Node simulation budget and both production builds passed; browser rendering performance and supported customer caps are not established**
+Report date: 2026-07-20
+Build/commit: Content `1.3.0` working source validated with bundled Node.js `v24.14.0`; commit/publication record pending
+Verdict: **The content `1.3.0` Node simulation budget and both local production builds pass; browser rendering performance remains unverified**
+
+Scope note: the current working-source evidence below is not an exact-production browser performance result. The retained content `1.2.0` measurements remain labelled as historical baselines.
 
 ## Automated simulation evidence
 
-The Vitest benchmark starts 80 active customers and advances 1,200 deterministic fixed steps with periodic invariant checks. The current run includes queue-reservation and obstacle-safe route behavior. It is useful for regression detection in the pure simulation core; it does not include Phaser rendering, browser scheduling, expanded stall/food drawing, audio, IndexedDB, service workers, or DOM work.
+The Vitest benchmark starts 80 active customers and advances 1,200 deterministic fixed steps with periodic invariant checks. The recorded baseline includes queue-reservation and obstacle-safe route behavior. It is useful for regression detection in the pure simulation core; it does not include Phaser rendering, browser scheduling, expanded stall/food drawing, audio, IndexedDB, service workers, or DOM work.
 
-Current result from the passing 24-file / 131-test Vitest run on bundled Node.js `v24.14.0`:
+Current content `1.3.0` result from the passing 29-file / 181-test run on bundled Node.js `v24.14.0`:
+
+| Metric | Recorded value |
+|---|---:|
+| Seed | `benchmark-80-agents` |
+| Fixed steps | 1,200 |
+| Peak active customers | 80 |
+| Mean simulation step | 0.12040941666666943 ms |
+| p95 simulation step | 0.18669999999974607 ms |
+| Maximum simulation step | 21.50839999999971 ms |
+| Total measured duration | 150.4032000000002 ms |
+| Heap delta during sample | 2,526,152 bytes |
+| Test budget | mean < 4 ms; p95 < 10 ms |
+| Result | Pass in content `1.3.0` supported-runtime run |
+
+Sub-millisecond timing is noisy and machine-dependent; do not compare a single Node run to a browser frame budget.
+
+### Retained content `1.2.0` baseline
+
+Retained result from the passing 24-file / 131-test content `1.2.0` Vitest run on bundled Node.js `v24.14.0`:
 
 | Metric | Recorded value |
 |---|---:|
@@ -21,13 +42,13 @@ Current result from the passing 24-file / 131-test Vitest run on bundled Node.js
 | Total measured duration | 98.13689999999997 ms |
 | Heap delta during sample | 6,044,872 bytes |
 | Test budget | mean < 4 ms; p95 < 10 ms |
-| Result | Pass in current supported-runtime automated run |
-
-Sub-millisecond timing is noisy and machine-dependent; do not compare a single Node run to a browser frame budget.
+| Result | Pass in recorded content `1.2.0` supported-runtime run |
 
 ## Production-build evidence
 
-The current release-equivalent gate completed the five-environment Sites/Vinext build and generated service-worker build ID `c5ed3679ba56`. The native Next.js Vercel build also passed. Current raw/gzip payload totals, file count, and deterministic manifest hash were not retained in the supplied validation output.
+The content `1.3.0` working-source gate completed the five-environment Sites/Vinext build and generated service-worker build ID `7d3da6d67b11`. The native Next.js Vercel build also passed. Raw/gzip payload totals, file count, and deterministic artifact-manifest hash were not retained in this validation output.
+
+The recorded content `1.2.0` release-equivalent gate also completed both builds and generated service-worker build ID `c5ed3679ba56`. That older result is retained only as a baseline.
 
 The following payload snapshot is retained only as a pre-expansion transport baseline. Gzip values are per-file gzip sums, not current payload or browser TTI evidence:
 
@@ -65,7 +86,7 @@ Use the frozen production artifact and record:
 - commit, service-worker build ID, artifact hash, raw/gzip payloads;
 - exact browser/OS version, CPU/RAM/GPU, power mode, viewport, DPR, and quality setting;
 - benchmark seed/snapshot, warm-up, sample length, and run count;
-- late-game unlocked layout with all 12 stalls plus representative placeable and 46-dish renderer coverage;
+- late-game unlocked layout with all 14 stalls plus representative placeable and complete 54-dish renderer coverage;
 - FPS distribution, simulation/render p95, path work, save duration, audio voices, and memory trend;
 - customer count sweep, completed visits, failures/throttling, and the final supported cap;
 - retained trace, JSON, and screenshot paths.

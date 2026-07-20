@@ -4,15 +4,22 @@ import {
   bestEnabledNutritionIntentFit,
   createDailyObjectives,
   createEmptyNutritionMetrics,
+  healthConditionFromRoll,
+  healthConditionRating,
+  healthDishChoiceBonus,
+  healthImpactFromRating,
+  healthPreferenceResultForRating,
   migratePersistentState,
   nutritionDishChoiceBonus,
   nutritionIntentFromRoll,
   nutritionRequestResult,
   nutritionStallChoiceBonus,
   persistentStateFromGame,
+  personalizedHealthRating,
   stepSimulation,
   type DishDefinition,
   type GameState,
+  type HealthCondition,
   type NutritionIntent,
   type NutritionMetric,
   type NutritionProfile,
@@ -40,6 +47,12 @@ function profile(
   id: string,
   dishId: string,
   intentFits: Partial<Record<NutritionIntent, number>>,
+  conditionRatings: Partial<Record<HealthCondition, number>> = {
+    "high-cholesterol": 3,
+    obesity: 3,
+    diabetes: 3,
+    hypertension: 3,
+  },
 ): NutritionProfile {
   const unavailable: NutritionValue = { status: "unavailable", reason: "not-reported" };
   return {
@@ -53,6 +66,8 @@ function profile(
       NutritionValue
     >,
     intentFits,
+    healthRating: 3,
+    conditionRatings,
   };
 }
 
@@ -167,7 +182,7 @@ describe("nutrition education rules", () => {
     expect(nutritionRequestResult("fibre-forward", undefined)).toBe("unknown");
   });
 
-  it("uses one deterministic roll for the 40% assignment gate and canonical intent selection", () => {
+  it("uses independent deterministic 40% gates for conditions and nutrition intents", () => {
     const eligible: readonly NutritionIntent[] = [
       "lighter-energy",
       "protein-forward",
@@ -180,12 +195,98 @@ describe("nutrition education rules", () => {
     expect(nutritionIntentFromRoll(2, eligible, 0.399)).toBe("lower-total-sugar-drink");
     expect(nutritionIntentFromRoll(2, eligible, 0.4)).toBeUndefined();
 
+    const eligibleConditions: readonly HealthCondition[] = [
+      "high-cholesterol",
+      "obesity",
+      "diabetes",
+      "hypertension",
+    ];
+    expect(healthConditionFromRoll(1, eligibleConditions, 0)).toBe("high-cholesterol");
+    expect(healthConditionFromRoll(1, eligibleConditions, 0.1)).toBe("obesity");
+    expect(healthConditionFromRoll(1, eligibleConditions, 0.2)).toBe("diabetes");
+    expect(healthConditionFromRoll(1, eligibleConditions, 0.399)).toBe("hypertension");
+    expect(healthConditionFromRoll(1, eligibleConditions, 0.4)).toBeUndefined();
+
     const levelOneWithoutNutrition = stepSimulation(makeGame({ seed: "rng-compat" }));
     const levelOneWithNutrition = stepSimulation(makeGame({
       seed: "rng-compat",
       catalog: nutritionCatalog(),
     }));
-    expect(levelOneWithNutrition.rngState).toBe(levelOneWithoutNutrition.rngState);
+    const repeatedLevelOneWithNutrition = stepSimulation(makeGame({
+      seed: "rng-compat",
+      catalog: nutritionCatalog(),
+    }));
+    expect(levelOneWithNutrition.rngState).not.toBe(levelOneWithoutNutrition.rngState);
+    expect(repeatedLevelOneWithNutrition.rngState).toBe(levelOneWithNutrition.rngState);
+    expect(repeatedLevelOneWithNutrition.customers).toEqual(levelOneWithNutrition.customers);
+    expect(
+      Object.values(levelOneWithNutrition.customers).every(
+        (customer) => customer.healthConditions.length <= 1,
+      ),
+    ).toBe(true);
+
+    const fullCatalog = nutritionCatalog();
+    const healthOnlyCatalog: SimulationCatalog = {
+      ...fullCatalog,
+      dishes: Object.fromEntries(
+        Object.entries(fullCatalog.dishes).map(([dishId, dish]) => [
+          dishId,
+          {
+            ...dish,
+            nutritionVariants: dish.nutritionVariants?.map((variant) => ({
+              ...variant,
+              profile: variant.profile
+                ? { ...variant.profile, intentFits: {} }
+                : undefined,
+            })),
+          },
+        ]),
+      ),
+    };
+    const levelTwoFull = stepSimulation({
+      ...makeGame({ seed: "independent-health-roll", catalog: fullCatalog }),
+      progression: {
+        ...makeGame({ catalog: fullCatalog }).progression,
+        level: 2,
+      },
+    });
+    const levelTwoHealthOnly = stepSimulation({
+      ...makeGame({ seed: "independent-health-roll", catalog: healthOnlyCatalog }),
+      progression: {
+        ...makeGame({ catalog: healthOnlyCatalog }).progression,
+        level: 2,
+      },
+    });
+    expect(levelTwoFull.rngState).not.toBe(levelTwoHealthOnly.rngState);
+  });
+
+  it("uses authored condition ratings and nutrient-derived legacy fallbacks", () => {
+    const authored = profile("authored", "dish", {}, {
+      "high-cholesterol": 2,
+      obesity: 3,
+      diabetes: 4.5,
+      hypertension: 5,
+    });
+    expect(healthConditionRating(authored, "diabetes")).toBe(4.5);
+    expect(personalizedHealthRating(authored, ["diabetes", "hypertension"])).toBe(4.75);
+    expect(healthDishChoiceBonus(5, ["hypertension"])).toBe(2.25);
+    expect(healthDishChoiceBonus(5, [])).toBe(0);
+    expect(healthPreferenceResultForRating(3.5)).toBe("matched");
+    expect(healthPreferenceResultForRating(3.49)).toBe("missed");
+    expect(healthImpactFromRating(5)).toBe(0.2);
+    expect(healthImpactFromRating(1)).toBe(-0.2);
+
+    const legacy = {
+      ...profile("legacy", "dish", {}, {}),
+      healthRating: undefined,
+      conditionRatings: undefined,
+      nutrients: {
+        ...profile("legacy-base", "dish", {}).nutrients,
+        sodiumMg: { status: "known" as const, value: 1_800 },
+      },
+    };
+    expect(healthConditionRating(legacy, "hypertension")).toBe(1);
+    expect(healthConditionRating(legacy, "diabetes")).toBeUndefined();
   });
 
   it("computes relative fits with average-rank ties and a single-option score of one", () => {
@@ -220,6 +321,7 @@ describe("nutrition education rules", () => {
       walkingDistanceTiles: 0,
       patienceRemainingMs: 10_000,
       satisfaction: 3,
+      healthConditions: [],
       targetStallId: "stall-1",
       nutritionIntentId: "fibre-forward" as const,
       hasTray: false,
@@ -311,6 +413,92 @@ describe("nutrition education rules", () => {
     expect(state.metrics.nutrition.recentOutcomes.length).toBeLessThanOrEqual(50);
   });
 
+  it("prefers condition-aware dishes and applies the frozen health impact to satisfaction", () => {
+    const sourceCatalog = nutritionCatalog();
+    const ratedDish = (
+      dish: DishDefinition,
+      starRating: number,
+      hypertensionRating: number,
+    ): DishDefinition => ({
+      ...dish,
+      starRating,
+      nutritionVariants: dish.nutritionVariants?.map((variant) => ({
+        ...variant,
+        profile: variant.profile
+          ? {
+              ...variant.profile,
+              conditionRatings: {
+                ...variant.profile.conditionRatings,
+                hypertension: hypertensionRating,
+              },
+            }
+          : undefined,
+      })),
+    });
+    const catalog: SimulationCatalog = {
+      ...sourceCatalog,
+      dishes: {
+        rice: ratedDish(sourceCatalog.dishes.rice, 3, 5),
+        noodles: ratedDish(sourceCatalog.dishes.noodles, 4, 1),
+      },
+    };
+    const order = (healthConditions: readonly HealthCondition[]) => {
+      let state = makeGame({ catalog, config: { spawnIntervalMs: 100_000 } });
+      const customer = {
+        id: `customer-${healthConditions[0] ?? "taste"}`,
+        archetypeId: "regular",
+        status: "ordering" as const,
+        position: { x: 2, y: 2 },
+        path: [],
+        pathIndex: 0,
+        movementProgress: 0,
+        stateElapsedMs: 1_000,
+        visitElapsedMs: 1_000,
+        walkingDistanceTiles: 0,
+        patienceRemainingMs: 10_000,
+        satisfaction: 3,
+        healthConditions,
+        targetStallId: "stall-1",
+        hasTray: false,
+        served: false,
+        spent: 0,
+        stuckMs: 0,
+      };
+      state = {
+        ...state,
+        spawnCountdownMs: 100_000,
+        customers: { [customer.id]: customer },
+        queues: { ...state.queues, "stall-1": [customer.id] },
+      };
+      return { customerId: customer.id, state: stepSimulation(state) };
+    };
+
+    const tasteOrder = order([]);
+    expect(tasteOrder.state.customers[tasteOrder.customerId]?.orderedDishId).toBe("noodles");
+
+    const healthOrder = order(["hypertension"]);
+    expect(healthOrder.state.customers[healthOrder.customerId]).toMatchObject({
+      orderedDishId: "rice",
+      personalizedHealthRating: 5,
+      healthPreferenceResult: "matched",
+    });
+    const served = stepSimulation({
+      ...healthOrder.state,
+      customers: {
+        ...healthOrder.state.customers,
+        [healthOrder.customerId]: {
+          ...healthOrder.state.customers[healthOrder.customerId]!,
+          stateElapsedMs: 10_000,
+        },
+      },
+    });
+    expect(served.customers[healthOrder.customerId]).toMatchObject({
+      healthImpact: 0.2,
+      healthPreferenceResult: "matched",
+    });
+    expect(served.customers[healthOrder.customerId]?.satisfaction).toBeCloseTo(3.8);
+  });
+
   it("does not change economy, progression, or satisfaction for the same served dish", () => {
     const sourceCatalog = nutritionCatalog();
     const catalog: SimulationCatalog = {
@@ -342,6 +530,7 @@ describe("nutrition education rules", () => {
         walkingDistanceTiles: 0,
         patienceRemainingMs: 10_000,
         satisfaction: 3,
+        healthConditions: [],
         targetStallId: "stall-1",
         nutritionIntentId,
         hasTray: false,
@@ -426,6 +615,16 @@ describe("nutrition education rules", () => {
     };
     expect(migratePersistentState(v3).metrics.nutrition).toEqual(createEmptyNutritionMetrics());
 
+    const storedProfile = {
+      ...profile("saved-profile", "rice", { "sodium-aware": 0.8 }),
+      healthRating: 4.2,
+      conditionRatings: {
+        "high-cholesterol": 4.1,
+        obesity: 3.9,
+        diabetes: 3.7,
+        hypertension: 4.5,
+      },
+    };
     const populated = {
       ...v4,
       metrics: {
@@ -434,6 +633,16 @@ describe("nutrition education rules", () => {
           ...v4.metrics.nutrition,
           servedMeals: 3,
           profiledServings: 2,
+          recentOutcomes: [
+            {
+              customerId: "customer-profile-round-trip",
+              day: 1,
+              dishId: "rice",
+              variantId: "rice-default",
+              result: "matched" as const,
+              profile: storedProfile,
+            },
+          ],
           today: {
             ...v4.metrics.nutrition.today,
             day: 1,
@@ -466,6 +675,19 @@ describe("nutrition education rules", () => {
         },
       },
     });
+    const restoredProfile = migratePersistentState(populated).metrics.nutrition
+      .recentOutcomes[0]?.profile;
+    expect(restoredProfile).toMatchObject({
+      id: "saved-profile",
+      healthRating: 4.2,
+      conditionRatings: {
+        "high-cholesterol": 4.1,
+        obesity: 3.9,
+        diabetes: 3.7,
+        hypertension: 4.5,
+      },
+    });
+    expect(restoredProfile).not.toBe(storedProfile);
 
     const history = Array.from({ length: 60 }, (_, index) => ({
       customerId: `customer-${index + 1}`,
